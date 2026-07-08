@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "start": "node backend/src/server.js",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "dependencies": {
+    "multer": "^2.0.2"
+  }
+}

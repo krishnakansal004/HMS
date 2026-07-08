@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HOSPITECHVERSE Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* --- UI Color Update: Professional Cyan/Teal Theme --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #F8FAFC;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        #chat-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chat-log::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        /* New Glass Effect using institutional colors */
+        .glass-effect {
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            background-color: rgba(255, 255, 255, 0.9);
+            /* White with opacity */
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            color: #1F2937;
+            /* Dark text */
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #6B7280;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1.0);
+            }
+        }
+
+        .quick-reply-btn {
+            scroll-snap-align: start;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .quick-reply-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* --- STYLES TO RENDER STRUCTURED BOT CONTENT (Updated colors) --- */
+        .bot-message-content h4 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
+            color: #059669;
+            /* Deep Green for headers */
+            border-bottom: 1px solid rgba(5, 150, 105, 0.2);
+            padding-bottom: 0.25rem;
+        }
+
+        .bot-message-content ul,
+        .bot-message-content ol {
+            margin-left: 1rem;
+            padding-left: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .bot-message-content ul.list-none {
+            margin-left: 0;
+            padding-left: 0;
+        }
+
+        .bot-message-content a {
+            color: #06B6D4;
+            /* Cyan for links */
+            text-decoration: underline;
+        }
+
+        .bot-message-content p {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .bot-message-content strong {
+            font-weight: 600;
+            color: #0D9488;
+            /* Teal for emphasis */
+        }
+    </style>
+</head>
+
+<body class="text-gray-900">
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="flex items-center justify-center min-h-screen p-2">
+        <!-- Max-width set to 'md' to constrain size on large screens -->
+        <div class="w-full max-w-md glass-effect rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[95vh]">
+
+            <div
+                class="bg-cyan-600/90 p-4 shadow-md flex items-center justify-between border-b border-white/30 text-white">
+                <div>
+                    <h1 class="text-lg font-bold">HOSPITECHVERSE</h1>
+                    <p class="text-xs text-green-300">● Dynamic Assistant</p>
+                </div>
+                <select id="language-selector"
+                    class="bg-cyan-700 text-white p-2 rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="hi">हिन्दी</option>
+                </select>
+            </div>
+
+            <div id="chat-log" class="flex-grow p-4 overflow-y-auto space-y-6">
+                <!-- Chat messages will be appended here -->
+            </div>
+
+            <div id="status-message-box" class="px-4 pb-2 text-center text-sm text-gray-500 h-6"></div>
+
+            <div class="p-2 bg-white/50 border-t border-gray-200">
+                <div id="quick-replies" class="flex overflow-x-auto gap-2 pb-3 scroll-snap-type-x mandatory">
+                    <!-- Quick replies will be appended here -->
+                </div>
+                <div class="flex items-center gap-1">
+                    <!-- Adjusted padding and gap for mobile responsiveness -->
+                    <button id="symptom-btn" title="✨ Symptom Check"
+                        class="bg-pink-500 hover:bg-pink-600 text-white p-2 rounded-full transition-all shadow-md active:scale-95 font-semibold flex-shrink-0">
+                        ✨
+                    </button>
+                    <button id="summarize-btn" title="📑 Explain Medical Terms"
+                        class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-full transition-all shadow-md active:scale-95 font-semibold flex-shrink-0">
+                        📑
+                    </button>
+                    <button id="mic-btn"
+                        class="bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded-full transition-all shadow-md active:scale-95 font-semibold flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" x2="12" y1="19" y2="22" />
+                        </svg>
+                    </button>
+                    <button id="tts-btn"
+                        class="bg-gray-400 hover:bg-gray-500 text-white p-2 rounded-full transition-all shadow-md active:scale-95 font-semibold flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        </svg>
+                    </button>
+                    <input type="text" id="user-input"
+                        placeholder="Ask about appointments, billing, or emergency services..." autocomplete="off"
+                        class="flex-grow p-3 border border-gray-300 rounded-full bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition" />
+                    <button id="send-btn"
+                        class="bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded-full transition-all shadow-md active:scale-95 font-semibold flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m3 3 3 9-3 9 19-9Z" />
+                            <path d="M6 12h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal for LLM Feature Input -->
+    <div id="feature-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h4 id="modal-title" class="text-xl font-bold mb-4 text-teal-700">Modal Title</h4>
+            <p id="modal-instruction" class="text-gray-600 mb-4"></p>
+
+            <div id="input-fields-container">
+                <!-- Default Text Area (for Symptom Check - TEXT MODE) -->
+                <textarea id="modal-text-input" rows="5" placeholder="Enter text here..."
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500 mb-4"></textarea>
+
+                <!-- File Input (for Summarize Feature - FILE MODE) -->
+                <div id="modal-file-input-group" class="hidden mb-4">
+                    <label for="modal-file-input" class="block text-sm font-medium text-gray-700 mb-2">Upload Document
+                        or Image (PNG, JPG, PDF, TXT):</label>
+                    <input type="file" id="modal-file-input" accept=".txt, .pdf, image/png, image/jpeg"
+                        class="w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn"
+                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition">Cancel</button>
+                <button id="modal-submit-btn"
+                    class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition">Submit</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DOM Elements ---
+        const chatLog = document.getElementById('chat-log');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const quickRepliesContainer = document.getElementById('quick-replies');
+        const micBtn = document.getElementById('mic-btn');
+        const ttsBtn = document.getElementById('tts-btn');
+        const langSelector = document.getElementById('language-selector');
+        const statusMessageBox = document.getElementById('status-message-box');
+
+        // New Feature Buttons
+        const symptomBtn = document.getElementById('symptom-btn');
+        const summarizeBtn = document.getElementById('summarize-btn');
+
+        // Modal Elements
+        const featureModal = document.getElementById('feature-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalInstruction = document.getElementById('modal-instruction');
+        const modalTextInput = document.getElementById('modal-text-input'); // Renamed input
+        const modalFileInputGroup = document.getElementById('modal-file-input-group');
+        const modalFileInput = document.getElementById('modal-file-input');
+        const modalSubmitBtn = document.getElementById('modal-submit-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+
+        // --- State Variables ---
+        let isTyping = false;
+        let isListening = false;
+        let isSpeaking = false;
+        let ttsEnabled = false;
+        let chatHistory = [];
+        let currentLanguage = 'en';
+        let modalCallback = null; // Callback for modal submission
+
+
+        // --- Translations and Language Data (Updated for Dynamic Hospital Chat) ---
+        const translations = {
+            en: {
+                welcome: "Welcome to HOSPITECHVERSE Assistant. I can help you with appointments, billing, and general hospital information.",
+                placeholder: "Ask about appointments, billing, or emergency services...",
+                quickReplies: [
+                    { text: "Book an Appointment", query: "How do I book a doctor appointment?" },
+                    { text: "Check Bill Status", query: "Can I check my pending hospital bill?" },
+                    { text: "Emergency Info", query: "What are the emergency contact numbers?" },
+                    { text: "Hospital Departments", query: "What departments and services are available?" },
+                ],
+                listening: "Listening...",
+                processing: "Processing..."
+            },
+            es: {
+                welcome: "¡Hola! Bienvenido al Asistente de Gestión Hospitalaria. Puedo ayudarle con citas, facturación e información general del hospital.",
+                placeholder: "Pregunte sobre citas, facturación o servicios de emergencia...",
+                quickReplies: [
+                    { text: "Reservar Cita", query: "¿Cómo reservo una cita médica?" },
+                    { text: "Consultar Factura", query: "¿Puedo consultar mi factura hospitalaria pendiente?" },
+                    { text: "Info Emergencia", query: "¿Cuáles son los números de contacto de emergencia?" },
+                    { text: "Departamentos", query: "¿Qué departamentos y servicios están disponibles?" },
+                ],
+                listening: "Escuchando...",
+                processing: "Procesando..."
+            },
+            fr: {
+                welcome: "Bonjour! Bienvenue à l'Assistant de Gestion Hospitalière. Je peux vous aider avec les rendez-vous, la facturation et les informations générales de l'hôpital.",
+                placeholder: "Renseignez-vous sur les rendez-vous, la facturation ou les urgences...",
+                quickReplies: [
+                    { text: "Prendre Rendez-vous", query: "Comment prendre rendez-vous chez le médecin ?" },
+                    { text: "Vérifier Facture", query: "Puis-je vérifier ma facture d'hôpital en attente ?" },
+                    { text: "Info Urgence", query: "Quels sont les numéros de contact d'urgence ?" },
+                    { text: "Services Hôpital", query: "Quels départements et services sont disponibles ?" },
+                ],
+                listening: "Écoute en cours...",
+                processing: "Traitement en cours..."
+            },
+            de: {
+                welcome: "Hallo! Willkommen beim Assistenten für Krankenhausmanagement. Ich kann Ihnen bei Terminen, Abrechnungen und allgemeinen Krankenhausinformationen helfen.",
+                placeholder: "Fragen Sie nach Terminen, Abrechnungen oder Notfalldiensten...",
+                quickReplies: [
+                    { text: "Termin buchen", query: "Wie buche ich einen Arzttermin?" },
+                    { text: "Rechnung prüfen", query: "Kann ich meine ausstehende Krankenhausrechnung überprüfen?" },
+                    { text: "Notfall-Info", query: "Was sind die Notfall-Kontaktnummern?" },
+                    { text: "Abteilungen", query: "Welche Abteilungen und Dienstleistungen sind verfügbar?" },
+                ],
+                listening: "Hören...",
+                processing: "Verarbeitung..."
+            },
+            hi: {
+                welcome: "नमस्ते! HOSPITECHVERSE असिस्टेंट में आपका स्वागत है। मैं अपॉइंटमेंट, बिलिंग और सामान्य अस्पताल की जानकारी में आपकी मदद कर सकता हूँ।",
+                placeholder: "अपॉइंटमेंट, बिलिंग, या आपातकालीन सेवाओं के बारे में पूछें...",
+                quickReplies: [
+                    { text: "अपॉइंटमेंट बुक करें", query: "मैं डॉक्टर अपॉइंटमेंट कैसे बुक करूँ?" },
+                    { text: "बिल की स्थिति जांचें", query: "क्या मैं अपना लंबित अस्पताल बिल जांच सकता हूँ?" },
+                    { text: "आपातकालीन जानकारी", query: "आपातकालीन संपर्क नंबर क्या हैं?" },
+                    { text: "अस्पताल विभाग", query: "कौन से विभाग और सेवाएँ उपलब्ध हैं?" },
+                ],
+                listening: "सुन रहा हूँ...",
+                processing: "संसाधित हो रहा है..."
+            }
+        };
+        const sttLangMap = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', hi: 'hi-IN' };
+
+        // --- 3D Background Setup (Medical Theme) ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Representing medical connectivity/data flow
+        const geometry = new THREE.SphereGeometry(2, 32, 32);
+        const material = new THREE.LineBasicMaterial({ color: 0x06B6D4, linewidth: 2 }); // Cyan/Teal
+        const sphere = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), material);
+        scene.add(sphere);
+
+        camera.position.z = 5;
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            sphere.rotation.x += 0.0015;
+            sphere.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+        animate3D();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Core Functions ---
+
+        function updateUIForLanguage(lang) {
+            currentLanguage = lang;
+            userInput.placeholder = translations[lang].placeholder;
+            chatLog.innerHTML = '';
+            chatHistory = [];
+            addMessage("bot", translations[lang].welcome, false);
+            renderQuickReplies();
+        }
+
+        function setStatusMessage(message) {
+            statusMessageBox.textContent = message;
+        }
+
+        function addMessage(sender, message, animated = true) {
+            const div = document.createElement("div");
+            div.className = `flex items-end gap-3 ${sender === "user" ? "justify-end" : ""} animate__animated ${animated ? 'animate__fadeInUp' : ''}`;
+
+            const avatar = document.createElement("div");
+            // Avatar color updated to cyan/teal
+            avatar.className = `w-8 h-8 rounded-full flex-shrink-0 ${sender === 'user' ? 'bg-cyan-600 text-white' : 'bg-teal-700 text-white'} flex items-center justify-center font-bold text-sm`;
+            avatar.innerText = sender === 'user' ? 'U' : 'AI';
+
+            const bubble = document.createElement("div");
+            // Bubble colors updated
+            bubble.className = `p-3 rounded-2xl max-w-[75%] text-sm ${sender === "user" ? "bg-cyan-500 text-white rounded-br-none" : "bg-gray-100 text-gray-900 rounded-bl-none bot-message-content"}`;
+            bubble.innerHTML = message;
+
+            if (sender === 'user') {
+                div.appendChild(bubble);
+                div.appendChild(avatar);
+            } else {
+                div.appendChild(avatar);
+                div.appendChild(bubble);
+            }
+
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            if (sender === 'bot' && ttsEnabled) {
+                const textToSpeak = new DOMParser().parseFromString(message, "text/html").documentElement.textContent;
+                speak(textToSpeak);
+            }
+        }
+
+        function showTypingIndicator() {
+            const div = document.createElement("div");
+            div.id = "typing-indicator";
+            div.className = "flex items-end gap-3 justify-start";
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-teal-700 flex items-center justify-center font-bold text-white text-sm">AI</div>
+                <div class="p-3 rounded-2xl bg-gray-100 rounded-bl-none">
+                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                </div>
+            `;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+            isTyping = true;
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById("typing-indicator")?.remove();
+            isTyping = false;
+        }
+
+        function renderQuickReplies() {
+            const replies = translations[currentLanguage].quickReplies;
+            quickRepliesContainer.innerHTML = '';
+            replies.forEach(reply => {
+                const button = document.createElement('button');
+                // Quick reply button colors updated
+                button.className = "quick-reply-btn flex-shrink-0 px-4 py-2 text-sm bg-gray-200 text-cyan-800 rounded-full hover:bg-gray-300 transition-colors";
+                button.innerText = reply.text;
+                button.onclick = () => {
+                    userInput.value = reply.query;
+                    handleSend();
+                };
+                quickRepliesContainer.appendChild(button);
+            });
+        }
+
+        // --- Modal Control Functions ---
+
+        function showModal(title, instruction, submitText, mode, callback) {
+            modalTitle.textContent = title;
+            modalInstruction.textContent = instruction;
+            modalSubmitBtn.textContent = submitText;
+
+            // Clear inputs
+            modalTextInput.value = '';
+            if (modalFileInput.files.length > 0) modalFileInput.value = null; // Clear file selection
+
+            // Mode specific display
+            if (mode === 'file') {
+                modalTextInput.placeholder = 'Optional: Add instructions or questions about the file.';
+                modalTextInput.classList.remove('hidden');
+                modalFileInputGroup.classList.remove('hidden');
+            } else { // 'text' mode (Symptom Check)
+                modalTextInput.placeholder = 'Enter text here...';
+                modalTextInput.classList.remove('hidden');
+                modalFileInputGroup.classList.add('hidden');
+            }
+
+            modalCallback = callback;
+            featureModal.classList.remove('hidden');
+            featureModal.classList.add('flex');
+            modalTextInput.focus();
+        }
+
+        function hideModal() {
+            featureModal.classList.remove('flex');
+            featureModal.classList.add('hidden');
+            modalCallback = null;
+        }
+
+        modalCancelBtn.onclick = hideModal;
+
+        // Utility function to convert File object to Base64 string
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]); // Only need the base64 part
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        modalSubmitBtn.onclick = () => {
+            const textInput = modalTextInput.value.trim();
+            const fileInput = modalFileInput.files[0];
+
+            if (modalFileInputGroup.classList.contains('hidden')) {
+                // TEXT MODE (Symptom Check)
+                if (textInput && modalCallback) {
+                    modalCallback(textInput, null, null);
+                }
+                hideModal();
+            } else {
+                // FILE MODE (Summarize/Multimodal)
+                if (fileInput) {
+                    // Read file first before calling callback
+                    fileToBase64(fileInput).then(base64Data => {
+                        const mimeType = fileInput.type === '' ? 'application/octet-stream' : fileInput.type; // Fallback MIME type
+                        modalCallback(textInput, base64Data, mimeType);
+                        hideModal();
+                    }).catch(e => {
+                        setStatusMessage("Error reading file: " + e.message);
+                        hideModal();
+                    });
+                } else if (textInput) {
+                    // Allow text submission even in file mode if no file is chosen
+                    modalCallback(textInput, null, null);
+                    hideModal();
+                } else {
+                    setStatusMessage("Please provide a file or text input.");
+                }
+            }
+        };
+
+
+        // --- Gemini API Call Functions ---
+
+        // Function for standard hospital information queries
+        async function getLLMResponse(query) {
+            const systemPrompt = `You are the HOSPITECHVERSE Assistant, a dynamic, conversational AI. Your primary role is to answer patient and visitor questions using natural language by proactively drawing from the knowledge base below.
+
+**Do not refer to menu numbers.** Always answer the specific question asked immediately.
+
+Your tone must be highly professional, empathetic, and clear.
+
+**Formatting Rules for all answers:**
+1.  **Always** use structured HTML tags (<h4>, <p>, <ul>, <strong>) for every piece of information to ensure clarity.
+2.  Start your response with a brief, friendly conversational opening.
+3.  If a query requires data input (Appointment, Registration), immediately list the required details using a numbered HTML list (<ol>).
+
+--- KNOWLEDGE BASE (Hospital Management) ---
+
+**1. Hospital Information**
+* **About Hospital:** HOSPITECHVERSE is a multi-specialty facility focused on providing patient-centric care, advanced technology, and compassionate support.
+* **Available Departments:** <p>Our specialty departments include:</p>
+    <ul class="list-disc list-inside pl-2 mt-2">
+        <li>Cardiology</li>
+        <li>Orthopedics</li>
+        <li>Neurology</li>
+        <li>Pediatrics</li>
+        <li>General Medicine</li>
+        <li>Specialized Trauma Care</li>
+    </ul>
+* **Doctors List:** The comprehensive Doctors List and their schedules are available on the hospital website.
+* **Facilities & Services:** <p>Our main facilities include:</p>
+    <ul class="list-disc list-inside pl-2 mt-2">
+        <li>24/7 Emergency Ward</li>
+        <li>Advanced imaging and lab diagnostics</li>
+        <li>Surgical Theatres</li>
+        <li>Private and Semi-Private IPD rooms</li>
+        <li>In-house Pharmacy</li>
+    </ul>
+
+**2. Doctor Appointment (Required Details)**
+* **Details Needed:** To book an appointment, please provide the following mandatory details: 
+    <ol class="list-decimal list-inside pl-2 mt-2">
+        <li>Patient Name</li>
+        <li>Age</li>
+        <li>Department</li>
+        <li>Preferred Date & Time</li>
+    </ol>
+
+**3. Patient Registration (Required Details)**
+* **Details Needed:** For new patient registration, please provide: 
+    <ol class="list-decimal list-inside pl-2 mt-2">
+        <li>Name</li>
+        <li>Age</li>
+        <li>Gender</li>
+        <li>Mobile Number</li>
+        <li>Address</li>
+    </ol>
+
+**4. Billing & Payments (Processes)**
+* **Services:** All billing services (Check Bill, Make Payment, Download Invoice, and Insurance Details) are managed via the secure online patient portal. Please log in to your account.
+* **Insurance:** For specific insurance claims, contact the hospital's Accounts department directly.
+
+**5. OPD / IPD Details**
+* **OPD Timings:** Out-Patient Department timings are generally 9:00 AM - 5:00 PM (Monday to Saturday).
+* **IPD Room Availability:** Status can be checked at the hospital admissions desk upon arrival.
+* **Ward Charges:** <p>Ward charges vary based on the type of room (General, Semi-Private, Private). Please contact the hospital office for a detailed quote.</p>
+* **Discharge Information:** The discharge process typically takes 2-4 hours after final approval is given by the attending physician.
+
+**6. Reports & Records (Processes)**
+* **Access:** All records and processes (Upload reports, Download test results, Check prescription history) are managed exclusively through the secure patient portal. Access requires a valid Patient ID and password.
+
+**7. Emergency Services**
+* **Emergency Numbers:** <p><strong>Ambulance:</strong> <a href="tel:108">108</a></p>
+    <p><strong>Emergency Ward:</strong> Available 24×7</p>
+    <p class="mt-2">If you have a medical emergency, please call 108 immediately.</p>
+
+**8. Contact Support**
+* **Contact Info:** <p>For support and general queries, please call the main hospital line at <a href="tel:0000000000">0000-000-000</a> (mock number) or visit the hospital website for department-specific contact emails.</p>
+
+--- END OF KNOWLEDGE BASE ---
+`;
+            return callLLM(query, systemPrompt);
+        }
+
+        // Function for specialized LLM calls (Symptom Checker / Summarizer)
+        async function callSpecialLLM(query, fileBase64 = null, mimeType = null) {
+            const systemPrompt = `You are a specialized medical information assistant. Your purpose is to provide non-diagnostic, educational, and first-aid advice, or to translate complex medical jargon into simple language. 
+
+**RULES:**
+1. You MUST generate the response based ONLY on the user's provided text and/or file content.
+2. DO NOT attempt to diagnose conditions.
+3. Start the response with a clear, bold heading. 
+4. Use structured HTML lists (<ul>, <ol>) where appropriate for readability.
+`;
+            return callLLM(query, systemPrompt, fileBase64, mimeType, false); // Do not add to chat history for specialized calls
+        }
+
+        // Base LLM API handler with multimodal support and backoff
+        async function callLLM(query, systemPrompt, fileBase64 = null, mimeType = null, addToHistory = true) {
+            // --- MODIFIED API KEY SETUP ---
+            const apiKey = "AIzaSyCbAm5ubmujKl4Lc2Kik6Hq4ZSc0FMvHOw"; // Using the key provided by the user
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            // -----------------------------
+
+            let parts = [{ text: query }];
+            if (fileBase64 && mimeType) {
+                // Add the file content part
+                parts.unshift({
+                    inlineData: {
+                        mimeType: mimeType.includes('pdf') ? 'application/pdf' : mimeType, // Correct mimeType if needed
+                        data: fileBase64
+                    }
+                });
+            }
+
+            let contents = [{ role: "user", parts: parts }];
+
+            if (addToHistory) {
+                // Use the existing history for conversational context
+                contents = chatHistory.slice(); // Copy history
+                contents.push({ role: "user", parts: parts });
+            }
+
+
+            const payload = {
+                contents: contents,
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            const maxRetries = 3;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                        if (text) {
+                            if (addToHistory) {
+                                chatHistory.push({ role: "model", parts: [{ text: text }] });
+                            }
+                            return text;
+                        } else {
+                            return "I'm having trouble retrieving that information right now. Please try again shortly.";
+                        }
+                    } else if (response.status === 429 && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    } else {
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error("Failed to get LLM response:", error);
+                    // This is the improved fallback message
+                    return "I apologize, the system is temporarily overloaded. Please try your query again in a moment, or contact **(0000) 000-000** for immediate assistance.";
+                }
+            }
+        }
+
+        // --- New Feature Handlers (Using Modal) ---
+
+        async function handleSymptomCheck() {
+            const title = "✨ Symptom & First Aid Advisor";
+            const instruction = "Please list your symptoms and their duration (e.g., 'Fever and headache for 3 days').\n\nDISCLAIMER: This is NOT a diagnosis. Always consult a medical professional.";
+
+            showModal(title, instruction, "Check Symptoms", 'text', async (symptoms, base64Data, mimeType) => {
+                addMessage("user", `[Symptom Check Request]: ${symptoms}`);
+                showTypingIndicator();
+
+                const specializedQuery = `Analyze the following symptoms: ${symptoms}. Provide general advice, possible first aid steps, and clear, bold instructions on when the user MUST seek immediate medical attention or visit the emergency room.`;
+                const response = await callSpecialLLM(specializedQuery, base64Data, mimeType);
+
+                hideTypingIndicator();
+                addMessage("bot", response);
+            });
+        }
+
+        async function handleSummarize() {
+            const title = "📑 Health Summary Generator (Multimodal)";
+            const instruction = "Upload a lab report image/document OR paste text to be summarized in simple language. (Supported files: PNG, JPG, PDF, TXT).";
+
+            showModal(title, instruction, "Generate Summary", 'file', async (query, base64Data, mimeType) => {
+                const userQuery = base64Data ? `[Summarize Document]: ${query || "Please summarize this document."}` : query;
+                addMessage("user", userQuery);
+                showTypingIndicator();
+
+                const specializedQuery = `Translate the provided medical information (which may be text or an image/document) into easy-to-understand, plain language suitable for a layperson. Focus on explaining the key concepts and what the information generally means. ${query}`;
+                const response = await callSpecialLLM(specializedQuery, base64Data, mimeType);
+
+                hideTypingIndicator();
+                addMessage("bot", response);
+            });
+        }
+
+        // --- Speech Recognition & Synthesis (Unchanged) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('bg-red-600');
+                micBtn.classList.remove('bg-cyan-600');
+                setStatusMessage(translations[currentLanguage].listening);
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                setStatusMessage(translations[currentLanguage].processing);
+                setTimeout(handleSend, 200);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('bg-red-600');
+                micBtn.classList.add('bg-cyan-600');
+                setStatusMessage('');
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                let errorMessage = `Error: ${event.error}`;
+                if (event.error === 'not-allowed') {
+                    errorMessage = "Microphone access denied. Please enable it in your browser settings.";
+                } else if (event.error === 'no-speech') {
+                    errorMessage = "No speech was detected. Please try again.";
+                }
+                setStatusMessage(errorMessage);
+            };
+        } else {
+            micBtn.style.display = 'none';
+        }
+
+        function toggleListening() {
+            if (!SpeechRecognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.lang = sttLangMap[currentLanguage];
+                recognition.start();
+            }
+        }
+
+        function speak(text) {
+            if (!('speechSynthesis' in window) || isSpeaking) return;
+            isSpeaking = true;
+            speechSynthesis.cancel(); // Cancel any previous speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = sttLangMap[currentLanguage];
+
+            utterance.onend = () => {
+                isSpeaking = false;
+            };
+            utterance.onerror = (e) => {
+                console.error("Speech synthesis error", e);
+                isSpeaking = false;
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // --- Main Handler & Event Listeners ---
+        async function handleSend() {
+            const query = userInput.value.trim();
+            if (!query || isTyping) return;
+
+            addMessage("user", query);
+            userInput.value = "";
+            quickRepliesContainer.innerHTML = '';
+
+            showTypingIndicator();
+
+            // Standard conversational LLM call
+            const response = await getLLMResponse(query);
+
+            hideTypingIndicator();
+            addMessage("bot", response);
+            renderQuickReplies();
+        }
+
+        sendBtn.addEventListener("click", handleSend);
+        userInput.addEventListener("keypress", (e) => e.key === "Enter" && handleSend());
+        micBtn.addEventListener("click", toggleListening);
+        ttsBtn.addEventListener("click", () => {
+            ttsEnabled = !ttsEnabled;
+            ttsBtn.classList.toggle('bg-green-600', ttsEnabled);
+            ttsBtn.classList.toggle('bg-gray-400', !ttsEnabled);
+            if (!ttsEnabled) speechSynthesis.cancel();
+        });
+        langSelector.addEventListener('change', (e) => updateUIForLanguage(e.target.value));
+
+        // New Feature Event Listeners
+        symptomBtn.addEventListener('click', handleSymptomCheck);
+        summarizeBtn.addEventListener('click', handleSummarize);
+
+        // --- Initial Load ---
+        updateUIForLanguage(currentLanguage);
+
+    </script>
+</body>
+
+</html>

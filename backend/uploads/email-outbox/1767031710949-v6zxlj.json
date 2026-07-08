@@ -1,0 +1,9 @@
+{
+  "to": "mspprotocols@gmail.com",
+  "subject": "HOSPITECHVERSE: Patient Registration",
+  "html": "<p>Dear mahaveer,</p><p>Your record has been created at HOSPITECHVERSE. You can use your email (mspprotocols@gmail.com) to access patient features if available.</p><p>If you did not request this, please contact the clinic.</p>",
+  "extra": {},
+  "error": "connect ETIMEDOUT 54.248.129.79:443",
+  "statusCode": "ETIMEDOUT",
+  "date": "2025-12-29T18:08:30.949Z"
+}

@@ -1,0 +1,416 @@
+@import "tailwindcss";
+
+:root {
+    /* Primary brand color (blue) */
+    --primary: #2563eb;
+    /* tailwind blue-600 */
+}
+
+.font-inter {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Reusable components using Tailwind utilities via @apply */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color .2s, filter .2s, color .2s;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    filter: brightness(0.95);
+}
+
+/* Scroll and Rendering Optimizations */
+html {
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+section {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 500px;
+}
+
+/* Explicitly disable content-visibility for hero to avoid jumps */
+section:first-of-type {
+    content-visibility: visible;
+}
+
+.btn-secondary {
+    background: #4f46e5;
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    filter: brightness(0.95);
+}
+
+.btn-info {
+    background: #0891b2;
+    color: #fff;
+}
+
+.btn-info:hover {
+    filter: brightness(0.95);
+}
+
+/* Outline button for secondary actions */
+.btn-outline {
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background: #fff;
+}
+
+.btn-outline:hover {
+    background: rgba(37, 99, 235, 0.06);
+}
+
+.btn-disabled {
+    background: #cbd5e1;
+    color: #fff;
+    cursor: not-allowed;
+}
+
+.input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    padding-top: 0.5rem;
+    padding-right: 1rem;
+    padding-bottom: 0.5rem;
+    padding-left: 1rem;
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.input:focus {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .22);
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    border: 1px solid #cbd5e1;
+    padding: 0.5rem;
+}
+
+.icon-btn:hover {
+    background: #f1f5f9;
+}
+
+.bg-primary {
+    background: var(--primary);
+}
+
+.text-primary {
+    color: var(--primary);
+}
+
+/* Basic page structure spacing */
+body {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+/* Responsive adjustments for small/mobile view (down to 320px) */
+html {
+    font-size: 16px;
+}
+
+/* Mobile-first: Base styles for all screens */
+* {
+    box-sizing: border-box;
+}
+
+/* Base table styles - removed display: block to allow standard table behavior */
+table {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+
+    /* Rely on .table-responsive wrapping for scrolling */
+    table {
+        table-layout: auto;
+    }
+}
+
+/* Forms and inputs mobile-friendly */
+@media (max-width: 640px) {
+    .input {
+        font-size: 16px;
+        /* Prevents zoom on iOS */
+        padding-top: 0.625rem;
+        padding-right: 0.875rem;
+        padding-bottom: 0.625rem;
+        padding-left: 0.875rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        min-height: 44px;
+        /* Touch target size */
+    }
+
+    /* Grid layouts stack on mobile */
+    .grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Cards and containers */
+    .rounded-xl,
+    .rounded-lg {
+        border-radius: 0.75rem;
+    }
+
+    /* Padding adjustments */
+    .p-6 {
+        padding: 1rem;
+    }
+
+    .px-6 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .py-6 {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+}
+
+/* Smaller devices scale down base font and spacing for comfortable reading */
+@media (max-width: 480px) {
+    html {
+        font-size: 14px;
+    }
+
+    .app-main {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-top: 0.75rem;
+        padding-bottom: 5.25rem;
+    }
+
+    header {
+        height: 56px;
+    }
+
+    footer {
+        height: 56px;
+    }
+
+    .btn {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8125rem;
+        min-height: 44px;
+    }
+
+    .icon-btn {
+        padding: 0.5rem;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .app-shell {
+        min-height: 100vh;
+    }
+
+    /* Text sizes */
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    /* Spacing */
+    .space-y-6>*+* {
+        margin-top: 1rem;
+    }
+
+    .gap-4 {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 360px) {
+    html {
+        font-size: 13px;
+    }
+
+    .app-main {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        padding-top: 0.5rem;
+    }
+
+    .icon-btn {
+        padding: 0.375rem;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .btn {
+        padding: 0.4375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+
+    /* Smaller text on very small screens */
+    .text-sm {
+        font-size: 0.6875rem;
+    }
+}
+
+/* Extra small devices (320px) */
+@media (max-width: 320px) {
+    html {
+        font-size: 12px;
+    }
+
+    .app-main {
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
+        padding-top: 0.375rem;
+    }
+
+    .btn {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.6875rem;
+        min-height: 40px;
+    }
+
+    .input {
+        padding-top: 0.5rem;
+        padding-right: 0.75rem;
+        padding-bottom: 0.5rem;
+        padding-left: 0.75rem;
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 1.25rem;
+    }
+
+    h2 {
+        font-size: 1.125rem;
+    }
+
+    /* Compact spacing */
+    .p-5 {
+        padding: 0.75rem;
+    }
+
+    .p-6 {
+        padding: 0.875rem;
+    }
+}
+
+/* Ensure main content scrolls properly under header/footer on small screens */
+.app-main {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Make sidebar mobile panel full-width and scrolling if content grows */
+.lg\:hidden.fixed.top-0.inset-x-0.z-50 {
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.lg\:hidden.fixed.top-0.inset-x-0.z-50 .max-h\[70vh\] {
+    max-height: calc(100vh - 4rem);
+}
+
+/* Prevent footer overlapping content on mobile by keeping padding-bottom on main */
+.app-main {
+    padding-bottom: 5.25rem;
+}
+
+/* Mobile-friendly table wrapper */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+@media (max-width: 640px) {
+    .table-wrapper {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Make tables more compact on mobile */
+    table {
+        font-size: 0.75rem;
+    }
+
+    table th,
+    table td {
+        padding: 0.5rem 0.375rem;
+    }
+
+    /* Stack form grids on mobile */
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Modal adjustments */
+    .fixed.inset-0 {
+        padding: 0.5rem;
+    }
+
+    .max-w-2xl,
+    .max-w-md {
+        max-width: calc(100% - 1rem);
+    }
+}
+
+@media (max-width: 320px) {
+    table {
+        font-size: 0.6875rem;
+    }
+
+    table th,
+    table td {
+        padding: 0.375rem 0.25rem;
+    }
+}
+
+/* Utility: explicitly hide mobile-only controls on larger screens
+   and force-show them under the mobile breakpoint. This prevents
+   stray hamburger/menu icons from appearing on desktop if Tailwind
+   breakpoints are not applied for any reason. */
+.mobile-only {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    .mobile-only {
+        display: inline-flex !important;
+    }
+}

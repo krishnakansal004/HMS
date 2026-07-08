@@ -1,0 +1,50 @@
+{
+    "name": "hms-backend",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "src/server.js",
+    "scripts": {
+        "dev": "nodemon src/server.js",
+        "start": "node src/server.js",
+        "suspend:expired": "node src/utils/subscriptionJobs.js",
+        "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
+        "seed:doctors": "node src/utils/seed.js doctors",
+        "seed:demo": "node src/utils/seed.js demo",
+        "twilio:test:wa": "node src/utils/whatsapp_test.js"
+    },
+    "dependencies": {
+        "@sendgrid/mail": "^8.1.6",
+        "@upstash/redis": "^1.38.0",
+        "bcryptjs": "^2.4.3",
+        "cloudinary": "^1.41.3",
+        "compression": "^1.8.1",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "csrf-csrf": "^4.0.3",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "express-mongo-sanitize": "^2.2.0",
+        "express-rate-limit": "^8.2.1",
+        "express-validator": "^7.3.1",
+        "firebase-admin": "^12.7.0",
+        "helmet": "^8.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^9.2.3",
+        "multer": "^2.0.2",
+        "multer-storage-cloudinary": "^4.0.0",
+        "ngrok": "^5.0.0-beta.2",
+        "nodemailer": "^8.0.1",
+        "openai": "^4.67.1",
+        "pdfkit": "^0.15.0",
+        "razorpay": "^2.8.3",
+        "streamifier": "^0.1.1",
+        "twilio": "^5.10.5",
+        "bullmq": "^5.8.5",
+        "ioredis": "^5.4.1"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "nodemon": "^3.1.0",
+        "supertest": "^6.3.4"
+    }
+}

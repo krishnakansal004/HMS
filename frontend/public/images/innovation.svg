@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'>
+ <defs>
+  <linearGradient id='bgi' x1='0' x2='1' y1='0' y2='1'>
+   <stop offset='0%' stop-color='#7c3aed'/>
+   <stop offset='100%' stop-color='#06b6d4'/>
+  </linearGradient>
+  <style>text{font-family:'Inter',sans-serif;fill:#fff;font-weight:600}</style>
+ </defs>
+ <rect width='400' height='300' rx='18' fill='url(#bgi)'/>
+ <circle cx='200' cy='150' r='70' fill='rgba(255,255,255,0.15)' stroke='rgba(255,255,255,0.55)' stroke-width='6'/>
+ <path d='M200 100v30M200 150v50M170 150h60' stroke='#fff' stroke-width='10' stroke-linecap='round'/>
+ <circle cx='200' cy='150' r='16' fill='#fff'/>
+ <text x='200' y='56' font-size='20' text-anchor='middle' fill='#e0f2fe'>Innovation</text>
+ <text x='200' y='270' font-size='30' text-anchor='middle'>Healthcare</text>
+</svg>

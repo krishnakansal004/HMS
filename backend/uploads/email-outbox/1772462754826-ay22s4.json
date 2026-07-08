@@ -1,0 +1,10 @@
+{
+  "to": "novadev.root@gmail.com",
+  "subject": "SendGrid Test",
+  "html": "<b>It works!</b>",
+  "extra": {},
+  "error": "{\"errors\":[{\"message\":\"The from address does not match a verified Sender Identity. Mail cannot be sent until this error is resolved. Visit https://sendgrid.com/docs/for-developers/sending-email/sender-identity/ to see the Sender Identity requirements\",\"field\":\"from\",\"help\":null}]}",
+  "provider": "sendgrid",
+  "statusCode": "SENDGRID_ERROR",
+  "date": "2026-03-02T14:45:54.826Z"
+}

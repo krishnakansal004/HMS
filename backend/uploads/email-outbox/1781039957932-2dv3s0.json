@@ -1,0 +1,10 @@
+{
+  "to": "manikkr228@gmail.com",
+  "subject": "HMS: Doctor Account Created",
+  "html": "<p>Dear Dr. manik kumar,</p>\n    <p>You have been added as a doctor in HMS. You can log in with:</p>\n    <p>Email: <strong>manikkr228@gmail.com</strong><br/>Temporary Password: <strong>123456</strong></p>\n    <p>Please change your password after first login.</p>",
+  "extra": {},
+  "error": "no-transport-available",
+  "provider": "none",
+  "statusCode": "NO_TRANSPORT",
+  "date": "2026-06-09T21:19:17.933Z"
+}

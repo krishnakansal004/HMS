@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+
+# dotenv environment variables file
+.env
+.env.test
+.env.production
+service-account.json
+*.pem
+*.key
+*.log
+node_modules/
+
+node_modules/
+.env
+service-account.json
+*.pem
+*.log
+cookies.txt
+
+test-db.js
+test-crash.js
+test-appts.js
+
