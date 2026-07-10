@@ -104,6 +104,10 @@ export default function Login({ directorOnly = false }) {
                                 <Link to="/forgot-password" className="text-xs text-primary hover:underline text-center sm:text-left">Forgot password?</Link>
                                 <button type="submit" disabled={loading} className="btn btn-primary text-xs sm:text-sm w-full sm:w-auto">{loading ? 'Signing in…' : 'Sign In'}</button>
                             </div>
+                            <div className="mt-4 sm:mt-5 text-xs sm:text-sm text-slate-600 text-center flex items-center justify-center gap-2 cursor-pointer hover:text-slate-800" onClick={() => window.location.href = '/auth/google'}>
+                                <img src = "../../googleLogo.webp" width="20" height="20" />
+                                Sign in with Google
+                            </div>
                         </form>
                     </div>
                     {/* Sign-up link removed from main login page per request */}

@@ -284,6 +284,10 @@ export default function Signup() {
                         <button type="submit" disabled={loading} className="w-full btn btn-primary">
                             {loading ? (applyDoctor ? 'Submitting application...' : 'Creating account...') : (applyDoctor ? 'Submit Doctor Application' : 'Create account')}
                         </button>
+                        <div className="mt-4 sm:mt-5 text-xs sm:text-sm text-slate-600 text-center flex items-center justify-center gap-2 cursor-pointer hover:text-slate-800" onClick={() => window.location.href = '/auth/google'}>
+                            <img src="../../googleLogo.webp" alt="googleLogo" width="20" height="20" />
+                            Continue with Google
+                        </div>
                     </form>
                     <div className="mt-4 text-xs text-slate-500 text-center">
                         {applyDoctor ? (
