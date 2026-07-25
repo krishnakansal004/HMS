@@ -102,7 +102,7 @@ router.get('/csrf', (req, res) => {
 
     const token = crypto.randomBytes(32).toString('hex')
     res.cookie('_csrf', token, {
-      httpOnly: false, // JavaScript must be able to read this for double-submit pattern
+      httpOnly: true, // Changed from false to true to prevent XSS access
       secure: cookieSecure,
       sameSite: cookieSameSite,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
