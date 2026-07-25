@@ -298,15 +298,22 @@ router.post('/login', authLimiter, [
     const lookup = await findUserByEmailFlexible(email, currentTenant?._id)
     let user = lookup.user
     if (!user) {
+      // console.log('[auth] login failed: user not found', { email, candidatesTried: lookup.candidates })
       console.log('[auth] login failed: user not found')
       return res.status(401).json({ error: 'Invalid credentials' })
     }
     req.tenantId = user.tenantId
+
+    // if (user.blocked) {
+    //   console.log('[auth] login failed: user is blocked', { email: user.email })
+    //   return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' })
+    // }
     if (user.blocked) {
       console.log('[auth] login failed: blocked account')
       return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' })
     }
 
+    // console.log('[auth] login attempt', { email, role: user.role, hasPasswordHash: !!user.passwordHash, tenantId: user.tenantId })
     console.log('[auth] login attempt')
     // SaaS Tenant Validation
     if (hospitalSlug) {
@@ -342,11 +349,21 @@ router.post('/login', authLimiter, [
         })
       }
     }
+
+    // Debug: Log password comparison details
+    // console.log('[auth] password comparison', {
+    //   email: user.email,
+    //   // providedPassword: password,
+    //   passwordLength: password?.length,
+    //   hasPasswordHash: !!user.passwordHash,
+    //   passwordHashLength: user.passwordHash?.sonlength
+    // })
     console.log('[auth] password comparison attempted')
 
     const ok = await bcrypt.compare(password, user.passwordHash)
 
     if (!ok) {
+      // console.log('[auth] login failed: password mismatch', { email: user.email, hasPasswordHash: !!user.passwordHash })
       console.log('[auth] login failed: password mismatch')
       return res.status(401).json({ error: 'Invalid credentials' })
     }
@@ -419,7 +436,7 @@ router.post('/forgot-password', authLimiter, [
       const rawToken = crypto.randomBytes(32).toString('hex')
       const hashed = crypto.createHash('sha256').update(rawToken).digest('hex')
       user.passwordResetToken = hashed
-      user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+      user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
       await user.save()
       let tenantQuery = ''
       if (user.tenantId) {
@@ -430,7 +447,9 @@ router.post('/forgot-password', authLimiter, [
       const { html, attachments } = passwordResetTemplate(user, resetUrl)
       await sendEmail(email, 'Password Reset Instructions', html, { attachments })
     }
-    res.json({ ok: true })
+    res.json({
+     ok: true
+    })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
@@ -711,5 +730,37 @@ router.post('/refresh-token', authLimiter, async (req, res) => {
   }
 })
 
+// // Debug endpoint to verify user credentials (remove in production)
+// router.post('/debug-check-user', async (req, res) => {
+//   try {
+//     const { email, password } = req.body
+//     const user = await User.findOne({ email: email.toLowerCase() })
+//     if (!user) {
+//       return res.json({ exists: false, message: 'User not found' })
+//     }
+
+//     const hasPasswordHash = !!user.passwordHash
+//     const passwordHashLength = user.passwordHash?.length
+
+//     // Test bcrypt comparison
+//     let passwordMatch = false
+//     if (password && user.passwordHash) {
+//       passwordMatch = await bcrypt.compare(password, user.passwordHash)
+//     }
+
+//     res.json({
+//       exists: true,
+//       email: user.email,
+//       role: user.role,
+//       tenantId: user.tenantId,
+//       hasPasswordHash,
+//       passwordHashLength,
+//       passwordMatch,
+//       providedPasswordLength: password?.length
+//     })
+//   } catch (e) {
+//     res.status(500).json({ error: e.message })
+//   }
+// })
 
 export default router

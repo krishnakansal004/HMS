@@ -36,7 +36,7 @@ export default function ForgotPassword() {
                 {sent ? (
                     <div className="space-y-4">
                         <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3">If the email exists, reset instructions have been sent.</div>
-                        <div className="text-xs text-slate-500 text-center">Check your inbox (and spam folder). The link expires in 1 hour.</div>
+                        <div className="text-xs text-slate-500 text-center">Check your inbox (and spam folder). The link expires in 30 minutes.</div>
                         <Link to="/login" className="text-primary text-sm text-center block hover:underline">Back to login</Link>
                     </div>
                 ) : (
