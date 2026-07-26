@@ -14,7 +14,7 @@ import { body, validationResult } from 'express-validator'
 //login limiter
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per 15 minutes
+  max: 100, // Limit each IP to 10 requests per 15 minutes
   message: { error: 'Too many attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -437,6 +437,7 @@ router.post('/forgot-password', authLimiter, [
       const hashed = crypto.createHash('sha256').update(rawToken).digest('hex')
       user.passwordResetToken = hashed
       user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+      user.passwordResetAttempts = 0//start counting failed attempts from zero
       await user.save()
       let tenantQuery = ''
       if (user.tenantId) {
@@ -455,7 +456,6 @@ router.post('/forgot-password', authLimiter, [
     res.status(500).json({ error: 'Server error' })
   }
 })
-
 // Reset password - consume token
 router.post('/reset-password', authLimiter, [
   body('email').trim().isEmail().withMessage('Valid email required').bail().customSanitizer(normalizeEmailInput),
@@ -474,17 +474,39 @@ router.post('/reset-password', authLimiter, [
     if (!user || !user.passwordResetToken || !user.passwordResetExpires) {
       return res.status(400).json({ error: 'Invalid or expired token' })
     }
+    if ((user.passwordResetAttempts || 0) >= 5) {
+      return res.status(400).json({
+        error: 'Too many failed attempts. Please request a new password reset link.'
+      })
+    }
     if (user.passwordResetExpires.getTime() < Date.now()) {
       return res.status(400).json({ error: 'Invalid or expired token' })
     }
     const hashed = crypto.createHash('sha256').update(token).digest('hex')
-    if (hashed !== user.passwordResetToken) {
-      return res.status(400).json({ error: 'Invalid or expired token' })
+    // if (hashed !== user.passwordResetToken) {
+    //   return res.status(400).json({ error: 'Invalid or expired token' })
+    // }
+      if (hashed !== user.passwordResetToken) {
+      user.passwordResetAttempts = (user.passwordResetAttempts || 0) + 1
+
+      if (user.passwordResetAttempts >= 5) {
+        user.passwordResetToken = null
+        user.passwordResetExpires = null
+      }
+      await user.save()
+      return res.status(400).json({
+        error:
+          user.passwordResetAttempts >= 5
+            ? 'Too many failed attempts. Please request a new password reset link.'
+            : 'Invalid or expired token'
+      });
     }
     // Update password
     user.passwordHash = await bcrypt.hash(password, 10)
     user.passwordResetToken = null
     user.passwordResetExpires = null
+    user.passwordResetAttempts = 0
+
     // Invalidate existing sessions
     user.sessionId = crypto.randomUUID()
     await user.save()
@@ -502,7 +524,6 @@ router.post('/reset-password', authLimiter, [
     res.status(500).json({ error: 'Server error' })
   }
 })
-
 // Me
 router.get('/me', protect, async (req, res) => {
   const user = await User.findById(req.userId)
