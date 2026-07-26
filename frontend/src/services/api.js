@@ -2081,8 +2081,29 @@ export async function refreshToken() {
   throw err
 }
 
+// for googleLogin
+export function googleLogin(accessToken, hospitalSlug) {
+  return authFetch('/api/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({
+      accessToken,
+      hospitalSlug,
+    }),
+  })
+}
+
+// for googleRegister
+export function googleRegister(accessToken) {
+  return authFetch('/api/auth/googleRegister', {
+    method: 'POST',
+    body: JSON.stringify({
+      accessToken,
+    }),
+  })
+}
 // Auth endpoints
 export function login(email, password, hospitalSlug) {
+  console.log('Attempting login with email:', email, 'hospitalSlug:', hospitalSlug)
   return authFetch('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password, hospitalSlug }),
