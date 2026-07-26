@@ -14,7 +14,7 @@ import { body, validationResult } from 'express-validator'
 //login limiter
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 10 requests per 15 minutes
+  max: 10, // Limit each IP to 10 requests per 15 minutes
   message: { error: 'Too many attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
