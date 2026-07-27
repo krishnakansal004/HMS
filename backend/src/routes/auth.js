@@ -590,7 +590,6 @@ import { buildPublicFrontendUrl } from "../utils/publicUrl.js";
 import { passwordResetTemplate } from "../utils/emailTemplates.js";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
-import axios from "axios";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
