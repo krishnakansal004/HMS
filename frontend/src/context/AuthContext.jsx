@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { login as apiLogin, register as apiRegister, me as apiMe, setToken as setApiToken, refreshToken as apiRefreshToken, logout as apiLogout, registerUnauthorizedCallback as apiRegisterUnauthorizedCallback } from '../services/api'
+import { login as apiLogin, register as apiRegister, me as apiMe, setToken as setApiToken, refreshToken as apiRefreshToken, logout as apiLogout, registerUnauthorizedCallback as apiRegisterUnauthorizedCallback, googleLogin as apiGoogleLogin, googleRegister as apiGoogleRegister } from '../services/api'
 import i18n from '../i18n'
 
 const AuthContext = (typeof window !== 'undefined' && window.__AuthContext)
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
                 if ((role === 'doctor' || role === 'patient') && tenantSlug) {
                     redirectUrl = `/portal/${tenantSlug}/login`
                 }
-            } catch (e) {}
+            } catch (e) { }
 
             // Clear state and storage
             setToken(null)
@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
             clearStoredAuth()
 
             // Fire and forget logout API call to clear HTTP-only cookies
-            apiLogout().catch(() => {})
+            apiLogout().catch(() => { })
 
             // Perform hard redirect to clean React-Query and other states
             if (typeof window !== 'undefined') {
@@ -135,6 +135,40 @@ export function AuthProvider({ children }) {
         }
         bootstrap()
     }, [])
+
+    const googleLogin = async (accessToken, hospitalSlug) => {
+        const data = await apiGoogleLogin(accessToken, hospitalSlug)
+
+        setToken(data.token)
+        setApiToken(data.token)
+        setUser(data.user)
+        persistAuth(data.token, data.user)
+
+        try {
+            if (data.user?.locale) {
+                i18n.changeLanguage(data.user.locale)
+            }
+        } catch (e) { }
+
+        return data
+    }
+
+    const registerViaGoogle = async (accessToken) => {
+        const data = await apiGoogleRegister(accessToken)
+
+        setToken(data.token)
+        setApiToken(data.token)
+        setUser(data.user)
+        persistAuth(data.token, data.user)
+
+        try {
+            if (data.user?.locale) {
+                i18n.changeLanguage(data.user.locale)
+            }
+        } catch (e) { }
+
+        return data
+    }
 
     const login = async (email, password, hospitalSlug) => {
         const data = await apiLogin(email, password, hospitalSlug)
@@ -212,7 +246,7 @@ export function AuthProvider({ children }) {
         }
     }
 
-    const value = useMemo(() => ({ token, user, loading, login, register, logout, refreshUser }), [token, user, loading])
+    const value = useMemo(() => ({ token, user, loading, login, googleLogin, registerViaGoogle, register, logout, refreshUser }), [token, user, loading])
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

@@ -10,6 +10,7 @@ import { router } from './router'
 import { AuthProvider } from './context/AuthContext'
 import { ToastContainer } from 'react-toastify'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import {GoogleOAuthProvider} from "@react-oauth/google"
 import './i18n'
 
 const queryClient = new QueryClient({
@@ -42,13 +43,17 @@ persistQueryClient({
   maxAge: 24 * 60 * 60 * 1000, // 24 hours
 })
 
+// console.log("GOOGLE_CLIENT_ID:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
+// console.log("GOOGLE_CLIENT_SECRET:", import.meta.env.VITE_GOOGLE_CLIENT_SECRET);
 createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
-        <ToastContainer position="top-right" autoClose={4000} newestOnTop closeOnClick pauseOnFocusLoss={false} theme="colored" />
-      </AuthProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RouterProvider router={router} future={{ v7_startTransition: true }} />
+          <ToastContainer position="top-right" autoClose={4000} newestOnTop closeOnClick pauseOnFocusLoss={false} theme="colored" />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  </GoogleOAuthProvider>
 )
