@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { submitDoctorApplication, getPublicHospitals } from "../services/api";
-import axios from "axios";
 import { useGoogleLogin } from "@react-oauth/google";
 import PublicNavbar from "../components/PublicNavbar";
 

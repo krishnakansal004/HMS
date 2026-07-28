@@ -11,11 +11,13 @@ import { buildPublicFrontendUrl } from '../utils/publicUrl.js'
 import { passwordResetTemplate } from '../utils/emailTemplates.js'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
+
 //login limiter
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per 15 minutes
-  message: { error: 'Too many attempts. Please try again later.' },
+  max: 10000, // Limit each IP to 10000 requests per windowMs to remove safety constraint during development
+  message: { error: "Too many attempts. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
   // Disable the trust-proxy validation check introduced in v7/v8.

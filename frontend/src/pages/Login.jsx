@@ -4,9 +4,6 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import PublicNavbar from "../components/PublicNavbar";
 import { useAuth } from "../context/AuthContext";
 import { useGoogleLogin } from "@react-oauth/google";
-import axios from "axios";
-
-
 
 export default function Login({ directorOnly = false }) {
   useProfileRender("Login", true);
