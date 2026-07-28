@@ -1,3 +1,21 @@
+import express from 'express'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import Tenant from '../models/Tenant.js'
+import crypto from 'crypto'
+import User from '../models/User.js'
+import Patient from '../models/Patient.js'
+import { protect } from '../utils/auth.js'
+import { sendEmail } from '../utils/notify.js'
+import { buildPublicFrontendUrl } from '../utils/publicUrl.js'
+import { passwordResetTemplate } from '../utils/emailTemplates.js'
+import rateLimit from 'express-rate-limit'
+import { body, validationResult } from 'express-validator'
+//login limiter
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 requests per 15 minutes
+  message: { error: 'Too many attempts. Please try again later.' },
 // import express from 'express'
 // import bcrypt from 'bcryptjs'
 // import jwt from 'jsonwebtoken'
@@ -690,6 +708,13 @@ export const requireCsrf = (req, res, next) => {
 // CSRF Token Generation Endpoint
 router.get("/csrf", (req, res) => {
   try {
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieSameSite = process.env.COOKIE_SAME_SITE || (isProduction ? 'none' : 'lax')
+    const cookieSecure = process.env.COOKIE_SECURE === 'true' || (isProduction && cookieSameSite === 'none')
+
+    const token = crypto.randomBytes(32).toString('hex')
+    res.cookie('_csrf', token, {
+      httpOnly: true, // Changed from false to true to prevent XSS access
     const isProduction = process.env.NODE_ENV === "production";
     const cookieSameSite =
       process.env.COOKIE_SAME_SITE || (isProduction ? "none" : "lax");
@@ -1012,6 +1037,31 @@ router.post(
             return res.status(404).json({ error: "Hospital not found" });
         }
 
+    const lookup = await findUserByEmailFlexible(email, currentTenant?._id)
+    let user = lookup.user
+    if (!user) {
+      // console.log('[auth] login failed: user not found', { email, candidatesTried: lookup.candidates })
+      console.log('[auth] login failed: user not found')
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+    req.tenantId = user.tenantId
+
+    // if (user.blocked) {
+    //   console.log('[auth] login failed: user is blocked', { email: user.email })
+    //   return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' })
+    // }
+    if (user.blocked) {
+      console.log('[auth] login failed: blocked account')
+      return res.status(403).json({ error: 'Your account has been blocked. Please contact support.' })
+    }
+
+    // console.log('[auth] login attempt', { email, role: user.role, hasPasswordHash: !!user.passwordHash, tenantId: user.tenantId })
+    console.log('[auth] login attempt')
+    // SaaS Tenant Validation
+    if (hospitalSlug) {
+      if (!currentTenant) {
+        currentTenant = await Tenant.findOne({ slug: hospitalSlug }).populate('plan')
+        if (!currentTenant) return res.status(404).json({ error: 'Hospital not found' })
         // Directors should not login via tenant portals
         if (user.role === "director") {
           return res.status(403).json({
@@ -1194,6 +1244,15 @@ router.post(
   },
 );
 
+    // Debug: Log password comparison details
+    // console.log('[auth] password comparison', {
+    //   email: user.email,
+    //   // providedPassword: password,
+    //   passwordLength: password?.length,
+    //   hasPasswordHash: !!user.passwordHash,
+    //   passwordHashLength: user.passwordHash?.sonlength
+    // })
+    console.log('[auth] password comparison attempted')
 //register via Google
 router.post("/googleRegister", async (req, res) => {
   try {
@@ -1232,6 +1291,15 @@ router.post("/googleRegister", async (req, res) => {
         sessionId: crypto.randomUUID(),
       });
 
+    if (!ok) {
+      // console.log('[auth] login failed: password mismatch', { email: user.email, hasPasswordHash: !!user.passwordHash })
+      console.log('[auth] login failed: password mismatch')
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
+    // Invalidate previous sessions by overwriting sessionId
+    user.sessionId = crypto.randomUUID()
+    await user.save()
+    const safe = user.toSafeJSON()
       const nameParts = name.split(" ");
 
       await req.db(Patient).create({
@@ -1334,6 +1402,92 @@ router.post("/googleRegister", async (req, res) => {
 // Login via Google
 router.post("/google", async (req, res) => {
   try {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg })
+
+    const { email } = req.body
+    const { user } = await findUserByEmailFlexible(email)
+    // Always respond ok to avoid email enumeration; only proceed if user exists
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashed = crypto.createHash('sha256').update(rawToken).digest('hex')
+      user.passwordResetToken = hashed
+      user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+      user.passwordResetAttempts = 0//start counting failed attempts from zero
+      await user.save()
+      let tenantQuery = ''
+      if (user.tenantId) {
+        const t = await Tenant.findById(user.tenantId).select('slug')
+        if (t?.slug) tenantQuery = `&hospitalSlug=${encodeURIComponent(t.slug)}`
+      }
+      const resetUrl = buildPublicFrontendUrl(`/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}${tenantQuery}`)
+      const { html, attachments } = passwordResetTemplate(user, resetUrl)
+      await sendEmail(email, 'Password Reset Instructions', html, { attachments })
+    }
+    res.json({
+     ok: true
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+// Reset password - consume token
+router.post('/reset-password', authLimiter, [
+  body('email').trim().isEmail().withMessage('Valid email required').bail().customSanitizer(normalizeEmailInput),
+  body('token').notEmpty().withMessage('Token required'),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Za-z]/).withMessage('Password must contain at least one letter')
+    .matches(/[0-9]/).withMessage('Password must contain at least one number')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg })
+
+    const { email, token, password } = req.body
+    const { user } = await findUserByEmailFlexible(email)
+    if (!user || !user.passwordResetToken || !user.passwordResetExpires) {
+      return res.status(400).json({ error: 'Invalid or expired token' })
+    }
+    if ((user.passwordResetAttempts || 0) >= 5) {
+      return res.status(400).json({
+        error: 'Too many failed attempts. Please request a new password reset link.'
+      })
+    }
+    if (user.passwordResetExpires.getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Invalid or expired token' })
+    }
+    const hashed = crypto.createHash('sha256').update(token).digest('hex')
+    // if (hashed !== user.passwordResetToken) {
+    //   return res.status(400).json({ error: 'Invalid or expired token' })
+    // }
+      if (hashed !== user.passwordResetToken) {
+      user.passwordResetAttempts = (user.passwordResetAttempts || 0) + 1
+
+      if (user.passwordResetAttempts >= 5) {
+        user.passwordResetToken = null
+        user.passwordResetExpires = null
+      }
+      await user.save()
+      return res.status(400).json({
+        error:
+          user.passwordResetAttempts >= 5
+            ? 'Too many failed attempts. Please request a new password reset link.'
+            : 'Invalid or expired token'
+      });
+    }
+    // Update password
+    user.passwordHash = await bcrypt.hash(password, 10)
+    user.passwordResetToken = null
+    user.passwordResetExpires = null
+    user.passwordResetAttempts = 0
+
+    // Invalidate existing sessions
+    user.sessionId = crypto.randomUUID()
+    await user.save()
+
+    let tenantSlug = null
     // console.log("[auth] Google login attempt");
     const { accessToken,hospitalSlug } = req.body;
     // console.log("[auth] Google access token received:", accessToken);
@@ -1476,6 +1630,7 @@ router.post("/google", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Google authentication failed" });
   }
+})
 });
 
 // Reset password - consume token
@@ -1649,6 +1804,7 @@ router.put(
   },
 );
 
+
 // Logout (invalidate current session)
 router.post("/logout", async (req, res) => {
   try {
@@ -1815,6 +1971,38 @@ router.post("/refresh-token", authLimiter, async (req, res) => {
   }
 });
 
+// // Debug endpoint to verify user credentials (remove in production)
+// router.post('/debug-check-user', async (req, res) => {
+//   try {
+//     const { email, password } = req.body
+//     const user = await User.findOne({ email: email.toLowerCase() })
+//     if (!user) {
+//       return res.json({ exists: false, message: 'User not found' })
+//     }
+
+//     const hasPasswordHash = !!user.passwordHash
+//     const passwordHashLength = user.passwordHash?.length
+
+//     // Test bcrypt comparison
+//     let passwordMatch = false
+//     if (password && user.passwordHash) {
+//       passwordMatch = await bcrypt.compare(password, user.passwordHash)
+//     }
+
+//     res.json({
+//       exists: true,
+//       email: user.email,
+//       role: user.role,
+//       tenantId: user.tenantId,
+//       hasPasswordHash,
+//       passwordHashLength,
+//       passwordMatch,
+//       providedPasswordLength: password?.length
+//     })
+//   } catch (e) {
+//     res.status(500).json({ error: e.message })
+//   }
+// })
 // Debug endpoint to verify user credentials (remove in production)
 router.post("/debug-check-user", async (req, res) => {
   try {
