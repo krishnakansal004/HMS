@@ -370,7 +370,6 @@ router.post(
       } catch (e) {
         console.warn('[auth] auto-create patient record failed:', e.message)
       }
-    }
 
       // Build response
       let tenant = null
