@@ -3,7 +3,7 @@
 -- Purpose: Subscription plan catalog (pricing tiers, feature limits) for hospital tenants.
 -- Depends on: none
 
-CREATE TABLE plan (
+CREATE TABLE IF NOT EXISTS plan (
     plan_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name         VARCHAR(255) NOT NULL,
     status       VARCHAR(50) NOT NULL DEFAULT 'active',

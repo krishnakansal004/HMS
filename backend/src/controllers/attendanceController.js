@@ -1,31 +1,61 @@
-import { listAttendanceService, createAttendanceService } from '../services/attendanceService.js'
+import { AttendanceService } from '../services/attendanceService.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
 
-function handleError(res, error, defaultMessage) {
-  const status = Number(error.status) || 500
-  const isClientError = status >= 400 && status < 500
-  const message = isClientError ? (error.publicMessage || error.message || defaultMessage) : defaultMessage
-  if (!isClientError) {
-    console.error('[attendanceController] internal error', { status, error: error.message })
-  } else {
-    console.warn('[attendanceController] client error', { status, error: message })
+export class AttendanceController {
+  
+  static async checkIn(req, res, next) {
+    try {
+      const attendance = await AttendanceService.checkIn({
+        tenantId: req.currentTenantId,
+        requestingUserId: req.userId,
+        targetUserId: req.body.targetUserId,
+        ipAddress: req.ip
+      });
+
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: 'Successfully checked in.',
+        data: attendance
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-  return res.status(status).json({ error: message })
-}
 
-export async function listAttendance(req, res) {
-  try {
-    const data = await listAttendanceService(req)
-    return res.json(data)
-  } catch (error) {
-    return handleError(res, error, 'Failed to list attendance')
+  static async checkOut(req, res, next) {
+    try {
+      const attendance = await AttendanceService.checkOut({
+        tenantId: req.currentTenantId,
+        requestingUserId: req.userId,
+        targetUserId: req.body.targetUserId,
+        ipAddress: req.ip
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Successfully checked out.',
+        data: attendance
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-export async function createAttendance(req, res) {
-  try {
-    const record = await createAttendanceService(req)
-    return res.status(201).json(record)
-  } catch (error) {
-    return handleError(res, error, 'Failed to create attendance')
+  static async list(req, res, next) {
+    try {
+      const result = await AttendanceService.getAttendanceRecords({
+        tenantId: req.currentTenantId,
+        userRole: req.userRole,
+        requestingUserId: req.userId,
+        query: req.query
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }

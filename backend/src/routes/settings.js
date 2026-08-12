@@ -1,65 +1,63 @@
-import express from 'express'
-import Setting from '../models/Setting.js'
-import { protect, requireRoles } from '../utils/auth.js'
+import express from 'express';
+import { ClinicalSettingsController } from '../controllers/clinicalSettingsController.js';
+import { 
+  createTemplateValidator, 
+  deleteTemplateValidator, 
+  updateSettingValidator 
+} from '../validators/clinicalSettingsValidator.js';
+import { protect, requireRoles } from '../middlewares/authMiddleware.js';
+import { requireTenant } from '../middlewares/tenantMiddleware.js';
 
-const router = express.Router()
+const router = express.Router();
+
+router.use(protect);
+router.use(requireTenant);
+
+// --- PRESCRIPTION TEMPLATES ---
+
+// GET /api/settings/templates
+// Who: Hospital Admin, Doctor
+router.get(
+  '/templates',
+  requireRoles('HOSPITAL_ADMIN', 'DOCTOR'),
+  ClinicalSettingsController.listTemplates
+);
+
+// POST /api/settings/templates
+// Who: Only Doctors
+router.post(
+  '/templates',
+  requireRoles('DOCTOR'),
+  createTemplateValidator,
+  ClinicalSettingsController.createTemplate
+);
+
+// DELETE /api/settings/templates/:id
+// Who: Only Doctors (creators) or Admins
+router.delete(
+  '/templates/:id',
+  requireRoles('HOSPITAL_ADMIN', 'DOCTOR'),
+  deleteTemplateValidator,
+  ClinicalSettingsController.removeTemplate
+);
+
+// --- HOSPITAL CONFIGURATION SETTINGS ---
 
 // GET /api/settings
-// List all settings (protected, directors only?)
-// Some settings might be public (like company name). Ideally handle public/private split.
-// For now, let's allow public read for some keys, or authenticated read?
-// The frontend usually needs COMPANY_NAME before login. That comes from 'public' endpoints usually.
-// Here we'll implement the management API for Directors.
-router.get('/', protect, requireRoles('director'), async (req, res) => {
-    try {
-        const settings = await req.db(Setting).find({}).sort({ group: 1, key: 1 })
-        res.json(settings)
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to load settings' })
-    }
-})
+// Who: Hospital Admin, Accountant, Receptionist
+router.get(
+  '/',
+  requireRoles('HOSPITAL_ADMIN', 'ACCOUNTANT', 'RECEPTIONIST'),
+  ClinicalSettingsController.listSettings
+);
 
-// POST /api/settings/bulk
-// Update multiple settings at once
-router.post('/bulk', protect, requireRoles('director'), async (req, res) => {
-    try {
-        const updates = req.body // { key: value, key2: value2 }
-        if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'Invalid body' })
-        const keys = Object.keys(updates)
+// PUT /api/settings
+// Who: Only Hospital Admin
+router.put(
+  '/',
+  requireRoles('HOSPITAL_ADMIN'),
+  updateSettingValidator,
+  ClinicalSettingsController.updateSetting
+);
 
-        const existing = await req.db(Setting).find({ key: { $in: keys } })
-        const existingMap = new Map(existing.map(s => [s.key, s]))
-
-        await Promise.all(keys.map(async (key) => {
-            const val = updates[key]
-            const doc = existingMap.get(key)
-            if (doc) {
-                await req.db(Setting).update(doc._id, { value: val, updatedBy: req.userId })
-            } else {
-                await req.db(Setting).create({ key, value: val, updatedBy: req.userId })
-            }
-        }))
-        res.json({ ok: true, updated: keys.length })
-    } catch (e) {
-        console.error('settings update error', e)
-        res.status(500).json({ error: 'Failed to update settings' })
-    }
-})
-
-// Public endpoint to get essential config (company name, logo)
-// Mounted at /api/settings/public
-router.get('/public', async (req, res) => {
-    try {
-        const publicKeys = ['COMPANY_NAME', 'COMPANY_LOGO', 'THEME_COLOR']
-        const settings = await req.db(Setting).find({ key: { $in: publicKeys } })
-        const out = {}
-        settings.forEach(s => out[s.key] = s.value)
-        // Defaults if missing
-        if (!out.COMPANY_NAME) out.COMPANY_NAME = process.env.COMPANY_NAME || 'HospitechVerse'
-        res.json(out)
-    } catch (e) {
-        res.status(500).json({ error: 'Failed' })
-    }
-})
-
-export default router
+export default router;

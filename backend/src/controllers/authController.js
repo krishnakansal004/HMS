@@ -1,0 +1,66 @@
+import { AuthService } from '../services/authService.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { env } from '../config/env.js';
+
+export class AuthController {
+  
+  static async register(req, res, next) {
+    try {
+      const user = await AuthService.registerPatient(req.body);
+      
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: 'Registration successful. Please log in.',
+        data: user
+      });
+    } catch (error) {
+      next(error); // Passes to global errorHandler
+    }
+  }
+
+  static async login(req, res, next) {
+    try {
+      const { accessToken, refreshToken, user } = await AuthService.login(req.body);
+
+      // Set HttpOnly, Secure cookie for refresh token to prevent XSS theft
+      const isProduction = env.nodeEnv === 'production';
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days
+        path: '/'
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          accessToken, // Frontend stores this in memory (NOT localStorage)
+          user
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async logout(req, res, next) {
+    try {
+      // Clear the refresh token cookie
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: env.nodeEnv === 'production',
+        sameSite: env.nodeEnv === 'production' ? 'strict' : 'lax',
+        path: '/'
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}

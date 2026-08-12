@@ -1,85 +1,109 @@
-import Attendance from '../models/Attendance.js'
-import Staff from '../models/Staff.js'
-import CacheAttendance from '../models/CacheAttendance.js'
-import { getCache, setCache, delCache } from '../utils/redis.js'
-import {
-  getAttendanceTenantId,
-  ensureAttendanceDb,
-  invalidateAttendanceCaches
-} from '../middlewares/attendanceMiddleware.js'
+import { AttendanceRepository } from '../repositories/attendanceRepository.js';
+import { AuditService } from './auditService.js';
+import { AppError } from '../middlewares/errorHandler.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
 
-export async function listAttendanceService(req) {
-  const { date, staffId, startDate, endDate } = req.query
-  const q = {}
-  const tenantId = getAttendanceTenantId(req)
-
-  if (tenantId) q.tenantId = tenantId
-  if (date) {
-    q.date = date
-  } else if (startDate || endDate) {
-    q.date = {}
-    if (startDate) q.date.$gte = startDate
-    if (endDate) q.date.$lte = endDate
+export class AttendanceService {
+  
+  // Normalizes a Date object to exactly 00:00:00 UTC to ensure unique constraints work perfectly
+  static getNormalizedToday() {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    return today;
   }
-  if (staffId) q.staff = staffId
 
-  const limit = parseInt(req.query.limit, 10) || 0
-  const skip = parseInt(req.query.skip, 10) || 0
-  const cacheKey = `hms:attendance:list:${tenantId || ''}:${date || ''}:${staffId || ''}:${startDate || ''}:${endDate || ''}:${limit}:${skip}`
+  static async checkIn({ tenantId, requestingUserId, targetUserId, ipAddress }) {
+    // If targetUserId is provided (Admin checking someone else in), use it. Otherwise, use requester.
+    const userId = targetUserId || requestingUserId;
+    const today = this.getNormalizedToday();
+    const now = new Date();
 
-  ensureAttendanceDb(req, tenantId)
-
-  let cached = await getCache(cacheKey)
-  if (!cached) {
-    const cacheDoc = await req.db(CacheAttendance).findOne({ type: cacheKey })
-    if (cacheDoc && cacheDoc.data) {
-      cached = cacheDoc.data
-      await setCache(cacheKey, cached, 30).catch(() => {})
+    // 1. Business Rule: User can only have one attendance record per day
+    const existingRecord = await AttendanceRepository.findByUserAndDate(tenantId, userId, today);
+    if (existingRecord) {
+      throw new AppError('User has already checked in today.', HTTP_STATUS.CONFLICT);
     }
-  }
-  if (cached) {
-    return cached
-  }
 
-  let query = req.db(Attendance).find(q).populate('staff', 'name role').sort({ date: -1 })
-  if (limit) query = query.skip(skip).limit(limit)
+    // 2. Create Check-In Record
+    const attendance = await AttendanceRepository.create({
+      tenantId,
+      userId,
+      date: today,
+      checkIn: now,
+      status: 'PRESENT'
+    });
 
-  const [total, items] = await Promise.all([
-    req.db(Attendance).countDocuments(q),
-    query
-  ])
+    // 3. Audit Logging
+    AuditService.logAction({
+      tenantId,
+      userId: requestingUserId, // The person who performed the action
+      action: 'ATTENDANCE_CHECK_IN',
+      entityType: 'ATTENDANCE',
+      entityId: attendance.id,
+      newValue: { checkIn: now, targetUser: userId },
+      ipAddress
+    });
 
-  const result = { items, total }
-  await setCache(cacheKey, result, 30).catch(() => {})
-  await req.db(CacheAttendance).deleteOne({ type: cacheKey }).catch(() => {})
-  await req.db(CacheAttendance).create({ type: cacheKey, data: result, tenantId }).catch(() => {})
-  return result
-}
-
-export async function createAttendanceService(req) {
-  const { staff: staffId, date, status, checkInAt, checkOutAt, notes } = req.body || {}
-  const tenantId = getAttendanceTenantId(req)
-
-  ensureAttendanceDb(req, tenantId)
-
-  const staffDoc = await req.db(Staff).findOne({ _id: staffId, ...(tenantId ? { tenantId } : {}) })
-  if (!staffDoc) {
-    const error = new Error('Staff not found for tenant')
-    error.status = 404
-    throw error
+    return attendance;
   }
 
-  let record = await req.db(Attendance).findOne({ staff: staffId, date, ...(tenantId ? { tenantId } : {}) })
-  if (!record) {
-    record = req.db(Attendance)._wrap({ staff: staffId, date, tenantId })
+  static async checkOut({ tenantId, requestingUserId, targetUserId, ipAddress }) {
+    const userId = targetUserId || requestingUserId;
+    const today = this.getNormalizedToday();
+    const now = new Date();
+
+    // 1. Find today's record
+    const existingRecord = await AttendanceRepository.findByUserAndDate(tenantId, userId, today);
+    if (!existingRecord) {
+      throw new AppError('No check-in record found for today. Cannot check out.', HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // 2. Business Rule: Cannot check out twice
+    if (existingRecord.checkOut) {
+      throw new AppError('User has already checked out today.', HTTP_STATUS.CONFLICT);
+    }
+
+    // 3. Perform Check-Out
+    const updatedAttendance = await AttendanceRepository.update(existingRecord.id, {
+      checkOut: now
+    });
+
+    // 4. Audit Logging
+    AuditService.logAction({
+      tenantId,
+      userId: requestingUserId,
+      action: 'ATTENDANCE_CHECK_OUT',
+      entityType: 'ATTENDANCE',
+      entityId: existingRecord.id,
+      oldValue: { checkOut: null },
+      newValue: { checkOut: now, targetUser: userId },
+      ipAddress
+    });
+
+    return updatedAttendance;
   }
 
-  if (status) record.status = status
-  if (checkInAt) record.checkInAt = new Date(checkInAt)
-  if (checkOutAt) record.checkOutAt = new Date(checkOutAt)
-  if (notes) record.notes = notes
-  await record.save()
+  static async getAttendanceRecords({ tenantId, userRole, requestingUserId, query }) {
+    let { userId, startDate, endDate, status, page = 1, limit = 50 } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
 
-  await invalidateAttendanceCaches(req, tenantId, date, staffId)
-  return record
+    // 1. RBAC Data Scoping: 
+    // Regular staff/doctors can ONLY see their own attendance.
+    // Admins/Directors/HR can see everyone's (or filter by a specific userId).
+    if (!['HOSPITAL_ADMIN', 'DIRECTOR', 'HR'].includes(userRole)) {
+      userId = requestingUserId; // Force filter to their own ID
+    }
+
+    const [total, records] = await AttendanceRepository.findManyPaginated({
+      tenantId, userId, startDate, endDate, status, skip, take
+    });
+
+    return {
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / take),
+      data: records
+    };
+  }
 }

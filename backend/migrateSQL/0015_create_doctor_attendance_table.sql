@@ -2,7 +2,6 @@
 -- Table: doctor_attendance
 -- Purpose: Daily attendance log per doctor.
 -- Depends on: tenant, doctor_profile
--- NOTE: fixes typo from the earlier draft ("doctor_attendace" -> "doctor_attendance").
 -- Also drops the redundant is_present boolean (status is the single source of
 -- truth now) and makes check_out_at nullable so a check-in-only row is valid.
 
