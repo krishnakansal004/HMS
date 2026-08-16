@@ -1,16 +1,10 @@
-import pgPkg from 'pg';
-const { Pool } = pgPkg;
-
+// src/config/db.js
+import pkg from 'pg';
+const { Pool } = pkg;
 import { PrismaPg } from '@prisma/adapter-pg';
-import prismaPkg from '@prisma/client';
-const { PrismaClient, Prisma } = prismaPkg;
-
+import { PrismaClient, Prisma } from '@prisma/client';
 import { AsyncLocalStorage } from 'async_hooks';
 import dotenv from 'dotenv';
-
-dotenv.config();
-
-// ... rest of your code ...
 
 dotenv.config();
 
