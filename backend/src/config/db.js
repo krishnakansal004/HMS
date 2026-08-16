@@ -80,9 +80,9 @@ export const db = new Proxy(prisma, {
 export async function connectDB() {
   try {
     await prisma.$connect();
-    console.log('✅ Connected to PostgreSQL via Prisma driver adapter successfully.');
+    console.log('Connected to PostgreSQL via Prisma driver adapter successfully.');
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('Database connection failed:', error);
     process.exit(1);
   }
 }
