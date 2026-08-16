@@ -39,7 +39,7 @@ app.use(cors({
   // would silently break every credentialed cross-origin request rather
   // than "openly" allow them. env.js now fails loudly at startup in
   // production if ALLOWED_ORIGINS isn't set, instead of masking it here.
-  origin: "https://hms-g7xj.onrender.com",
+  origin: "https://hms-k9ijwh1qj-krishnakansal004s-projects.vercel.app/",
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
