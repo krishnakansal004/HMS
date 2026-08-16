@@ -1,34 +1,28 @@
-import { Routes, Route } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
-import './index.css'
-import Layout from './components/Layout'
+import { useEffect } from 'react';
+import { RouterProvider } from 'react-router-dom';
+import { Loader2, Stethoscope } from 'lucide-react';
+import { router } from './routes/router.jsx';
+import { useAuthStore } from './store/authStore.js';
 
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Inventory = lazy(() => import('./pages/Inventory'))
-const Billing = lazy(() => import('./pages/Billing'))
-const Purchases = lazy(() => import('./pages/Purchases'))
-const Reports = lazy(() => import('./pages/Reports'))
+export default function App() {
+  const bootstrapped = useAuthStore((s) => s.bootstrapped);
+  const bootstrap = useAuthStore((s) => s.bootstrap);
 
-const Loading = () => (
-  <div className="flex items-center justify-center h-screen bg-slate-50/50">
-    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-  </div>
-)
+  useEffect(() => {
+    bootstrap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-function App() {
-  return (
-    <Layout>
-      <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/billing" element={<Billing />} />
-          <Route path="/purchases" element={<Purchases />} />
-          <Route path="/reports" element={<Reports />} />
-        </Routes>
-      </Suspense>
-    </Layout>
-  )
+  if (!bootstrapped) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-[var(--color-paper)]">
+        <div className="h-11 w-11 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white flex items-center justify-center">
+          <Stethoscope size={22} />
+        </div>
+        <Loader2 className="animate-spin text-[var(--color-ink-faint)]" size={18} />
+      </div>
+    );
+  }
+
+  return <RouterProvider router={router} />;
 }
-
-export default App

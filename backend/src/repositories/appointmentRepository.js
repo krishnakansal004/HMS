@@ -88,7 +88,7 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class AppointmentRepository {
 
-  static async create({ tenantId, patientId, doctorId, slotStart, slotEnd, startTime, endTime, status, notes }) {
+  static async create({ tenantId, patientId, doctorId, slotStart, slotEnd, startTime, endTime, status, type, notes }) {
     const start = slotStart || startTime;
     const end = slotEnd || endTime;
 
@@ -117,6 +117,7 @@ export class AppointmentRepository {
         slot_start: new Date(start),
         slot_end: new Date(end),
         status: status ? status.toLowerCase() : 'scheduled',
+        type: type ? type.toLowerCase() : 'walk_in',
         notes: notes || null,
         doctor_name_snapshot: doctorName
       }
@@ -164,11 +165,22 @@ export class AppointmentRepository {
     return [total, rows];
   }
 
-  static async updateStatus(tenantId, appointmentId, status) {
+  static async updateStatus(tenantId, appointmentId, status, reason) {
+    // tenantId isn't used in the WHERE clause here — Prisma's update()
+    // only accepts unique fields in `where` (appointment_id, the PK),
+    // and tenant_id isn't part of a compound unique constraint on this
+    // table. Tenant ownership is verified by the caller
+    // (AppointmentService.updateAppointmentStatus calls findByIdAndTenant
+    // first) rather than re-checked here. Kept as a parameter anyway so
+    // the signature stays consistent with findByIdAndTenant's
+    // (tenantId, appointmentId) order and this doesn't regress back into
+    // the same kind of positional-argument mismatch that caused the bug
+    // this function is fixing.
     return prisma.appointment.update({
       where: { appointment_id: appointmentId },
       data: {
-        status,
+        status: status.toLowerCase(),
+        reason: reason || null,
         updated_at: new Date()
       }
     });
@@ -178,7 +190,7 @@ export class AppointmentRepository {
     return prisma.appointment.findFirst({
       where: {
         doctor_id: doctorId,
-        status: { not: 'CANCELLED' },
+        status: { not: 'cancelled' },
         AND: [
           { slot_start: { lt: new Date(endTime) } },
           { slot_end: { gt: new Date(startTime) } }

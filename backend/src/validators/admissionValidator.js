@@ -23,7 +23,10 @@ export const admitPatientValidator = [
 
 export const updateAdmissionValidator = [
   param('id').isUUID().withMessage('Valid Admission ID required'),
-  body('status').isIn(['ADMITTED', 'DISCHARGED', 'TRANSFERRED', 'CANCELLED']).withMessage('Invalid status'),
+  // Lowercase, matching chk_admission_status in migration 0043 — built
+  // this way from the start rather than repeating appointment's mistake
+  // (see 0042) of shipping uppercase against a lowercase DB constraint.
+  body('status').isIn(['admitted', 'discharged', 'transferred', 'cancelled']).withMessage('Invalid status'),
   body('dischargeDate').optional().isISO8601().toDate(),
   body('dischargeNotes').optional().trim().escape(),
   handleValidationErrors

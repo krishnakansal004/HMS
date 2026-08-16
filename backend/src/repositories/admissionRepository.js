@@ -1,14 +1,28 @@
 import { db } from '../config/db.js';
 
 export class AdmissionRepository {
-  static async createAdmission(tenantId, data) {
-    return db.admission.create({
+  /**
+   * @param {import('@prisma/client').Prisma.TransactionClient} [tx] Pass the
+   *   transaction client when calling this from inside another
+   *   db.$transaction() block (see AdmissionService.admitPatient) so the
+   *   insert is actually part of that transaction rather than a separate
+   *   connection outside it — defeating the point of wrapping it. Falls
+   *   back to the top-level `db` client for any future non-transactional
+   *   caller.
+   */
+  static async createAdmission(tenantId, data, tx) {
+    const client = tx || db;
+    return client.admission.create({
       data: {
         tenant_id: tenantId,
         ...data
       },
       include: {
-        patient: { select: { first_name: true, last_name: true, mrn: true } },
+        // NOTE: no `mrn` here — patient.mrn doesn't exist as a column yet
+        // (tracked separately, same gap as the medical_record_number item
+        // already on the books). This used to select it and would have
+        // crashed with "Unknown field `mrn`" the moment this ran.
+        patient: { select: { first_name: true, last_name: true } },
         bed: { select: { bed_number: true, ward_id: true } }
       }
     });
@@ -36,14 +50,14 @@ export class AdmissionRepository {
         where: { admission_id: admissionId },
         data: {
           status,
-          discharge_date: dischargeDate ? new Date(dischargeDate) : (status === 'DISCHARGED' ? new Date() : undefined),
+          discharge_date: dischargeDate ? new Date(dischargeDate) : (status === 'discharged' ? new Date() : undefined),
           discharge_notes: dischargeNotes || undefined,
           updated_at: new Date()
         }
       });
 
       // If discharged, free up the bed automatically
-      if (status === 'DISCHARGED' && admission.bed_id) {
+      if (status === 'discharged' && admission.bed_id) {
         await tx.bed.update({
           where: { bed_id: admission.bed_id },
           data: { is_occupied: false, patient_id: null }
@@ -66,7 +80,7 @@ export class AdmissionRepository {
         take,
         orderBy: { admission_date: 'desc' },
         include: {
-          patient: { select: { first_name: true, last_name: true, mrn: true } },
+          patient: { select: { first_name: true, last_name: true } },
           bed: { select: { bed_number: true } }
         }
       })

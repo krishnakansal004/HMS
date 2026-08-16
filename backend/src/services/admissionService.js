@@ -6,30 +6,42 @@ import { db } from '../config/db.js';
 
 export class AdmissionService {
   static async admitPatient({ tenantId, userId, patientId, bedId, admittingDoctorId, diagnosis, ipAddress }) {
-    // 1. Verify patient exists
-    const patient = await db.patient.findFirst({ where: { patient_id: patientId, tenant_id: tenantId } });
-    if (!patient) throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
+    // FIXED: this used to do the bed lock (db.bed.update) and the
+    // admission record creation (AdmissionRepository.createAdmission) as
+    // two separate, un-transactioned writes. If the second failed after
+    // the first succeeded — a validation error, a dropped connection,
+    // anything — the bed would be left marked occupied with no admission
+    // record to justify it, and there'd be no way to tell that had
+    // happened short of noticing the bed was stuck. Wrapped in a single
+    // db.$transaction so it's all-or-nothing, matching the pattern
+    // already used correctly elsewhere in this file's sibling
+    // (updateAdmissionTransaction) and in wardBedRepository.js.
+    const admission = await db.$transaction(async (tx) => {
+      // 1. Verify patient exists
+      const patient = await tx.patient.findFirst({ where: { patient_id: patientId, tenant_id: tenantId } });
+      if (!patient) throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
 
-    // 2. If bed is specified, check if it's free
-    if (bedId) {
-      const bed = await db.bed.findFirst({ where: { bed_id: bedId, tenant_id: tenantId } });
-      if (!bed) throw new AppError('Bed not found.', HTTP_STATUS.NOT_FOUND);
-      if (bed.is_occupied) throw new AppError('Selected bed is already occupied.', HTTP_STATUS.CONFLICT);
+      // 2. If bed is specified, check if it's free, then lock it
+      if (bedId) {
+        const bed = await tx.bed.findFirst({ where: { bed_id: bedId, tenant_id: tenantId } });
+        if (!bed) throw new AppError('Bed not found.', HTTP_STATUS.NOT_FOUND);
+        if (bed.is_occupied) throw new AppError('Selected bed is already occupied.', HTTP_STATUS.CONFLICT);
 
-      // Lock bed
-      await db.bed.update({
-        where: { bed_id: bedId },
-        data: { is_occupied: true, patient_id: patientId }
-      });
-    }
+        await tx.bed.update({
+          where: { bed_id: bedId },
+          data: { is_occupied: true, patient_id: patientId }
+        });
+      }
 
-    const admission = await AdmissionRepository.createAdmission(tenantId, {
-      patient_id: patientId,
-      bed_id: bedId || null,
-      admitting_doctor_id: admittingDoctorId || null,
-      diagnosis: diagnosis || null,
-      admission_date: new Date(),
-      status: 'ADMITTED'
+      // 3. Create the admission record
+      return AdmissionRepository.createAdmission(tenantId, {
+        patient_id: patientId,
+        bed_id: bedId || null,
+        admitting_doctor_id: admittingDoctorId || null,
+        diagnosis: diagnosis || null,
+        admission_date: new Date(),
+        status: 'admitted'
+      }, tx);
     });
 
     AuditService.logAction({

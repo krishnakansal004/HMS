@@ -15,8 +15,12 @@ export class WardBedRepository {
     return db.ward.findMany({
       where: { tenant_id: tenantId },
       include: {
+        // NOTE: no `status` here — bed has no such column, only
+        // `is_occupied` (boolean). This used to select a `status` field
+        // that doesn't exist and would have crashed with "Unknown field
+        // `status`" the first time this ran.
         bed: {
-          select: { bed_id: true, bed_number: true, is_occupied: true, status: true }
+          select: { bed_id: true, bed_number: true, is_occupied: true, price_per_day: true }
         }
       },
       orderBy: { name: 'asc' }

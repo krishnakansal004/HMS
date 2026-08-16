@@ -74,6 +74,16 @@ export class AuthService {
       throw err;
     }
 
+    // 1b. Soft-deleted / offboarded users must not be able to log in.
+    // findUserByEmail() doesn't filter deleted_at (it's used by registration's
+    // duplicate-email check too, where a soft-deleted user's email SHOULD
+    // still count as taken), so the check has to happen here instead.
+    if (user.deleted_at) {
+      const err = new Error('Invalid credentials.');
+      err.statusCode = 401;
+      throw err;
+    }
+
     // 2. Verify Password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
@@ -123,6 +133,66 @@ export class AuthService {
         name: user.name,
         role: user.role.name,
         tenantSlug: user.tenant?.slug || null,
+        tenantName: user.tenant?.name || null,
+        mustChangePassword: user.must_change_password
+      }
+    };
+  }
+
+  /**
+   * Exchanges a valid refresh token (read from the httpOnly cookie by the
+   * controller) for a new access token. Deliberately does NOT rotate the
+   * refresh token itself — that would need a revocation/reuse-detection
+   * store this schema doesn't have yet. Re-runs the same tenant/role
+   * checks login does, so a refresh can't silently keep a session alive
+   * for a tenant that's since been suspended or a user that's since been
+   * removed -- a stale-but-unexpired refresh token shouldn't outlive
+   * those checks just because it's a different code path from login.
+   */
+  static async refresh(refreshToken) {
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, env.jwt.refreshSecret);
+    } catch {
+      const err = new Error('Session expired. Please log in again.');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const user = await UserRepository.findUserById(decoded.sub);
+    if (!user || user.deleted_at) {
+      const err = new Error('Session expired. Please log in again.');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (user.role.name !== 'SYSTEM_OWNER') {
+      if (!user.tenant || user.tenant.status !== 'active') {
+        const err = new Error('This hospital account is suspended.');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    const tokenPayload = {
+      id: user.user_id,
+      sub: user.user_id,
+      userId: user.user_id,
+      role: user.role.name,
+      tenantId: user.tenant_id
+    };
+
+    const accessToken = jwt.sign(tokenPayload, env.jwt.accessSecret, { expiresIn: env.jwt.accessExpiresIn });
+
+    return {
+      accessToken,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        name: user.name,
+        role: user.role.name,
+        tenantSlug: user.tenant?.slug || null,
+        tenantName: user.tenant?.name || null,
         mustChangePassword: user.must_change_password
       }
     };

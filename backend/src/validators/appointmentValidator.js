@@ -18,13 +18,19 @@ export const bookAppointmentValidator = [
   body('patientId').isUUID().withMessage('Valid Patient ID is required'),
   body('startTime').isISO8601().withMessage('Valid start time (ISO 8601) is required').toDate(),
   body('endTime').isISO8601().withMessage('Valid end time (ISO 8601) is required').toDate(),
-  body('type').isIn(['ONLINE', 'WALK_IN']).withMessage('Type must be ONLINE or WALK_IN'),
+  body('type').isIn(['online', 'walk_in']).withMessage('Type must be online or walk_in'),
   body('notes').optional().isString().trim().escape(),
   handleValidationErrors
 ];
 
+// Lowercase, matching chk_appointment_status in migration 0042 -- every
+// status-like CHECK constraint in this schema uses lowercase, and the DB
+// is what actually enforces this, not the validator. Previously uppercase
+// here (and in the service/repository/frontend) while the DB was always
+// lowercase -- confirmed via a full migration dry-run that every value
+// this validator allowed failed the DB constraint on every real request.
 export const updateStatusValidator = [
-  body('status').isIn(['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).withMessage('Invalid status transition'),
+  body('status').isIn(['confirmed', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show']).withMessage('Invalid status transition'),
   body('reason').optional().isString().trim().escape(),
   handleValidationErrors
 ];

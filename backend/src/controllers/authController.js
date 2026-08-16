@@ -45,6 +45,35 @@ export class AuthController {
     }
   }
 
+  static async refresh(req, res, next) {
+    try {
+      const token = req.cookies?.refreshToken;
+      if (!token) {
+        const err = new Error('No active session.');
+        err.statusCode = 401;
+        throw err;
+      }
+
+      const { accessToken, user } = await AuthService.refresh(token);
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        data: { accessToken, user }
+      });
+    } catch (error) {
+      // A dead/expired/invalid refresh cookie should stop being sent on
+      // every subsequent page load instead of erroring forever — clear it
+      // the same way logout does.
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: env.nodeEnv === 'production',
+        sameSite: env.nodeEnv === 'production' ? 'strict' : 'lax',
+        path: '/'
+      });
+      next(error);
+    }
+  }
+
   static async logout(req, res, next) {
     try {
       // Clear the refresh token cookie

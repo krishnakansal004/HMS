@@ -35,7 +35,7 @@ export class AppointmentService {
       endTime: end,
       type,
       notes,
-      status: 'SCHEDULED'
+      status: 'scheduled'
     });
 
     // 5. Audit Logging
@@ -73,18 +73,41 @@ export class AppointmentService {
 
   static async updateAppointmentStatus({ tenantId, userId, appointmentId, status, reason, ipAddress }) {
     // 1. Ensure appointment belongs to the tenant
-    const appointment = await AppointmentRepository.findByIdAndTenant(appointmentId, tenantId);
+    //
+    // FIXED: this used to call findByIdAndTenant(appointmentId, tenantId)
+    // — swapped relative to the repository's (tenantId, appointmentId)
+    // signature. That meant this always searched
+    // WHERE appointment_id = <the real tenantId> AND tenant_id = <the
+    // real appointmentId>, which (barring an astronomically unlikely UUID
+    // collision) never matches — every status-update request 404'd
+    // before it could do anything else, regardless of whether the
+    // appointment existed. Confirmed there's only one caller of this
+    // method before fixing the call site.
+    const appointment = await AppointmentRepository.findByIdAndTenant(tenantId, appointmentId);
     if (!appointment) {
       throw new AppError('Appointment not found.', HTTP_STATUS.NOT_FOUND);
     }
 
     // 2. Business Rule: Cannot modify a cancelled or completed appointment state randomly
-    if (appointment.status === 'CANCELLED' || appointment.status === 'COMPLETED') {
+    //
+    // FIXED: compared against 'CANCELLED'/'COMPLETED' (uppercase) while
+    // stored values are always lowercase (AppointmentRepository.create()
+    // normalizes on the way in) — this comparison could never match, so
+    // the rule silently never fired.
+    if (appointment.status === 'cancelled' || appointment.status === 'completed') {
       throw new AppError(`Cannot update status of a ${appointment.status} appointment.`, HTTP_STATUS.BAD_REQUEST);
     }
 
     // 3. Perform Update
-    const updated = await AppointmentRepository.updateStatus(appointmentId, status, reason);
+    //
+    // FIXED: same parameter-order issue as above, plus this used to pass
+    // `reason` as a 3rd positional argument into a repository method that
+    // only declared 3 params (tenantId, appointmentId, status) — reason
+    // was silently landing in the `status` parameter slot, so a
+    // successful update would have overwritten status with the reason
+    // text (or undefined, if no reason was given). Repository signature
+    // now explicitly takes `reason` as its own parameter.
+    const updated = await AppointmentRepository.updateStatus(tenantId, appointmentId, status, reason);
 
     // 4. Audit Logging
     AuditService.logAction({

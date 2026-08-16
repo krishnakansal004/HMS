@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import { env } from './config/env.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 // Route imports
@@ -31,7 +32,14 @@ const app = express();
 // Security & Utility Middlewares
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  // env.allowedOrigins resolves ALLOWED_ORIGINS into an array (see
+  // config/env.js) — never a literal '*'. That fallback was broken, not
+  // just permissive: '*' combined with credentials:true is a combination
+  // browsers reject outright, so an unset ALLOWED_ORIGINS in production
+  // would silently break every credentialed cross-origin request rather
+  // than "openly" allow them. env.js now fails loudly at startup in
+  // production if ALLOWED_ORIGINS isn't set, instead of masking it here.
+  origin: env.allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
