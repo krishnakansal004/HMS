@@ -10,12 +10,10 @@
 -- POST /api/patients silently dropped them instead of persisting them
 -- (registerPatient() never mapped them into patientData -- data loss,
 -- not a crash, which is why the create path didn't surface it).
---
--- All nullable TEXT, matching `address` on this same table -- none of
 -- these are required for a patient record to exist.
 -- Depends on: patient (0012)
 
 ALTER TABLE patient
-    ADD COLUMN emergency_contact TEXT,
-    ADD COLUMN allergies         TEXT,
-    ADD COLUMN medical_history   TEXT;
+    ADD COLUMN emergency_contact String?,
+    ADD COLUMN allergies         String?,
+    ADD COLUMN medical_history   String?;

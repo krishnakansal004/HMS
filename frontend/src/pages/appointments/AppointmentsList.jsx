@@ -80,8 +80,13 @@ export default function AppointmentsList() {
               {appts.map((a) => (
                 <Tr key={a.appointment_id}>
                   <Td>{fullName(a.patient) || a.patient_id?.slice(0, 8)}</Td>
-                  <Td>{fullName(a.doctor?.user) || a.doctor_id?.slice(0, 8)}</Td>
-                  <Td>{formatDateTime(a.start_time)}</Td>
+                  
+                  {/* FIX 1: Map to Prisma's exact column for the Doctor's name */}
+                  <Td>{a.doctor_name_snapshot || a.doctor_id?.slice(0, 8) || '—'}</Td>
+                  
+                  {/* FIX 2: Map to Prisma's exact column for the Date/Time */}
+                  <Td>{formatDateTime(a.slot_start)}</Td>
+                  
                   <Td className="capitalize">{a.type?.replace('_', ' ').toLowerCase()}</Td>
                   <Td><StatusPill status={a.status} /></Td>
                   <Td className="text-right">
@@ -91,7 +96,7 @@ export default function AppointmentsList() {
                       onChange={(e) => e.target.value && handleStatusChange(a.appointment_id, e.target.value)}
                       className="max-w-[160px] ml-auto"
                     >
-                      <option value="">Change to…</option>
+                      <option value="">Change to...</option>
                       {APPOINTMENT_STATUSES.filter((s) => s !== a.status).map((s) => (
                         <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                       ))}

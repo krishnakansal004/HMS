@@ -1,41 +1,45 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal.jsx';
-import { Input, Select, Textarea } from '../../components/ui/Input.jsx';
+import { Input, Select } from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { patientsApi } from '../../api/patients.js';
 import { toast } from '../../components/ui/Toast.jsx';
 
-const emptyCreate = {
-  firstName: '', lastName: '', email: '', phone: '', dob: '', gender: 'MALE', bloodGroup: '',
-  address: '', emergencyContact: '', allergies: '', medicalHistory: '',
+const initialForm = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  dob: '',
+  gender: 'MALE',
+  bloodGroup: '',
+  address: ''
 };
 
-// emergencyContact/allergies/medicalHistory are now backed by real columns
-// (migration 0041) — safe on both create and edit. Previously omitted
-// here because they'd 500 on edit and silently vanish on create; see
-// README "Fixed backend gaps".
-const editableFields = ['firstName', 'lastName', 'phone', 'address', 'bloodGroup', 'emergencyContact', 'allergies', 'medicalHistory'];
-
 export default function PatientForm({ open, onClose, onSaved, patient }) {
+  // 1. Detect if we are in Edit Mode based on whether a patient object was passed
   const isEdit = !!patient;
-  const [form, setForm] = useState(emptyCreate);
+  
+  const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // 2. Populate the form when the modal opens in Edit Mode
   useEffect(() => {
     if (isEdit && patient) {
       setForm({
         firstName: patient.first_name || '',
         lastName: patient.last_name || '',
+        email: patient.email || '',
         phone: patient.phone || '',
-        address: patient.address || '',
+        // Extract just the YYYY-MM-DD part for the date input
+        dob: patient.date_of_birth ? new Date(patient.date_of_birth).toISOString().split('T')[0] : '',
+        gender: patient.gender || 'MALE',
         bloodGroup: patient.blood_group || '',
-        emergencyContact: patient.emergency_contact || '',
-        allergies: patient.allergies || '',
-        medicalHistory: patient.medical_history || '',
+        address: patient.address || ''
       });
     } else {
-      setForm(emptyCreate);
+      setForm(initialForm);
     }
     setErrors({});
   }, [patient, isEdit, open]);
@@ -48,18 +52,24 @@ export default function PatientForm({ open, onClose, onSaved, patient }) {
     e.preventDefault();
     setSaving(true);
     setErrors({});
+
     try {
       if (isEdit) {
-        const payload = {};
-        editableFields.forEach((f) => {
-          if (form[f] !== undefined) payload[f] = form[f];
+        // 3. Call the Update API if editing
+        await patientsApi.update(patient.patient_id, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phone: form.phone,
+          bloodGroup: form.bloodGroup,
+          address: form.address
         });
-        await patientsApi.update(patient.patient_id, payload);
-        toast.success('Patient updated');
+        toast.success('Patient updated successfully');
       } else {
+        // 4. Call the Register API if creating
         await patientsApi.register(form);
-        toast.success('Patient registered');
+        toast.success('Patient registered successfully');
       }
+      
       onSaved();
       onClose();
     } catch (err) {
@@ -68,7 +78,7 @@ export default function PatientForm({ open, onClose, onSaved, patient }) {
         err.fieldErrors.forEach((f) => (fe[f.field] = f.message));
         setErrors(fe);
       } else {
-        toast.error(err.message);
+        toast.error(err.message || 'Failed to save patient');
       }
     } finally {
       setSaving(false);
@@ -79,12 +89,14 @@ export default function PatientForm({ open, onClose, onSaved, patient }) {
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit patient' : 'Register new patient'}
+      title={isEdit ? 'Edit Patient' : 'Register New Patient'}
       size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} loading={saving}>{isEdit ? 'Save changes' : 'Register patient'}</Button>
+          <Button onClick={handleSubmit} loading={saving}>
+            {isEdit ? 'Save Changes' : 'Register Patient'}
+          </Button>
         </>
       }
     >
@@ -93,27 +105,49 @@ export default function PatientForm({ open, onClose, onSaved, patient }) {
           <Input label="First name" required value={form.firstName} onChange={update('firstName')} error={errors.firstName} />
           <Input label="Last name" value={form.lastName} onChange={update('lastName')} error={errors.lastName} />
         </div>
-        {!isEdit && (
-          <>
-            <Input label="Email" type="email" value={form.email} onChange={update('email')} error={errors.email} />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Date of birth" type="date" required value={form.dob} onChange={update('dob')} error={errors.dob} />
-              <Select label="Gender" required value={form.gender} onChange={update('gender')} error={errors.gender}>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHER">Other</option>
-              </Select>
-            </div>
-          </>
-        )}
-        <Input label="Phone" required value={form.phone} onChange={update('phone')} error={errors.phone} />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Input 
+            label="Email" 
+            type="email" 
+            disabled={isEdit} 
+            hint={isEdit ? "Email cannot be changed" : ""} 
+            value={form.email} 
+            onChange={update('email')} 
+            error={errors.email} 
+          />
+          <Input label="Phone" required value={form.phone} onChange={update('phone')} error={errors.phone} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input 
+            label="Date of birth" 
+            type="date" 
+            required 
+            disabled={isEdit} 
+            hint={isEdit ? "DOB cannot be changed" : ""} 
+            value={form.dob} 
+            onChange={update('dob')} 
+            error={errors.dob} 
+          />
+          <Select 
+            label="Gender" 
+            required 
+            disabled={isEdit} 
+            value={form.gender} 
+            onChange={update('gender')} 
+            error={errors.gender}
+          >
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <Input label="Blood group" value={form.bloodGroup} onChange={update('bloodGroup')} error={errors.bloodGroup} placeholder="e.g. O+" />
           <Input label="Address" value={form.address} onChange={update('address')} error={errors.address} />
         </div>
-        <Input label="Emergency contact" value={form.emergencyContact} onChange={update('emergencyContact')} error={errors.emergencyContact} placeholder="Name and phone number" />
-        <Textarea label="Allergies" value={form.allergies} onChange={update('allergies')} error={errors.allergies} placeholder="e.g. Penicillin, peanuts — leave blank if none known" />
-        <Textarea label="Medical history" value={form.medicalHistory} onChange={update('medicalHistory')} error={errors.medicalHistory} placeholder="Relevant past conditions, surgeries, ongoing medication" />
       </form>
     </Modal>
   );

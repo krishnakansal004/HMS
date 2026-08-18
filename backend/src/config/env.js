@@ -9,7 +9,6 @@ const requiredEnvVars = [
   'REDIS_URL',
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
-  'ALLOWED_ORIGINS'
 ];
 
 const validateEnv = () => {

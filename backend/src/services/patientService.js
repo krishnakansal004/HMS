@@ -28,9 +28,9 @@ export class PatientService {
       gender: data.gender,
       blood_group: data.bloodGroup || null,
       address: data.address || null,
-      emergency_contact: data.emergencyContact || null,
-      allergies: data.allergies || null,
-      medical_history: data.medicalHistory || null,
+      // emergency_contact: data.emergencyContact || null,
+      // allergies: data.allergies || null,
+      // medical_history: data.medicalHistory || null,
       is_admitted: false
     };
 

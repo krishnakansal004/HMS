@@ -26,7 +26,7 @@ import settingsRoutes from './routes/settings.js';
 import plansRoutes from './routes/plans.js';
 import tenantsRoutes from './routes/tenants.js';
 import planRequestsRoutes from './routes/planRequests.js';
-
+import doctorRoutes from './routes/doctors.js';
 const app = express();
 
 // Security & Utility Middlewares
@@ -39,7 +39,7 @@ app.use(cors({
   // would silently break every credentialed cross-origin request rather
   // than "openly" allow them. env.js now fails loudly at startup in
   // production if ALLOWED_ORIGINS isn't set, instead of masking it here.
-  origin: "https://hms-k9ijwh1qj-krishnakansal004s-projects.vercel.app/",
+  origin: env.allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -72,6 +72,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/plans', plansRoutes);
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/plan-requests', planRequestsRoutes);
+app.use('/api/doctors', doctorRoutes);
 
 // Catch-all 404 Route handler
 app.use((req, res, next) => {

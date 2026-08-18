@@ -17,7 +17,9 @@ model appointment {
   doctor_name_snapshot String         @db.VarChar(255)
   slot_start           DateTime       @db.Timestamptz(6)
   slot_end             DateTime       @db.Timestamptz(6)
-  status               String         @default("scheduled") @db.VarChar(50)
+  status               String        @default("scheduled") @db.VarChar(50)
+  type                 String?        @db.VarChar(50)
+  reason               String?
   notes                String?
   created_at           DateTime?      @default(now()) @db.Timestamptz(6)
   updated_at           DateTime?      @default(now()) @db.Timestamptz(6)

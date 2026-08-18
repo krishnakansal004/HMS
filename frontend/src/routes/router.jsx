@@ -1,40 +1,40 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
-import AppShell from '../components/layout/AppShell.jsx';
-import ProtectedRoute from './ProtectedRoute.jsx';
-import Login from '../pages/auth/Login.jsx';
-import Register from '../pages/auth/Register.jsx';
-import Dashboard from '../pages/Dashboard.jsx';
-import PatientsList from '../pages/patients/PatientsList.jsx';
-import AppointmentsList from '../pages/appointments/AppointmentsList.jsx';
-import ComingSoon from '../pages/ComingSoon.jsx';
-import { NotFound, Unauthorized } from '../pages/StatusPages.jsx';
-import { ROLES } from '../utils/roles.js';
-
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import AppShell from "../components/layout/AppShell.jsx";
+import ProtectedRoute from "./ProtectedRoute.jsx";
+import Login from "../pages/auth/Login.jsx";
+import Register from "../pages/auth/Register.jsx";
+import Dashboard from "../pages/Dashboard.jsx";
+import PatientsList from "../pages/patients/PatientsList.jsx";
+import AppointmentsList from "../pages/appointments/AppointmentsList.jsx";
+import ComingSoon from "../pages/ComingSoon.jsx";
+import { NotFound, Unauthorized } from "../pages/StatusPages.jsx";
+import { ROLES } from "../utils/roles.js";
+import DoctorsList from "../pages/doctors/DoctorsList.jsx";
 // Modules below have a full API layer (src/api/) but no screen yet —
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
-  ['admissions', 'Admissions', 'Phase 2'],
-  ['wards', 'Wards & Beds', 'Phase 2'],
-  ['prescriptions', 'Prescriptions', 'Phase 4'],
-  ['lab', 'Laboratory', 'Phase 4'],
-  ['radiology', 'Radiology', 'Phase 4'],
-  ['inventory', 'Pharmacy Inventory', 'Phase 5'],
-  ['purchases', 'Purchases', 'Phase 5'],
-  ['invoices', 'Billing', 'Phase 3'],
-  ['insurance', 'Insurance Claims', 'Phase 3'],
-  ['expenses', 'Expenses', 'Phase 5'],
-  ['attendance', 'Attendance', 'Phase 6'],
-  ['settings', 'Settings', 'Phase 6'],
-  ['plans', 'Plans & Tenants', 'Phase 6'],
+  ["admissions", "Admissions", "Phase 2"],
+  ["wards", "Wards & Beds", "Phase 2"],
+  ["prescriptions", "Prescriptions", "Phase 4"],
+  ["lab", "Laboratory", "Phase 4"],
+  ["radiology", "Radiology", "Phase 4"],
+  ["inventory", "Pharmacy Inventory", "Phase 5"],
+  ["purchases", "Purchases", "Phase 5"],
+  ["invoices", "Billing", "Phase 3"],
+  ["insurance", "Insurance Claims", "Phase 3"],
+  ["expenses", "Expenses", "Phase 5"],
+  ["attendance", "Attendance", "Phase 6"],
+  ["settings", "Settings", "Phase 6"],
+  ["plans", "Plans & Tenants", "Phase 6"],
 ];
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <Login /> },
-  { path: '/register', element: <Register /> },
-  { path: '/unauthorized', element: <Unauthorized /> },
+  { path: "/login", element: <Login /> },
+  { path: "/register", element: <Register /> },
+  { path: "/unauthorized", element: <Unauthorized /> },
   {
-    path: '/',
+    path: "/",
     element: (
       <ProtectedRoute>
         <AppShell />
@@ -42,24 +42,51 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <Dashboard />, handle: { title: 'Dashboard' } },
       {
-        path: 'patients',
+        path: "dashboard",
+        element: <Dashboard />,
+        handle: { title: "Dashboard" },
+      },
+      {
+        path: "patients",
         element: (
-          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR, ROLES.NURSE]}>
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.RECEPTIONIST,
+              ROLES.DOCTOR,
+              ROLES.NURSE,
+            ]}
+          >
             <PatientsList />
           </ProtectedRoute>
         ),
-        handle: { title: 'Patients' },
+        handle: { title: "Patients" },
       },
       {
-        path: 'appointments',
+        path: "appointments",
         element: (
-          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR, ROLES.PATIENT]}>
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.RECEPTIONIST,
+              ROLES.DOCTOR,
+              ROLES.PATIENT,
+            ]}
+          >
             <AppointmentsList />
           </ProtectedRoute>
         ),
-        handle: { title: 'Appointments' },
+        handle: { title: "Appointments" },
+      },
+      {
+        path: "doctors",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DIRECTOR]}>
+            <DoctorsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Medical Staff" },
       },
       ...roadmap.map(([path, title, phase]) => ({
         path,
@@ -68,5 +95,5 @@ export const router = createBrowserRouter([
       })),
     ],
   },
-  { path: '*', element: <NotFound /> },
+  { path: "*", element: <NotFound /> },
 ]);
