@@ -1,7 +1,6 @@
 -- Migration: 0031
 -- Table: expense
 -- Depends on: tenant, users
--- NOTE: fixes bug from the earlier draft -- it referenced "user(user_id)" but
 -- the actual table is named "users". Kept consistent across the whole schema.
 
 CREATE TABLE expense (

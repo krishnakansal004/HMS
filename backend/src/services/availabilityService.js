@@ -17,16 +17,16 @@ export class AvailabilityService {
   }
 
   static async getDoctorAvailability({ tenantId, doctorId }) {
-    // 1. Validate doctor exists in this tenant
+    // Validate doctor exists in this tenant
     const doctorExists = await AvailabilityRepository.checkDoctorExists(tenantId, doctorId);
     if (!doctorExists) {
       throw new AppError('Doctor not found in this hospital.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Fetch availability
+    // Fetch availability
     const availability = await AvailabilityRepository.findByDoctor(tenantId, doctorId);
 
-    // 3. Return existing or default
+    // Return existing or default
     if (!availability) {
       return {
         doctor_id: doctorId,
@@ -39,18 +39,18 @@ export class AvailabilityService {
   }
 
   static async updateDoctorAvailability({ tenantId, requestingUserId, requestingUserRole, doctorId, days, exceptions, ipAddress }) {
-    // 1. RBAC Check: Doctors can only edit their own schedule. Admins/Directors can edit anyone's.
+    // RBAC Check: Doctors can only edit their own schedule. Admins/Directors can edit anyone's.
     if (requestingUserRole === 'DOCTOR' && requestingUserId !== doctorId) {
       throw new AppError('You are only authorized to update your own availability.', HTTP_STATUS.FORBIDDEN);
     }
 
-    // 2. Validate doctor exists in this tenant
+    // Validate doctor exists in this tenant
     const doctorExists = await AvailabilityRepository.checkDoctorExists(tenantId, doctorId);
     if (!doctorExists) {
       throw new AppError('Doctor not found in this hospital.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 3. Upsert the schedule
+    // Upsert the schedule
     const updatedAvailability = await AvailabilityRepository.upsertAvailability(
       tenantId, 
       doctorId, 
@@ -58,7 +58,7 @@ export class AvailabilityService {
       exceptions || []
     );
 
-    // 4. Audit Logging (Fire and forget)
+    // Audit Logging (Fire and forget)
     AuditService.logAction({
       tenantId,
       userId: requestingUserId,

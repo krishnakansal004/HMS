@@ -98,8 +98,8 @@ export function refreshSession() {
  */
 export async function request(path, opts = {}) {
   const { method = 'GET', body, query, isForm = false, _retried = false } = opts;
-
   let url = `/api${path}`;
+
   if (query && Object.keys(query).length) {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(query)) {
@@ -110,7 +110,13 @@ export async function request(path, opts = {}) {
     if (s) url += `?${s}`;
   }
 
-  const headers = {};
+  // Inject strict cache-busting headers
+  const headers = {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  };
+  
   headers[CSRF_HEADER_NAME] = CSRF_HEADER_VALUE;
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   if (!isForm && body !== undefined) headers['Content-Type'] = 'application/json';
@@ -120,24 +126,21 @@ export async function request(path, opts = {}) {
     res = await fetch(url, {
       method,
       headers,
-      credentials: 'include', // carries the httpOnly refresh cookie
+      credentials: 'include', 
+      cache: 'no-store', // <-- CRITICAL: Forces browser to bypass disk cache entirely
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch (networkErr) {
     throw new ApiError('Could not reach the server. Check your connection and try again.', { status: 0 });
   }
 
-  // Silent-refresh-and-retry for a lapsed access token mid-session. Never
-  // for /auth/* itself (a 401 there means bad credentials or "no session
-  // to refresh", not "token expired") and never on an already-retried
-  // request (one retry, not a loop).
+  // Silent-refresh-and-retry logic remains unchanged
   if (res.status === 401 && !_retried && !path.startsWith('/auth/')) {
     try {
       await refreshSession();
       return request(path, { ...opts, _retried: true });
     } catch {
       onSessionExpired?.();
-      // fall through — report the original 401 below
     }
   }
 
@@ -145,7 +148,7 @@ export async function request(path, opts = {}) {
   try {
     payload = await res.json();
   } catch {
-    // No JSON body (e.g. 204) — fine for some endpoints.
+    // No JSON body (e.g. 204)
   }
 
   if (!res.ok) {

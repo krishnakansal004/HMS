@@ -1,11 +1,11 @@
 import { db } from '../config/db.js';
 
 export class PurchaseRepository {
-  
+
   static async createPurchaseTransaction({ tenantId, supplierId, orderId, orderDate, status, items }) {
     return db.$transaction(async (tx) => {
       let totalCost = 0;
-      
+
       const processedItems = items.map(item => {
         const itemTotal = item.quantity * item.unitCost;
         totalCost += itemTotal;
@@ -17,7 +17,7 @@ export class PurchaseRepository {
         };
       });
 
-      // 1. Create Purchase Order and Items
+      // Create Purchase Order and Items
       const purchase = await tx.purchase.create({
         data: {
           tenant_id: tenantId,
@@ -36,27 +36,29 @@ export class PurchaseRepository {
         }
       });
 
-      // 2. If status is completed upon creation, update inventory stock & movements immediately
+      // If status is completed upon creation, update inventory stock & movements immediately
       if (purchase.status === 'completed') {
         for (const item of items) {
-          await tx.medicine.update({
-            where: { medicine_id: item.medicineId },
-            data: {
-              current_stock: { increment: item.quantity },
-              updated_at: new Date()
-            }
-          });
-
-          await tx.stock_movement.create({
-            data: {
-              tenant_id: tenantId,
-              medicine_id: item.medicineId,
-              type: 'PURCHASE',
-              quantity: item.quantity,
-              reference_id: purchase.purchase_id,
-              notes: `Stock updated via purchase order ${orderId || purchase.purchase_id}`
-            }
-          });
+          // Update + movement-log write for one line item
+          await Promise.all([
+            tx.medicine.update({
+              where: { medicine_id: item.medicineId },
+              data: {
+                quantity: { increment: item.quantity },
+                updated_at: new Date()
+              }
+            }),
+            tx.stock_movement.create({
+              data: {
+                tenant_id: tenantId,
+                medicine_id: item.medicineId,
+                type: 'PURCHASE',
+                quantity: item.quantity,
+                reference_id: purchase.purchase_id,
+                notes: `Stock updated via purchase order ${orderId || purchase.purchase_id}`
+              }
+            })
+          ]);
         }
       }
 
@@ -85,40 +87,42 @@ export class PurchaseRepository {
       if (oldStatus !== 'completed' && newStatus === 'completed') {
         // Increment stock
         for (const item of purchase.purchase_item) {
-          await tx.medicine.update({
-            where: { medicine_id: item.medicine_id },
-            data: { current_stock: { increment: item.quantity } }
-          });
-
-          await tx.stock_movement.create({
-            data: {
-              tenant_id: tenantId,
-              medicine_id: item.medicine_id,
-              type: 'PURCHASE',
-              quantity: item.quantity,
-              reference_id: purchaseId,
-              notes: `Stock updated on purchase status change to completed`
-            }
-          });
+          await Promise.all([
+            tx.medicine.update({
+              where: { medicine_id: item.medicine_id },
+              data: { quantity: { increment: item.quantity } }
+            }),
+            tx.stock_movement.create({
+              data: {
+                tenant_id: tenantId,
+                medicine_id: item.medicine_id,
+                type: 'PURCHASE',
+                quantity: item.quantity,
+                reference_id: purchaseId,
+                notes: `Stock updated on purchase status change to completed`
+              }
+            })
+          ]);
         }
       } else if (oldStatus === 'completed' && newStatus === 'cancelled') {
         // Rollback stock if previously completed order is cancelled
         for (const item of purchase.purchase_item) {
-          await tx.medicine.update({
-            where: { medicine_id: item.medicine_id },
-            data: { current_stock: { decrement: item.quantity } }
-          });
-
-          await tx.stock_movement.create({
-            data: {
-              tenant_id: tenantId,
-              medicine_id: item.medicine_id,
-              type: 'ADJUSTMENT',
-              quantity: -item.quantity,
-              reference_id: purchaseId,
-              notes: `Stock rolled back due to purchase cancellation`
-            }
-          });
+          await Promise.all([
+            tx.medicine.update({
+              where: { medicine_id: item.medicine_id },
+              data: { quantity: { decrement: item.quantity } }
+            }),
+            tx.stock_movement.create({
+              data: {
+                tenant_id: tenantId,
+                medicine_id: item.medicine_id,
+                type: 'ADJUSTMENT',
+                quantity: -item.quantity,
+                reference_id: purchaseId,
+                notes: `Stock rolled back due to purchase cancellation`
+              }
+            })
+          ]);
         }
       }
 
@@ -141,18 +145,23 @@ export class PurchaseRepository {
     if (supplierId) where.supplier_id = supplierId;
     if (status) where.status = status;
 
-    return db.$transaction([
-      db.purchase.count({ where }),
-      db.purchase.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { created_at: 'desc' },
-        include: {
-          supplier: { select: { name: true } },
-          purchase_item: { include: { medicine: { select: { name: true, sku: true } } } }
-        }
-      })
-    ]);
+    // NOTE: return shape kept as a [total, purchases] tuple — unchanged —
+    // because purchaseService.listPurchases() destructures it that way.
+    return db.$transaction(async (tx) => {
+      const [total, purchases] = await Promise.all([
+        tx.purchase.count({ where }),
+        tx.purchase.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+          include: {
+            supplier: { select: { name: true } },
+            purchase_item: { include: { medicine: { select: { name: true, sku: true } } } }
+          }
+        })
+      ]);
+      return [total, purchases];
+    });
   }
 }

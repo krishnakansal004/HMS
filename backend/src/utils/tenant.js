@@ -1,60 +1,42 @@
-// Middleware to attach tenant information to request
-import Tenant from '../models/Tenant.js'
-import FirestoreModel from '../models/firestore/FirestoreModel.js'
+import { db } from '../config/db.js';
+import { tenantContext } from '../config/tenantContext.js';
 
 export async function tenantMiddleware(req, res, next) {
   try {
-    if (req.tenant) return next()
-    // req.tenantId should be set by auth middleware (derived from DB)
-    // req.tenantId should be set by auth middleware (derived from DB)
-    let tenantId = (req.tenantId || (req.user && req.user.tenantId)) ? (req.tenantId || req.user.tenantId) : null
+    const tenantId = req.tenantId || req.user?.tenant_id;
 
-    // Safely convert to string
-    if (tenantId && typeof tenantId !== 'string') {
-      try {
-        tenantId = String(tenantId)
-      } catch (e) {
-        console.warn('Failed to convert tenantId to string', e)
-        tenantId = null
-      }
+    if (!tenantId) {
+      return res.status(400).json({ success: false, error: 'Bad Request: Missing tenant context' });
     }
 
-    if (!tenantId) return next()
+    // Wrap the entire lifecycle of this request in the AsyncLocalStorage thread
+    tenantContext.run(tenantId, async () => {
+      
+      // Because we are inside the context, this query will automatically apply RLS!
+      const tenant = await db.tenant.findUnique({
+        where: { tenant_id: tenantId },
+        include: { plan: true }
+      });
 
-    // prevent crash on invalid ID
-    if (typeof tenantId !== 'string' || !tenantId.match(/^[a-zA-Z0-9_\-]{15,40}$/)) {
-      console.warn('Invalid tenantId in middleware', tenantId)
-      return next() // treat as no tenant
-    }
-    let tenant = req.cachedTenant
-    if (!tenant) {
-      tenant = await Tenant.findById(tenantId).populate('plan')
-      if (tenant) {
-        req.cachedTenant = tenant
+      if (!tenant || tenant.deleted_at) {
+        return res.status(404).json({ success: false, error: 'Tenant not found' });
       }
-    }
-    if (!tenant) return res.status(404).json({ error: 'Tenant not found' })
-    req.tenant = tenant
-    req.plan = tenant.plan
-    // ensure req.tenantId is normalized to ObjectId/string
-    req.tenantId = tenant._id
-    
-    // Attach a scoped db accessor for subcollection-based isolation
-    if (!req.db) {
-      req.db = (modelOrName) => {
-        if (typeof modelOrName === 'string') {
-           return new FirestoreModel(modelOrName, req.tenantId)
-        }
-        return modelOrName.forHospital(req.tenantId)
+
+      if (tenant.status !== 'active') {
+        return res.status(403).json({ success: false, error: 'Tenant access suspended' });
       }
-    }
-    
-    next()
+
+      req.tenant = tenant;
+      req.plan = tenant.plan;
+      req.currentTenantId = tenant.tenant_id;
+
+      next();
+    });
   } catch (e) {
-    console.error('tenantMiddleware error', e)
-
-    res.status(500).json({ error: 'Server error' })
+    console.error('[Tenant Middleware Error]', e);
+    res.status(500).json({ success: false, error: 'Server error processing tenant context' });
   }
 }
 
-export default tenantMiddleware
+export const requireTenant = tenantMiddleware;
+export default tenantMiddleware;

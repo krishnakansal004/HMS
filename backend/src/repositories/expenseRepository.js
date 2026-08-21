@@ -30,28 +30,30 @@ export class ExpenseRepository {
     });
   }
 
-  static async findManyPaginated({ tenantId, category, startDate, endDate, skip, take }) {
+static async findManyPaginated({ tenantId, category, startDate, endDate, skip, take }) {
     const where = { tenant_id: tenantId };
     
     if (category) where.category = category;
-
     if (startDate || endDate) {
       where.expense_date = {};
       if (startDate) where.expense_date.gte = new Date(startDate);
       if (endDate) where.expense_date.lte = new Date(endDate);
     }
 
-    return db.$transaction([
-      db.expense.count({ where }),
-      db.expense.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { expense_date: 'desc' },
-        include: {
-          users: { select: { name: true, email: true } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, expenses] = await Promise.all([
+        tx.expense.count({ where }),
+        tx.expense.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { expense_date: 'desc' },
+          include: {
+            users: { select: { name: true, email: true } }
+          }
+        })
+      ]);
+      return [total, expenses];
+    });
   }
 }

@@ -18,10 +18,6 @@ export class AdmissionRepository {
         ...data
       },
       include: {
-        // NOTE: no `mrn` here — patient.mrn doesn't exist as a column yet
-        // (tracked separately, same gap as the medical_record_number item
-        // already on the books). This used to select it and would have
-        // crashed with "Unknown field `mrn`" the moment this ran.
         patient: { select: { first_name: true, last_name: true } },
         bed: { select: { bed_number: true, ward_id: true } }
       }
@@ -68,22 +64,26 @@ export class AdmissionRepository {
     });
   }
 
-  static async findAdmissionsPaginated({ tenantId, status, skip, take }) {
+ static async findAdmissionsPaginated({ tenantId, status, skip, take }) {
     const where = { tenant_id: tenantId };
     if (status) where.status = status;
 
-    return db.$transaction([
-      db.admission.count({ where }),
-      db.admission.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { admission_date: 'desc' },
-        include: {
-          patient: { select: { first_name: true, last_name: true } },
-          bed: { select: { bed_number: true } }
-        }
-      })
-    ]);
+    // FIX: Converted to callback transaction
+    return db.$transaction(async (tx) => {
+      const [total, admissions] = await Promise.all([
+        tx.admission.count({ where }),
+        tx.admission.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { admission_date: 'desc' },
+          include: {
+            patient: { select: { first_name: true, last_name: true } },
+            bed: { select: { bed_number: true } }
+          }
+        })
+      ]);
+      return [total, admissions];
+    });
   }
 }

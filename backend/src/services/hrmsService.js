@@ -5,7 +5,7 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class HrmsService {
   
-  // --- SHIFTS ---
+  // SHIFTS
   static async createShift({ tenantId, userId, name, startTime, endTime, ipAddress }) {
     const shift = await db.shift.create({
       data: { tenant_id: tenantId, name, start_time: startTime, end_time: endTime }
@@ -15,7 +15,7 @@ export class HrmsService {
     return shift;
   }
 
-  // --- LEAVES ---
+  // LEAVES 
   static async applyLeave({ tenantId, userId, targetUserId, startDate, endDate, reason, ipAddress }) {
     const applicantId = targetUserId || userId;
     const leave = await db.leave.create({
@@ -46,7 +46,7 @@ export class HrmsService {
     return updated;
   }
 
-  // --- STAFF DIRECTORY ---
+  // STAFF DIRECTORY
   static async listStaff({ tenantId, query }) {
     const { search, roleId, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);

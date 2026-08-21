@@ -34,9 +34,10 @@ export class UserRepository {
   }
 
   static async createPatientUser(userData, patientData) {
-    // Transaction ensures both user and patient profile are created atomically.
-    // If patient creation fails, the user record rolls back automatically.
     return db.$transaction(async (tx) => {
+
+      await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${userData.tenant_id}::text, true)`;
+      
       const user = await tx.users.create({
         data: userData,
         include: { role: true }

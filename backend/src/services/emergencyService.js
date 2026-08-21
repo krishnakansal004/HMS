@@ -5,7 +5,7 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class EmergencyService {
   
-  // --- BLOOD BANK ---
+  // BLOOD BANK
   static async addBloodUnit({ tenantId, userId, bloodGroup, unitsAvailable, storageLocation, ipAddress }) {
     const bloodStock = await db.blood_bank.create({
       data: {
@@ -42,7 +42,7 @@ export class EmergencyService {
     return dispatch;
   }
 
-  // --- OPERATION THEATER (OT) ---
+  // OPERATION THEATER (OT)
   static async scheduleSurgery({ tenantId, userId, patientId, doctorId, otRoomNumber, surgeryName, scheduledAt, ipAddress }) {
     const surgery = await db.operation_theater.create({
       data: {

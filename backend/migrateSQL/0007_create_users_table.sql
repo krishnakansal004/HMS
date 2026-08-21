@@ -2,8 +2,6 @@
 -- Table: users
 -- Purpose: All system users (director/admin/subadmin/doctor/patient logins).
 -- Depends on: tenant, role
--- NOTE: named "users" (plural) everywhere, never "user" -- "user" is a
--- reserved word in Postgres and every FK reference to it must stay consistent.
 
 CREATE TABLE users (
     user_id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),

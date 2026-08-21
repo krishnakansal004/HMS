@@ -36,7 +36,8 @@ export class WardBedRepository {
 
   static async createBed(tenantId, wardId, bedNumber, pricePerDay) {
     return db.$transaction(async (tx) => {
-      // 1. Verify ward capacity limits
+      // Verify ward capacity limits
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${wardId}::text))`;
       const ward = await tx.ward.findUnique({
         where: { ward_id: wardId }
       });
@@ -53,7 +54,7 @@ export class WardBedRepository {
         throw new Error('WARD_CAPACITY_EXCEEDED');
       }
 
-      // 2. Create Bed
+      // Create Bed
       const bed = await tx.bed.create({
         data: {
           tenant_id: tenantId,

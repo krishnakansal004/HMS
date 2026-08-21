@@ -79,7 +79,7 @@ app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });
 });
 
-// Global Error Handler (Must be registered last)
+// Global Error Handler
 app.use(errorHandler);
 
 export default app;

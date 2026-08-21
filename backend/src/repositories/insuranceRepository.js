@@ -62,15 +62,27 @@ export class InsuranceRepository {
         include: { invoice: true }
       });
 
-      // If claim is settled or approved and linked to an invoice, we can automate marking the invoice status
+      // Dynamically evaluate if the settled claim actually covers the full invoice
       if (status === 'settled' && updatedClaim.invoice_id) {
         const settledAmount = updatedClaim.approved_amount || updatedClaim.claimed_amount;
         
-        await tx.invoice.update({
+        // Atomically increment the paid amount
+        const atomicInvoice = await tx.invoice.update({
           where: { invoice_id: updatedClaim.invoice_id },
           data: {
-            amount_paid: { increment: settledAmount },
-            status: 'paid' // Or partial depending on full comparison
+            amount_paid: { increment: settledAmount }
+          },
+          select: { total: true, amount_paid: true }
+        });
+
+        // Strictly evaluate the new balance
+        const newStatus = Number(atomicInvoice.amount_paid) >= Number(atomicInvoice.total) ? 'paid' : 'partial';
+
+        await tx.invoice.update({
+          where: { invoice_id: updatedClaim.invoice_id },
+          data: { 
+            status: newStatus,
+            paid: newStatus === 'paid'
           }
         });
       }
@@ -84,18 +96,21 @@ export class InsuranceRepository {
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 
-    return db.$transaction([
-      db.insurance_claim.count({ where }),
-      db.insurance_claim.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { created_at: 'desc' },
-        include: {
-          insurance_company: { select: { name: true, code: true } },
-          patient: { select: { first_name: true, last_name: true, mrn: true } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, claims] = await Promise.all([
+        tx.insurance_claim.count({ where }),
+        tx.insurance_claim.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+          include: {
+            insurance_company: { select: { name: true, code: true } },
+            patient: { select: { first_name: true, last_name: true } } // REMOVED mrn
+          }
+        })
+      ]);
+      return [total, claims];
+    });
   }
 }

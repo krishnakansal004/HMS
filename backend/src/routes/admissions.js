@@ -10,12 +10,24 @@ router.use(protect);
 router.use(requireTenant);
 
 // GET /api/admissions
-router.get('/', requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'), listAdmissionsValidator, AdmissionController.list);
+router.get(
+    '/',
+    requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'), 
+    listAdmissionsValidator, 
+    AdmissionController.list);
 
 // POST /api/admissions
-router.post('/', requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'RECEPTIONIST'), admitPatientValidator, AdmissionController.admit);
+router.post(
+    '/',
+    requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'RECEPTIONIST'), 
+    admitPatientValidator, 
+    AdmissionController.admit);
 
 // PATCH /api/admissions/:id
-router.patch('/:id', requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'NURSE'), updateAdmissionValidator, AdmissionController.update);
+router.patch(
+    '/:id',
+    requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'NURSE'), 
+    updateAdmissionValidator, 
+    AdmissionController.update);
 
 export default router;

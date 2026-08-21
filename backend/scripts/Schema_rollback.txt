@@ -1,0 +1,855 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model appointment {
+  appointment_id       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id            String         @db.Uuid
+  doctor_id            String         @db.Uuid
+  patient_id           String         @db.Uuid
+  doctor_name_snapshot String         @db.VarChar(255)
+  slot_start           DateTime       @db.Timestamptz(6)
+  slot_end             DateTime       @db.Timestamptz(6)
+  status               String        @default("scheduled") @db.VarChar(50)
+  type                 String?        @db.VarChar(50)
+  reason               String?
+  notes                String?
+  created_at           DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?      @default(now()) @db.Timestamptz(6)
+  deleted_at           DateTime?      @db.Timestamptz(6)
+  doctor_profile       doctor_profile @relation(fields: [doctor_id], references: [doctor_profile_id], onUpdate: NoAction, map: "fk_appointment_doctor")
+  patient              patient        @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_appointment_patient")
+  tenant               tenant         @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_appointment_tenant")
+
+  @@index([doctor_id], map: "idx_appointment_doctor")
+  @@index([patient_id], map: "idx_appointment_patient")
+  @@index([tenant_id], map: "idx_appointment_tenant")
+  @@index([tenant_id], map: "idx_appointment_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([tenant_id, status], map: "idx_appointment_tenant_status")
+}
+model attendance {
+  attendance_id    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String    @db.Uuid
+  user_id          String    @db.Uuid
+  attendance_date  DateTime  @db.Date
+  status           String    @default("PRESENT") @db.VarChar(20)
+  check_in_at      DateTime? @db.Timestamptz(6)
+  check_out_at     DateTime? @db.Timestamptz(6)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  users            users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_attendance_user")
+  tenant           tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_attendance_tenant")
+
+  @@unique([user_id, attendance_date], map: "uq_attendance_user_day")
+  @@index([tenant_id], map: "idx_attendance_tenant")
+  @@index([user_id], map: "idx_attendance_user")
+  @@index([tenant_id, attendance_date], map: "idx_attendance_tenant_date")
+}
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model bed {
+  bed_id                          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ward_id                         String    @db.Uuid
+  tenant_id                       String    @db.Uuid
+  bed_number                      String    @db.VarChar(50)
+  is_occupied                     Boolean   @default(false)
+  price_per_day                   Decimal?  @db.Decimal(10, 2)
+  patient_id                      String?   @db.Uuid
+  created_at                      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at                      DateTime? @db.Timestamptz(6)
+  patient_bed_patient_idTopatient patient?  @relation("bed_patient_idTopatient", fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_bed_patient")
+  tenant                          tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_bed_tenant")
+  ward                            ward      @relation(fields: [ward_id], references: [ward_id], onUpdate: NoAction, map: "fk_bed_ward")
+  patient_patient_bed_idTobed     patient[] @relation("patient_bed_idTobed")
+
+  @@unique([ward_id, bed_number], map: "uq_bed_ward_number")
+  @@index([patient_id], map: "idx_bed_patient")
+  @@index([tenant_id], map: "idx_bed_tenant")
+  @@index([tenant_id], map: "idx_bed_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([ward_id], map: "idx_bed_ward")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model doctor_attendance {
+  doctor_attendance_id String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  doctor_id            String         @db.Uuid
+  tenant_id            String         @db.Uuid
+  attendance_date      DateTime       @db.Date
+  status               String         @default("present") @db.VarChar(20)
+  check_in_at          DateTime?      @db.Timestamptz(6)
+  check_out_at         DateTime?      @db.Timestamptz(6)
+  notes                String?
+  created_at           DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?      @default(now()) @db.Timestamptz(6)
+  doctor_profile       doctor_profile @relation(fields: [doctor_id], references: [doctor_profile_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_attendance_doctor")
+  tenant               tenant         @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_attendance_tenant")
+
+  @@unique([doctor_id, attendance_date], map: "uq_doctor_attendance_day")
+  @@index([doctor_id], map: "idx_doctor_attendance_doctor")
+  @@index([tenant_id], map: "idx_doctor_attendance_tenant")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model doctor_availability {
+  availability_id String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  doctor_id       String         @unique(map: "uq_doctor_availability_doctor") @db.Uuid
+  tenant_id       String         @db.Uuid
+  days            Json           @default("[]")
+  exceptions      Json           @default("[]")
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  doctor_profile  doctor_profile @relation(fields: [doctor_id], references: [doctor_profile_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_availability_doctor")
+  tenant          tenant         @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_availability_tenant")
+
+  @@index([tenant_id], map: "idx_doctor_availability_tenant")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model doctor_profile {
+  doctor_profile_id   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String               @unique(map: "uq_doctor_profile_user") @db.Uuid
+  tenant_id           String               @db.Uuid
+  designation         String?              @db.VarChar(255)
+  specialization      String?              @db.VarChar(255)
+  department_label    String?              @db.VarChar(255)
+  qualifications      String?
+  registration_number String?              @db.VarChar(100)
+  experience_years    Int?                 @default(0)
+  consultation_fee    Decimal?             @default(0) @db.Decimal(10, 2)
+  address             String?
+  active              Boolean              @default(true)
+  created_at          DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?            @default(now()) @db.Timestamptz(6)
+  deleted_at          DateTime?            @db.Timestamptz(6)
+  appointment         appointment[]
+  doctor_attendance   doctor_attendance[]
+  doctor_availability doctor_availability?
+  tenant              tenant               @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_profile_tenant")
+  users               users                @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctor_profile_user")
+  lab_order           lab_order[]
+  prescription        prescription[]
+  radiology_order     radiology_order[]
+
+  @@index([tenant_id], map: "idx_doctor_profile_tenant")
+  @@index([tenant_id], map: "idx_doctor_profile_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model expense {
+  expense_id   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String    @db.Uuid
+  title        String    @db.VarChar(255)
+  category     String    @db.VarChar(100)
+  amount       Decimal   @db.Decimal(10, 2)
+  expense_date DateTime  @db.Date
+  created_by   String    @db.Uuid
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+  users        users     @relation(fields: [created_by], references: [user_id], onUpdate: NoAction, map: "fk_expense_created_by")
+  tenant       tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_expense_tenant")
+
+  @@index([created_by], map: "idx_expense_created_by")
+  @@index([tenant_id], map: "idx_expense_tenant")
+  @@index([tenant_id], map: "idx_expense_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([tenant_id, expense_date], map: "idx_expense_tenant_date")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model insurance_claim {
+  claim_id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id        String            @db.Uuid
+  company_id        String            @db.Uuid
+  invoice_id        String?           @db.Uuid
+  tenant_id         String            @db.Uuid
+  policy_number     String            @db.VarChar(100)
+  total_bill_amount Decimal           @db.Decimal(10, 2)
+  claimed_amount    Decimal           @db.Decimal(10, 2)
+  approved_amount   Decimal?          @db.Decimal(10, 2)
+  rejection_reason  String?
+  settlement_date   DateTime?         @db.Date
+  status            String            @default("submitted") @db.VarChar(50)
+  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime?         @db.Timestamptz(6)
+  insurance_company insurance_company @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "fk_insurance_claim_company")
+  invoice           invoice?          @relation(fields: [invoice_id], references: [invoice_id], onUpdate: NoAction, map: "fk_insurance_claim_invoice")
+  patient           patient           @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_insurance_claim_patient")
+  tenant            tenant            @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_insurance_claim_tenant")
+
+  @@index([company_id], map: "idx_insurance_claim_company")
+  @@index([invoice_id], map: "idx_insurance_claim_invoice")
+  @@index([patient_id], map: "idx_insurance_claim_patient")
+  @@index([tenant_id], map: "idx_insurance_claim_tenant")
+  @@index([tenant_id], map: "idx_insurance_claim_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model insurance_company {
+  company_id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String            @db.Uuid
+  name               String            @db.VarChar(255)
+  code               String            @db.VarChar(50)
+  contact_person     String?           @db.VarChar(255)
+  email              String?           @db.VarChar(255)
+  phone              String?           @db.VarChar(20)
+  corporate_discount Decimal           @default(0) @db.Decimal(5, 2)
+  status             String            @default("active") @db.VarChar(50)
+  created_at         DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at         DateTime?         @db.Timestamptz(6)
+  insurance_claim    insurance_claim[]
+  tenant             tenant            @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_insurance_company_tenant")
+
+  @@unique([tenant_id, code], map: "uq_insurance_company_tenant_code")
+  @@index([tenant_id], map: "idx_insurance_company_tenant")
+  @@index([tenant_id], map: "idx_insurance_company_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model invoice {
+  invoice_id      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_number  Int
+  patient_id      String            @db.Uuid
+  tenant_id       String            @db.Uuid
+  plan_id         String?           @db.Uuid
+  subtotal        Decimal           @db.Decimal(10, 2)
+  gst_total       Decimal           @db.Decimal(10, 2)
+  total           Decimal           @db.Decimal(10, 2)
+  status          String            @default("pending") @db.VarChar(50)
+  paid            Boolean           @default(false)
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?         @db.Timestamptz(6)
+  amount_paid     Decimal           @default(0) @db.Decimal(10, 2)
+  insurance_claim insurance_claim[]
+  patient         patient           @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_invoice_patient")
+  plan            plan?             @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_invoice_plan")
+  tenant          tenant            @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_tenant")
+  invoice_item    invoice_item[]
+  payment         payment[]
+  plan_receipt    plan_receipt[]
+
+  @@unique([tenant_id, invoice_number], map: "uq_invoice_tenant_number")
+  @@index([patient_id], map: "idx_invoice_patient")
+  @@index([tenant_id], map: "idx_invoice_tenant")
+  @@index([tenant_id], map: "idx_invoice_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([tenant_id, created_at], map: "idx_invoice_tenant_created")
+  @@index([tenant_id, status], map: "idx_invoice_tenant_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model invoice_item {
+  invoice_item_id     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id          String    @db.Uuid
+  medicine_id         String?   @db.Uuid
+  tenant_id           String    @db.Uuid
+  item_name_snapshot  String    @db.VarChar(255)
+  quantity            Int
+  unit_price_snapshot Decimal   @db.Decimal(10, 2)
+  gst_rate_snapshot   Decimal   @default(0) @db.Decimal(5, 2)
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at          DateTime? @db.Timestamptz(6)
+  invoice             invoice   @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_item_invoice")
+  medicine            medicine? @relation(fields: [medicine_id], references: [medicine_id], onUpdate: NoAction, map: "fk_invoice_item_medicine")
+  tenant              tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_item_tenant")
+
+  @@index([invoice_id], map: "idx_invoice_item_invoice")
+  @@index([medicine_id], map: "idx_invoice_item_medicine")
+  @@index([tenant_id], map: "idx_invoice_item_tenant")
+  @@index([tenant_id], map: "idx_invoice_item_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lab_order {
+  lab_order_id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String          @db.Uuid
+  patient_id            String          @db.Uuid
+  patient_name_snapshot String          @db.VarChar(255)
+  test_id               String          @db.Uuid
+  test_name_snapshot    String          @db.VarChar(255)
+  test_code_snapshot    String?         @db.VarChar(100)
+  doctor_id             String?         @db.Uuid
+  doctor_name_snapshot  String?         @db.VarChar(255)
+  prescription_id       String?         @db.Uuid
+  sample_status         String          @default("pending") @db.VarChar(50)
+  technician_notes      String?
+  results               Json?
+  created_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?       @db.Timestamptz(6)
+  doctor_profile        doctor_profile? @relation(fields: [doctor_id], references: [doctor_profile_id], onUpdate: NoAction, map: "fk_lab_order_doctor")
+  patient               patient         @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_lab_order_patient")
+  prescription          prescription?   @relation(fields: [prescription_id], references: [prescription_id], onUpdate: NoAction, map: "fk_lab_order_prescription")
+  tenant                tenant          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_lab_order_tenant")
+  lab_test              lab_test        @relation(fields: [test_id], references: [test_id], onUpdate: NoAction, map: "fk_lab_order_test")
+
+  @@index([doctor_id], map: "idx_lab_order_doctor")
+  @@index([patient_id], map: "idx_lab_order_patient")
+  @@index([prescription_id], map: "idx_lab_order_prescription")
+  @@index([tenant_id], map: "idx_lab_order_tenant")
+  @@index([tenant_id], map: "idx_lab_order_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([tenant_id, sample_status], map: "idx_lab_order_tenant_status")
+  @@index([test_id], map: "idx_lab_order_test")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lab_test {
+  test_id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String      @db.Uuid
+  name            String      @db.VarChar(255)
+  code            String      @db.VarChar(100)
+  category        String?     @db.VarChar(100)
+  sample_type     String?     @db.VarChar(100)
+  price           Decimal     @default(0) @db.Decimal(10, 2)
+  reference_range String?
+  parameters      Json?
+  status          String      @default("active") @db.VarChar(50)
+  created_at      DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?   @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?   @db.Timestamptz(6)
+  lab_order       lab_order[]
+  tenant          tenant      @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_lab_test_tenant")
+
+  @@unique([tenant_id, code], map: "uq_lab_test_tenant_code")
+  @@index([tenant_id], map: "idx_lab_test_tenant")
+  @@index([tenant_id], map: "idx_lab_test_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model medicine {
+  medicine_id    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String           @db.Uuid
+  supplier_id    String?          @db.Uuid
+  name           String           @db.VarChar(255)
+  batch_number   String           @db.VarChar(100)
+  expiry_date    DateTime         @db.Date
+  quantity       Int              @default(0)
+  reorder_level  Int              @default(0)
+  gst_rate       Decimal          @default(0) @db.Decimal(5, 2)
+  purchase_price Decimal          @default(0) @db.Decimal(10, 2)
+  selling_price  Decimal          @default(0) @db.Decimal(10, 2)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  deleted_at     DateTime?        @db.Timestamptz(6)
+  invoice_item   invoice_item[]
+  supplier       supplier?        @relation(fields: [supplier_id], references: [supplier_id], onUpdate: NoAction, map: "fk_medicine_supplier")
+  tenant         tenant           @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_medicine_tenant")
+  purchase_item  purchase_item[]
+  stock_movement stock_movement[]
+
+  @@index([supplier_id], map: "idx_medicine_supplier")
+  @@index([tenant_id], map: "idx_medicine_tenant")
+  @@index([tenant_id], map: "idx_medicine_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model patient {
+  patient_id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                   String            @db.Uuid
+  user_id                     String?           @db.Uuid
+  first_name                  String            @db.VarChar(100)
+  last_name                   String?           @db.VarChar(100)
+  gender                      String?           @db.VarChar(20)
+  date_of_birth               DateTime?         @db.Date
+  blood_group                 String?           @db.VarChar(10)
+  phone                       String?           @db.VarChar(20)
+  email                       String?           @db.VarChar(255)
+  address                     String?
+  emergency_contact           String?           @db.VarChar(255)
+  medical_history             String?
+  allergies                   String?
+  abha_id                     String?           @db.VarChar(50)  
+  abha_address                String?           @db.VarChar(255) 
+  bed_id                      String?           @db.Uuid
+  is_admitted                 Boolean           @default(false)
+  admitted_at                 DateTime?         @db.Timestamptz(6)
+  created_at                  DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at                  DateTime?         @db.Timestamptz(6)
+  appointment                 appointment[]
+  bed_bed_patient_idTopatient bed[]             @relation("bed_patient_idTopatient")
+  insurance_claim             insurance_claim[]
+  invoice                     invoice[]
+  lab_order                   lab_order[]
+  bed_patient_bed_idTobed     bed?              @relation("patient_bed_idTobed", fields: [bed_id], references: [bed_id], onUpdate: NoAction, map: "fk_patient_bed")
+  tenant                      tenant            @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_patient_tenant")
+  users                       users?            @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, map: "fk_patient_user")
+  payment_request             payment_request[]
+  prescription                prescription[]
+  radiology_order             radiology_order[]
+
+  @@index([bed_id], map: "idx_patient_bed")
+  @@index([tenant_id], map: "idx_patient_tenant")
+  @@index([tenant_id], map: "idx_patient_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([user_id], map: "idx_patient_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model payment_request {
+  payment_id       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id       String        @db.Uuid
+  tenant_id        String        @db.Uuid
+  prescription_id  String?       @db.Uuid
+  total            Decimal       @db.Decimal(10, 2)
+  razorpay_link_id String?       @db.VarChar(255)
+  status           String        @default("pending") @db.VarChar(50)
+  created_at       DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?     @default(now()) @db.Timestamptz(6)
+  deleted_at       DateTime?     @db.Timestamptz(6)
+  patient          patient       @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_payment_request_patient")
+  prescription     prescription? @relation(fields: [prescription_id], references: [prescription_id], onUpdate: NoAction, map: "fk_payment_request_prescription")
+  tenant           tenant        @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_request_tenant")
+
+  @@index([patient_id], map: "idx_payment_request_patient")
+  @@index([prescription_id], map: "idx_payment_request_prescription")
+  @@index([tenant_id], map: "idx_payment_request_tenant")
+  @@index([tenant_id], map: "idx_payment_request_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+model permission {
+  permission_id            String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                      String                     @unique @db.VarChar(255)
+  label                    String?                    @db.VarChar(255)
+  category                 String?                    @db.VarChar(100)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  deleted_at               DateTime?                  @db.Timestamptz(6)
+  plan_role_feature        plan_role_feature[]
+  role_permission          role_permission[]
+  user_permission_override user_permission_override[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model plan {
+  plan_id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String              @db.VarChar(255)
+  status            String              @default("active") @db.VarChar(50)
+  public            Boolean             @default(false)
+  customized        Boolean             @default(false)
+  access_code       String?             @unique(map: "idx_plan_access_code", where: raw("(access_code IS NOT NULL)")) @db.VarChar(100)
+  durations         Json?
+  prices            Json?
+  limits            Json?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime?           @db.Timestamptz(6)
+  invoice           invoice[]
+  plan_receipt      plan_receipt[]
+  plan_request      plan_request[]
+  plan_role_feature plan_role_feature[]
+  tenant            tenant[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model plan_receipt {
+  receipt_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id String    @db.Uuid
+  plan_id    String    @db.Uuid
+  tenant_id  String    @db.Uuid
+  total      Decimal   @db.Decimal(10, 2)
+  paid_at    DateTime? @db.Timestamptz(6)
+  pdf_url    String?
+  pdf_path   String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  invoice    invoice   @relation(fields: [invoice_id], references: [invoice_id], onUpdate: NoAction, map: "fk_plan_receipt_invoice")
+  plan       plan      @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_plan_receipt_plan")
+  tenant     tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_plan_receipt_tenant")
+
+  @@index([invoice_id], map: "idx_plan_receipt_invoice")
+  @@index([tenant_id], map: "idx_plan_receipt_tenant")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model plan_request {
+  plan_request_id  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String    @db.Uuid
+  plan_id          String    @db.Uuid
+  period           String?   @db.VarChar(50)
+  requested_amount Decimal?  @db.Decimal(10, 2)
+  access_code      String?   @db.VarChar(100)
+  status           String    @default("pending") @db.VarChar(50)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  plan             plan      @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_plan_request_plan")
+  tenant           tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_plan_request_tenant")
+
+  @@index([tenant_id], map: "idx_plan_request_tenant")
+}
+
+model plan_role_feature {
+  plan_id       String     @db.Uuid
+  role_id       String     @db.Uuid
+  permission_id String     @db.Uuid
+  permission    permission @relation(fields: [permission_id], references: [permission_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prf_permission")
+  plan          plan       @relation(fields: [plan_id], references: [plan_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prf_plan")
+  role          role       @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prf_role")
+
+  @@id([plan_id, role_id, permission_id])
+  @@index([permission_id], map: "idx_plan_role_feature_permission")
+  @@index([role_id], map: "idx_plan_role_feature_role")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model prescription {
+  prescription_id       String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String            @db.Uuid
+  doctor_id             String            @db.Uuid
+  patient_id            String            @db.Uuid
+  patient_name_snapshot String            @db.VarChar(255)
+  medicines             Json              @default("[]")
+  tests                 Json              @default("[]")
+  approval_status       String            @default("pending") @db.VarChar(50)
+  notes                 String?
+  created_at            DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?         @db.Timestamptz(6)
+  lab_order             lab_order[]
+  payment_request       payment_request[]
+  doctor_profile        doctor_profile    @relation(fields: [doctor_id], references: [doctor_profile_id], onUpdate: NoAction, map: "fk_prescription_doctor")
+  patient               patient           @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_prescription_patient")
+  tenant                tenant            @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prescription_tenant")
+
+  @@index([doctor_id], map: "idx_prescription_doctor")
+  @@index([patient_id], map: "idx_prescription_patient")
+  @@index([tenant_id], map: "idx_prescription_tenant")
+  @@index([tenant_id], map: "idx_prescription_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model prescription_template {
+  template_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String    @db.Uuid
+  name        String    @db.VarChar(255)
+  medicines   Json      @default("[]")
+  tests       Json      @default("[]")
+  html        String?
+  created_by  String    @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  tenant      tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prescription_template_tenant")
+  users       users     @relation(fields: [created_by], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prescription_template_user")
+
+  @@index([created_by], map: "idx_prescription_template_created_by")
+  @@index([tenant_id], map: "idx_prescription_template_tenant")
+  @@index([tenant_id], map: "idx_prescription_template_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model purchase {
+  purchase_id   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String          @db.Uuid
+  supplier_id   String          @db.Uuid
+  order_id      String?         @db.VarChar(100)
+  order_date    DateTime        @default(dbgenerated("CURRENT_DATE")) @db.Date
+  total_cost    Decimal         @default(0) @db.Decimal(10, 2)
+  status        String          @default("pending") @db.VarChar(50)
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  deleted_at    DateTime?       @db.Timestamptz(6)
+  supplier      supplier        @relation(fields: [supplier_id], references: [supplier_id], onUpdate: NoAction, map: "fk_purchase_supplier")
+  tenant        tenant          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_purchase_tenant")
+  purchase_item purchase_item[]
+
+  @@index([supplier_id], map: "idx_purchase_supplier")
+  @@index([tenant_id], map: "idx_purchase_tenant")
+  @@index([tenant_id], map: "idx_purchase_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model purchase_item {
+  purchase_item_id   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchase_id        String    @db.Uuid
+  medicine_id        String    @db.Uuid
+  tenant_id          String    @db.Uuid
+  quantity           Int
+  unit_cost_snapshot Decimal   @db.Decimal(10, 2)
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at         DateTime? @db.Timestamptz(6)
+  medicine           medicine  @relation(fields: [medicine_id], references: [medicine_id], onUpdate: NoAction, map: "fk_purchase_item_medicine")
+  purchase           purchase  @relation(fields: [purchase_id], references: [purchase_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_purchase_item_purchase")
+  tenant             tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_purchase_item_tenant")
+
+  @@index([medicine_id], map: "idx_purchase_item_medicine")
+  @@index([purchase_id], map: "idx_purchase_item_purchase")
+  @@index([tenant_id], map: "idx_purchase_item_tenant")
+  @@index([tenant_id], map: "idx_purchase_item_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model radiology_order {
+  radiology_order_id    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String          @db.Uuid
+  patient_id            String          @db.Uuid
+  patient_name_snapshot String          @db.VarChar(255)
+  doctor_id             String?         @db.Uuid
+  modality              String          @db.VarChar(100)
+  study_type            String          @db.VarChar(255)
+  body_part             String?         @db.VarChar(100)
+  urgency               String          @default("routine") @db.VarChar(50)
+  price                 Decimal         @default(0) @db.Decimal(10, 2)
+  notes                 String?
+  findings              String?
+  impression            String?
+  scan_metadata         Json?
+  status                String          @default("ordered") @db.VarChar(50)
+  billing_status        String          @default("unbilled") @db.VarChar(50)
+  created_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?       @db.Timestamptz(6)
+  doctor_profile        doctor_profile? @relation(fields: [doctor_id], references: [doctor_profile_id], onUpdate: NoAction, map: "fk_radiology_order_doctor")
+  patient               patient         @relation(fields: [patient_id], references: [patient_id], onUpdate: NoAction, map: "fk_radiology_order_patient")
+  tenant                tenant          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_radiology_order_tenant")
+
+  @@index([doctor_id], map: "idx_radiology_order_doctor")
+  @@index([patient_id], map: "idx_radiology_order_patient")
+  @@index([tenant_id], map: "idx_radiology_order_tenant")
+  @@index([tenant_id], map: "idx_radiology_order_tenant_active", where: raw("(deleted_at IS NULL)"))
+  @@index([tenant_id, status], map: "idx_radiology_order_tenant_status")
+}
+
+model role {
+  role_id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String              @unique @db.VarChar(100)
+  description       String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime?           @db.Timestamptz(6)
+  plan_role_feature plan_role_feature[]
+  role_permission   role_permission[]
+  users             users[]
+}
+
+model role_permission {
+  role_id       String     @db.Uuid
+  permission_id String     @db.Uuid
+  permission    permission @relation(fields: [permission_id], references: [permission_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_rp_permission")
+  role          role       @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_rp_role")
+
+  @@id([role_id, permission_id])
+  @@index([permission_id], map: "idx_role_permission_permission")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model setting {
+  setting_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String    @db.Uuid
+  key        String    @db.VarChar(255)
+  value      String?
+  group      String?   @db.VarChar(100)
+  updated_by String?   @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  tenant     tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_setting_tenant")
+  users      users?    @relation(fields: [updated_by], references: [user_id], onUpdate: NoAction, map: "fk_setting_user")
+
+  @@unique([tenant_id, key], map: "uq_setting_tenant_key")
+  @@index([tenant_id], map: "idx_setting_tenant")
+  @@index([updated_by], map: "idx_setting_updated_by")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supplier {
+  supplier_id   String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String     @db.Uuid
+  name          String     @db.VarChar(255)
+  contact_email String?    @db.VarChar(255)
+  contact_phone String?    @db.VarChar(20)
+  created_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  deleted_at    DateTime?  @db.Timestamptz(6)
+  medicine      medicine[]
+  purchase      purchase[]
+  tenant        tenant     @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_supplier_tenant")
+
+  @@index([tenant_id], map: "idx_supplier_tenant")
+  @@index([tenant_id], map: "idx_supplier_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tenant {
+  tenant_id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String                  @db.VarChar(255)
+  slug                  String?                 @unique @db.VarChar(255)
+  plan_id               String?                 @db.Uuid
+  status                String                  @default("active") @db.VarChar(50)
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?               @db.Timestamptz(6)
+  appointment           appointment[]
+  bed                   bed[]
+  doctor_attendance     doctor_attendance[]
+  doctor_availability   doctor_availability[]
+  doctor_profile        doctor_profile[]
+  expense               expense[]
+  insurance_claim       insurance_claim[]
+  insurance_company     insurance_company[]
+  invoice               invoice[]
+  invoice_item          invoice_item[]
+  lab_order             lab_order[]
+  lab_test              lab_test[]
+  medicine              medicine[]
+  patient               patient[]
+  payment               payment[]
+  payment_request       payment_request[]
+  plan_receipt          plan_receipt[]
+  plan_request          plan_request[]
+  prescription          prescription[]
+  prescription_template prescription_template[]
+  purchase              purchase[]
+  purchase_item         purchase_item[]
+  radiology_order       radiology_order[]
+  setting               setting[]
+  stock_movement        stock_movement[]
+  supplier              supplier[]
+  plan                  plan?                   @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_tenant_plan")
+  users                 users[]
+  ward                  ward[]
+
+  @@index([plan_id], map: "idx_tenant_plan")
+}
+
+model user_permission_override {
+  user_id       String     @db.Uuid
+  permission_id String     @db.Uuid
+  granted       Boolean
+  created_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  permission    permission @relation(fields: [permission_id], references: [permission_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_upo_permission")
+  users         users      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_upo_user")
+
+  @@id([user_id, permission_id])
+  @@index([permission_id], map: "idx_user_permission_override_permission")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  user_id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                String                     @db.Uuid
+  role_id                  String                     @db.Uuid
+  name                     String?                    @db.VarChar(255)
+  email                    String                     @db.VarChar(255)
+  password_hash            String?
+  must_change_password     Boolean                    @default(false)
+  password_reset_token     String?                    @db.VarChar(255)
+  password_reset_expires   DateTime?                  @db.Timestamptz(6)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  deleted_at               DateTime?                  @db.Timestamptz(6)
+  doctor_profile           doctor_profile?
+  expense                  expense[]
+  patient                  patient[]
+  prescription_template    prescription_template[]
+  setting                  setting[]
+  user_permission_override user_permission_override[]
+  role                     role                       @relation(fields: [role_id], references: [role_id], onUpdate: NoAction, map: "fk_user_role")
+  tenant                   tenant                     @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_tenant")
+
+  @@unique([tenant_id, email], map: "uq_user_tenant_email")
+  @@index([role_id], map: "idx_user_role")
+  @@index([tenant_id], map: "idx_user_tenant")
+  @@index([tenant_id], map: "idx_users_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ward {
+  ward_id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id         String    @db.Uuid
+  name              String    @db.VarChar(255)
+  type              String    @db.VarChar(100)
+  floor             String?   @db.VarChar(100)
+  capacity          Int       @default(0)
+  price_per_day     Decimal   @default(0) @db.Decimal(10, 2)
+  current_occupancy Int       @default(0)
+  is_active         Boolean   @default(true)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+  bed               bed[]
+  tenant            tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ward_tenant")
+
+  @@index([tenant_id], map: "idx_ward_tenant")
+  @@index([tenant_id], map: "idx_ward_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model payment {
+  payment_id     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id     String    @db.Uuid
+  tenant_id      String    @db.Uuid
+  amount         Decimal   @db.Decimal(10, 2)
+  method         String    @db.VarChar(50)
+  transaction_id String?   @db.VarChar(255)
+  status         String    @default("success") @db.VarChar(50)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at     DateTime? @db.Timestamptz(6)
+  invoice        invoice   @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade, onUpdate: NoAction)
+  tenant         tenant    @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([invoice_id], map: "idx_payment_invoice")
+  @@index([tenant_id], map: "idx_payment_tenant")
+  @@index([tenant_id], map: "idx_payment_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model stock_movement {
+  stock_movement_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicine_id       String   @db.Uuid
+  tenant_id         String   @db.Uuid
+  type              String   @db.VarChar(50)
+  quantity          Int
+  reference_id      String?  @db.Uuid
+  notes             String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  medicine          medicine @relation(fields: [medicine_id], references: [medicine_id], onDelete: Cascade, onUpdate: NoAction)
+  tenant            tenant   @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([medicine_id], map: "idx_stock_movement_medicine")
+  @@index([tenant_id], map: "idx_stock_movement_tenant")
+}
+
+model audit_log {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String    @db.Uuid
+  user_id     String?   @db.Uuid
+  action      String    @db.VarChar(100)
+  entity_type String    @db.VarChar(50)
+  entity_id   String?   @db.VarChar(255)
+  old_value   Json?     @db.JsonB
+  new_value   Json?     @db.JsonB
+  ip_address  String?   @db.VarChar(45)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id])
+  @@index([tenant_id, created_at])
+}

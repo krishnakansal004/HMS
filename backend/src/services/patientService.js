@@ -7,43 +7,67 @@ import crypto from 'crypto';
 export class PatientService {
   
   static async registerPatient({ tenantId, userId, data, ipAddress }) {
-    // 1. Check if email or phone already exists within this specific tenant
+    // Conflict Check: Ensure email or phone doesn't already exist in this tenant
     if (data.email || data.phone) {
-      const existing = await PatientRepository.findByEmailOrPhone(tenantId, data.email, data.phone);
+      const existing = await PatientRepository.findByEmailOrPhone(
+        tenantId,
+        data.email,
+        data.phone
+      );
+
       if (existing) {
-        throw new AppError('A patient with this email or phone number already exists in this hospital.', HTTP_STATUS.CONFLICT);
+        throw new AppError(
+          'A patient with this email or phone number already exists in this hospital.',
+          HTTP_STATUS.CONFLICT
+        );
       }
     }
-    // ### NOT IN PRISMA SCHEMA REMOVED CURRENTLY
-    // 2. Generate unique Medical Record Number (MRN) 
-    // const mrn = `MRN-${Date.now().toString().slice(-6)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
-    // 3. Map directly to Prisma schema column mappings
+    // Build the insert object exactly matching the Prisma schema
     const patientData = {
       first_name: data.firstName,
       last_name: data.lastName || null,
       email: data.email ? data.email.toLowerCase() : null,
       phone: data.phone,
-      date_of_birth: new Date(data.dob),
+      date_of_birth: data.dob ? new Date(data.dob) : null,
       gender: data.gender,
       blood_group: data.bloodGroup || null,
       address: data.address || null,
-      // emergency_contact: data.emergencyContact || null,
-      // allergies: data.allergies || null,
-      // medical_history: data.medicalHistory || null,
+      
+      // Clinical Fields
+      emergency_contact: data.emergencyContact || null,
+      allergies: data.allergies || null,
+      medical_history: data.medicalHistory || null,
+
+      // ABHA Normalization: Strip hyphens before saving so it's a clean 14-digit string
+      abha_id: data.abhaId ? data.abhaId.replace(/-/g, '') : null,
+      abha_address: data.abhaAddress || null,
+
+      // Default state for a brand new patient
       is_admitted: false
     };
 
-    const patient = await PatientRepository.create(tenantId, patientData);
+    // Persist to Database via Repository
+    const patient = await PatientRepository.create(
+      tenantId, 
+      patientData
+    );
 
-    // 4. Audit Logging
+    // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,
       action: 'REGISTER_PATIENT',
       entityType: 'PATIENT',
       entityId: patient.patient_id,
-      newValue: { name: `${patient.first_name} ${patient.last_name || ''}`.trim() },
+      newValue: {
+        firstName: patient.first_name,
+        lastName: patient.last_name,
+        email: patient.email,
+        phone: patient.phone,
+        bloodGroup: patient.blood_group,
+        abhaLinked: !!patient.abha_id
+      },
       ipAddress
     });
 
@@ -58,24 +82,77 @@ export class PatientService {
     return patient;
   }
 
-  static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
-    const patient = await PatientRepository.findByIdAndTenant(patientId, tenantId);
+static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
+    // Find patient within the current tenant
+    const patient = await PatientRepository.findByIdAndTenant(
+      patientId,
+      tenantId
+    );
+
     if (!patient) {
-      throw new AppError('Patient record not found.', HTTP_STATUS.NOT_FOUND);
+      throw new AppError(
+        'Patient record not found.',
+        HTTP_STATUS.NOT_FOUND
+      );
+    }
+    if (data.email || data.phone) {
+      const existing = await PatientRepository.findByEmailOrPhone(
+        tenantId,
+        data.email,
+        data.phone
+      );
+
+      if (existing && existing.patient_id !== patientId) {
+        throw new AppError(
+          'A patient with this email or phone number already exists in this hospital.',
+          HTTP_STATUS.CONFLICT
+        );
+      }
     }
 
+    // Build partial update object based on Prisma schema
     const updateData = {};
-    if (data.firstName) updateData.first_name = data.firstName;
-    if (data.lastName !== undefined) updateData.last_name = data.lastName;
-    if (data.phone) updateData.phone = data.phone;
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.emergencyContact !== undefined) updateData.emergency_contact = data.emergencyContact;
-    if (data.allergies !== undefined) updateData.allergies = data.allergies;
-    if (data.medicalHistory !== undefined) updateData.medical_history = data.medicalHistory;
-    if (data.bloodGroup) updateData.blood_group = data.bloodGroup;
 
-    await PatientRepository.update(patientId, tenantId, updateData);
-    const updatedPatient = await PatientRepository.findByIdAndTenant(patientId, tenantId);
+    if (data.firstName !== undefined) updateData.first_name = data.firstName;
+    if (data.lastName !== undefined) updateData.last_name = data.lastName || null;
+    if (data.email !== undefined) updateData.email = data.email ? data.email.toLowerCase() : null;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.dob !== undefined) updateData.date_of_birth = data.dob ? new Date(data.dob) : null;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.bloodGroup !== undefined) updateData.blood_group = data.bloodGroup || null;
+    if (data.address !== undefined) updateData.address = data.address || null;
+    
+    // Restored Clinical Fields
+    if (data.emergencyContact !== undefined) updateData.emergency_contact = data.emergencyContact || null;
+    if (data.allergies !== undefined) updateData.allergies = data.allergies || null;
+    if (data.medicalHistory !== undefined) updateData.medical_history = data.medicalHistory || null;
+
+    // Restored ABHA Normalization
+    if (data.abhaId !== undefined) {
+      updateData.abha_id = data.abhaId ? data.abhaId.replace(/-/g, '') : null;
+    }
+    if (data.abhaAddress !== undefined) {
+      updateData.abha_address = data.abhaAddress || null;
+    }
+
+    // is_admitted is intentionally NOT updated here.
+    // Admission/discharge should be handled by dedicated workflows.
+
+    if (Object.keys(updateData).length === 0) {
+      return patient;
+    }
+
+    // Update patient
+    await PatientRepository.update(
+      patientId,
+      tenantId,
+      updateData
+    );
+
+    const updatedPatient = await PatientRepository.findByIdAndTenant(
+      patientId,
+      tenantId
+    );
 
     AuditService.logAction({
       tenantId,
@@ -83,7 +160,21 @@ export class PatientService {
       action: 'UPDATE_PATIENT',
       entityType: 'PATIENT',
       entityId: patientId,
-      oldValue: { firstName: patient.first_name, phone: patient.phone },
+      oldValue: {
+        firstName: patient.first_name,
+        lastName: patient.last_name,
+        email: patient.email,
+        phone: patient.phone,
+        dateOfBirth: patient.date_of_birth,
+        gender: patient.gender,
+        bloodGroup: patient.blood_group,
+        address: patient.address,
+        emergencyContact: patient.emergency_contact,
+        allergies: patient.allergies,
+        medicalHistory: patient.medical_history,
+        abhaId: patient.abha_id,
+        abhaAddress: patient.abha_address
+      },
       newValue: updateData,
       ipAddress
     });

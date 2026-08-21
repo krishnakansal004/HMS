@@ -6,23 +6,23 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class DoctorService {
   static async createDoctor({ tenantId, userId, data, ipAddress }) {
-    // 1. Validate email uniqueness in this hospital
+    // Validate email uniqueness in this hospital
     const exists = await DoctorRepository.findUserByEmail(tenantId, data.email);
     if (exists) {
       throw new AppError('Email is already in use in this hospital.', HTTP_STATUS.CONFLICT);
     }
 
-    // 2. Auto-generate password if not provided
+    // Auto-generate password if not provided
     const plainPassword = data.password || Math.random().toString(36).slice(-10);
     const passwordHash = await bcrypt.hash(plainPassword, 12);
 
-    // 3. Fetch the DOCTOR role ID from the database
+    // Fetch the DOCTOR role ID from the database
     const doctorRole = await DoctorRepository.findRoleByName('DOCTOR');
     if (!doctorRole) {
       throw new AppError('System configuration error: DOCTOR role missing.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    // 4. Create the User and Profile via Repository Transaction
+    // Create the User and Profile via Repository Transaction
     const doctor = await DoctorRepository.createTransaction({
       tenantId,
       roleId: doctorRole.role_id,
@@ -37,7 +37,7 @@ export class DoctorService {
       consultationFee: Number(data.consultationFee) || 0,
     });
 
-    // 5. Audit Logging
+    // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,

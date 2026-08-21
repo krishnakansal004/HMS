@@ -7,7 +7,7 @@ import { db } from '../config/db.js';
 export class RadiologyService {
   
   static async orderRadiologyStudy({ tenantId, userId, patientId, doctorProfileId, modality, studyType, bodyPart, urgency, price, notes, ipAddress }) {
-    // 1. Verify Patient exists
+    // Verify Patient exists
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId }
     });
@@ -17,7 +17,7 @@ export class RadiologyService {
 
     const formattedPrice = Math.round(Number(price || 0) * 100); // Store minor currency
 
-    // 2. Create Radiology Order
+    // Create Radiology Order
     const order = await RadiologyRepository.createOrder(tenantId, {
       patient_id: patientId,
       patient_name_snapshot: `${patient.first_name} ${patient.last_name || ''}`.trim(),
@@ -32,7 +32,7 @@ export class RadiologyService {
       billing_status: 'unbilled'
     });
 
-    // 3. Audit Logging
+    // Audit
     AuditService.logAction({
       tenantId,
       userId,

@@ -50,18 +50,21 @@ export class PrescriptionRepository {
     if (patientId) where.patient_id = patientId;
     if (doctorId) where.doctor_id = doctorId;
 
-    return db.$transaction([
-      db.prescription.count({ where }),
-      db.prescription.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { created_at: 'desc' },
-        include: {
-          patient: { select: { first_name: true, last_name: true } },
-          doctor_profile: { include: { users: { select: { name: true } } } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, prescriptions] = await Promise.all([
+        tx.prescription.count({ where }),
+        tx.prescription.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+          include: {
+            patient: { select: { first_name: true, last_name: true } },
+            doctor_profile: { include: { users: { select: { name: true } } } }
+          }
+        })
+      ]);
+      return [total, prescriptions];
+    });
   }
 }

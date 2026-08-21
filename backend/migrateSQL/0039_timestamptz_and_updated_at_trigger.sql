@@ -2,16 +2,7 @@
 -- Purpose: Two infrastructure improvements, both applied generically via
 -- information_schema introspection rather than a hardcoded column list (less
 -- error-prone, and automatically covers every table already created):
---
--- 1. Convert every TIMESTAMP (timezone-naive) column to TIMESTAMPTZ. This is
---    a greenfield database with no data yet, so the conversion is safe and
---    assumes existing (empty) columns are UTC. Doing this now avoids ambiguity
---    later if the app or its users ever span more than one timezone --
---    TIMESTAMPTZ stores UTC internally and converts on display, TIMESTAMP does
---    not store timezone info at all and is a common source of subtle bugs.
---    (DATE columns like expiry_date/admitted_date are left as-is -- a pure
---    calendar date has no timezone component to get wrong.)
---
+
 -- 2. A generic trigger function that auto-updates updated_at on every UPDATE,
 --    attached to every table that has an updated_at column. Right now
 --    updated_at only gets set once via DEFAULT at INSERT time -- nothing

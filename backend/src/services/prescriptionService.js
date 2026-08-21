@@ -7,7 +7,7 @@ import { db } from '../config/db.js';
 export class PrescriptionService {
   
   static async createPrescription({ tenantId, userId, doctorProfileId, patientId, appointmentId, diagnosis, instructions, items, ipAddress }) {
-    // 1. Verify Patient exists in this tenant
+    // Verify Patient exists in this tenant
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId }
     });
@@ -15,7 +15,7 @@ export class PrescriptionService {
       throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Business Rule: Medicine stock must NOT decrease here (enforced by design: we only write to prescription table)
+    // Business Rule: Medicine stock must NOT decrease here (enforced by design: we only write to prescription table)
     const prescription = await PrescriptionRepository.create({
       tenantId,
       doctorId: doctorProfileId,
@@ -32,7 +32,6 @@ export class PrescriptionService {
       data: { patient_name_snapshot: `${patient.first_name} ${patient.last_name || ''}`.trim() }
     });
 
-    // 3. Audit Logging
     AuditService.logAction({
       tenantId,
       userId,

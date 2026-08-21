@@ -9,28 +9,28 @@ export class AppointmentService {
     const start = new Date(startTime);
     const end = new Date(endTime);
 
-    // 1. Business Rule: End time must be after start time
+    // End time must be after start time
     if (start >= end) {
       throw new AppError('Appointment end time must be after start time.', HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 2. Business Rule: Prevent past bookings
+    // Prevent past bookings
     if (start < new Date()) {
       throw new AppError('Cannot book appointments in the past.', HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 3. Business Rule: Doctor cannot be double-booked
+    // Doctor cannot be double-booked
     const overlap = await AppointmentRepository.checkOverlap(doctorId, start, end);
     if (overlap) {
       throw new AppError('The doctor is already booked for this time slot.', HTTP_STATUS.CONFLICT);
     }
 
-    // 4. Create the appointment
+    // Create appointment
     const appointment = await AppointmentRepository.create({
       tenantId,
       doctorId,
       patientId,
-      date: start, // Derived for easy querying
+      date: start,
       startTime: start,
       endTime: end,
       type,
@@ -38,13 +38,13 @@ export class AppointmentService {
       status: 'scheduled'
     });
 
-    // 5. Audit Logging
+    // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,
       action: 'CREATE_APPOINTMENT',
       entityType: 'APPOINTMENT',
-      entityId: appointment.id,
+      entityId: appointment.appointment_id,
       newValue: appointment,
       ipAddress
     });
@@ -72,41 +72,15 @@ export class AppointmentService {
   }
 
   static async updateAppointmentStatus({ tenantId, userId, appointmentId, status, reason, ipAddress }) {
-    // 1. Ensure appointment belongs to the tenant
-    //
-    // FIXED: this used to call findByIdAndTenant(appointmentId, tenantId)
-    // — swapped relative to the repository's (tenantId, appointmentId)
-    // signature. That meant this always searched
-    // WHERE appointment_id = <the real tenantId> AND tenant_id = <the
-    // real appointmentId>, which (barring an astronomically unlikely UUID
-    // collision) never matches — every status-update request 404'd
-    // before it could do anything else, regardless of whether the
-    // appointment existed. Confirmed there's only one caller of this
-    // method before fixing the call site.
     const appointment = await AppointmentRepository.findByIdAndTenant(tenantId, appointmentId);
     if (!appointment) {
       throw new AppError('Appointment not found.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Business Rule: Cannot modify a cancelled or completed appointment state randomly
-    //
-    // FIXED: compared against 'CANCELLED'/'COMPLETED' (uppercase) while
-    // stored values are always lowercase (AppointmentRepository.create()
-    // normalizes on the way in) — this comparison could never match, so
-    // the rule silently never fired.
     if (appointment.status === 'cancelled' || appointment.status === 'completed') {
       throw new AppError(`Cannot update status of a ${appointment.status} appointment.`, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 3. Perform Update
-    //
-    // FIXED: same parameter-order issue as above, plus this used to pass
-    // `reason` as a 3rd positional argument into a repository method that
-    // only declared 3 params (tenantId, appointmentId, status) — reason
-    // was silently landing in the `status` parameter slot, so a
-    // successful update would have overwritten status with the reason
-    // text (or undefined, if no reason was given). Repository signature
-    // now explicitly takes `reason` as its own parameter.
     const updated = await AppointmentRepository.updateStatus(tenantId, appointmentId, status, reason);
 
     // 4. Audit Logging
@@ -115,7 +89,7 @@ export class AppointmentService {
       userId,
       action: `UPDATE_APPOINTMENT_STATUS_TO_${status}`,
       entityType: 'APPOINTMENT',
-      entityId: appointment.id,
+      entityId: appointment.appointment_id,
       oldValue: { status: appointment.status },
       newValue: { status: updated.status, reason: updated.reason },
       ipAddress

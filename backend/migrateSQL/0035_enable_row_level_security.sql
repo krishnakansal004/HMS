@@ -3,10 +3,10 @@
 -- per the multi-tenant design agreed for this project.
 --
 -- HOW THIS WORKS:
--- Your tenant-scoping middleware (req.db / tenant middleware) must run, at
+-- tenant-scoping middleware (req.db / tenant middleware) must run, at
 -- the start of every request inside a transaction, before any query:
 --
---   SET LOCAL app.current_tenant_id = '<tenant-uuid-for-this-request>';
+-- SET LOCAL app.current_tenant_id = '<tenant-uuid-for-this-request>';
 --
 -- Every policy below compares tenant_id on the row to that session setting.
 -- If app.current_tenant_id is never set, current_setting(..., true) returns
@@ -14,8 +14,8 @@
 -- simply return zero rows rather than leaking cross-tenant data. Fail-closed,
 -- not fail-open.
 --
--- FORCE ROW LEVEL SECURITY matters: without it, RLS is bypassed for whichever
--- Postgres role owns the table (typically the same role your backend
+-- FORCE ROW LEVEL SECURITY: without it, RLS is bypassed for whichever
+-- Postgres role owns the table (typically the same role backend
 -- connects as), which silently defeats the whole point. FORCE closes that gap.
 
 DO $$

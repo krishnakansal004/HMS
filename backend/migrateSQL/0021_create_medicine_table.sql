@@ -3,8 +3,7 @@
 -- Depends on: tenant, supplier
 -- NOTE: supplier_id is nullable (changed from NOT NULL in the earlier draft)
 -- since it represents a preferred/default supplier, not a hard requirement --
--- actual sourcing per restock is tracked in purchase_item. Confirm this
--- interpretation with the team before merging.
+-- actual sourcing per restock is tracked in purchase_item.
 
 CREATE TABLE medicine (
     medicine_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),

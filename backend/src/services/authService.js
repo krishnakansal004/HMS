@@ -5,7 +5,7 @@ import { env } from '../config/env.js';
 
 export class AuthService {
   static async registerPatient({ firstName, lastName, email, password, phone, gender, dob, hospitalSlug }) {
-    // 1. Validate Tenant
+    // Validate Tenant
     const tenant = await UserRepository.findTenantBySlug(hospitalSlug);
     if (!tenant || tenant.status !== 'active') {
       const err = new Error('Hospital not found or is currently inactive.');
@@ -13,7 +13,7 @@ export class AuthService {
       throw err;
     }
 
-    // 2. Prevent Duplicate Emails within the system
+    // Prevent Duplicate Emails within the system
     const existingUser = await UserRepository.findUserByEmail(email);
     if (existingUser) {
       const err = new Error('Email is already registered.');
@@ -21,7 +21,7 @@ export class AuthService {
       throw err;
     }
 
-    // 3. Resolve Role (Assuming 'PATIENT' role exists in DB)
+    // Resolve Role (Assuming 'PATIENT' role exists in DB)
     const role = await UserRepository.findRoleByName('PATIENT');
     if (!role) {
       const err = new Error('System configuration error: Patient role not found.');
@@ -29,11 +29,11 @@ export class AuthService {
       throw err;
     }
 
-    // 4. Secure Password Hashing (Cost factor 12 for enterprise security)
+    // Secure Password Hashing 
     const passwordHash = await bcrypt.hash(password, 12);
     const fullName = `${firstName} ${lastName}`.trim();
 
-    // 5. Prepare Data matching exact Schema fields
+    // Prepare Data matching exact Schema fields
     const userData = {
       tenant_id: tenant.tenant_id,
       role_id: role.role_id,
@@ -54,7 +54,6 @@ export class AuthService {
       is_admitted: false
     };
 
-    // 6. Persist via Repository
     const user = await UserRepository.createPatientUser(userData, patientData);
 
     return {
@@ -66,7 +65,7 @@ export class AuthService {
   }
 
   static async login({ email, password, hospitalSlug }) {
-    // 1. Fetch User
+    // Fetch User
     const user = await UserRepository.findUserByEmail(email.toLowerCase());
     if (!user || !user.password_hash) {
       const err = new Error('Invalid credentials.');
@@ -84,7 +83,7 @@ export class AuthService {
       throw err;
     }
 
-    // 2. Verify Password
+    // Verify Password
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       const err = new Error('Invalid credentials.');
@@ -92,7 +91,7 @@ export class AuthService {
       throw err;
     }
 
-    // 3. Strict Tenant Isolation Check
+    // Strict Tenant Isolation Check
     // If the user is not a global System Owner, they MUST provide the correct hospital slug.
     if (user.role.name !== 'SYSTEM_OWNER') {
       if (!hospitalSlug) {
@@ -112,11 +111,11 @@ export class AuthService {
       }
     }
 
-    // 4. Generate JWT Tokens
+    // Generate JWT Tokens
    const tokenPayload = {
-      id: user.user_id,      // <--- Added for middleware compatibility
+      id: user.user_id,    
       sub: user.user_id,
-      userId: user.user_id,  // <--- Added for safety
+      userId: user.user_id, 
       role: user.role.name,
       tenantId: user.tenant_id
     };

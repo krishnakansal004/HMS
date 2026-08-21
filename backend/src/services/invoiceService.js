@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 export class InvoiceService {
   
   static async generateInvoice({ tenantId, userId, patientId, items, discount = 0, taxRate = 0, ipAddress }) {
-    // 1. Safe Integer Math for Subtotal
+
     // items array expects { itemName, medicineId?, quantity, unitPrice, gstRate? }
     let subtotal = 0;
 
@@ -19,7 +19,7 @@ export class InvoiceService {
       return item;
     });
 
-    // 2. Calculate Tax and Total
+    // Calculate Tax and Total
     // taxRate is provided as an integer percentage (e.g., 18 for 18%)
     const gstTotal = Math.floor((subtotal * taxRate) / 100);
     const total = subtotal + gstTotal - discount;
@@ -28,9 +28,7 @@ export class InvoiceService {
       throw new AppError('Discount cannot exceed the total invoice amount.', HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 3. Persist to DB via transaction — the repository generates the
-    // per-tenant sequential invoice_number under an advisory lock, in the
-    // same transaction as the insert.
+    // Persist to DB via transaction — the repository generates the per-tenant sequential invoice_number under an advisory lock, in the same transaction as the insert.
     const invoice = await InvoiceRepository.createInvoiceTransaction({
       tenantId,
       patientId,
@@ -41,7 +39,7 @@ export class InvoiceService {
       items: processedItems
     });
 
-    // 4. Audit Logging
+    // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,

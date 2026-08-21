@@ -35,7 +35,7 @@ export class InsuranceService {
   }
 
   static async submitClaim({ tenantId, userId, patientId, companyId, policyNumber, totalBillAmount, claimedAmount, invoiceId, ipAddress }) {
-    // 1. Verify Patient exists
+    // Verify Patient exists
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId }
     });
@@ -43,13 +43,13 @@ export class InsuranceService {
       throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Verify Insurance Company exists
+    // Verify Insurance Company exists
     const company = await InsuranceRepository.findCompanyById(tenantId, companyId);
     if (!company || company.status !== 'active') {
       throw new AppError('Insurance company/TPA not found or inactive.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 3. Verify Invoice if provided
+    // Verify Invoice if provided
     if (invoiceId) {
       const invoice = await db.invoice.findFirst({
         where: { invoice_id: invoiceId, tenant_id: tenantId }
@@ -59,7 +59,7 @@ export class InsuranceService {
       }
     }
 
-    // 4. Create Claim Record
+    // Create Claim Record
     const claim = await InsuranceRepository.createClaim(tenantId, {
       patient_id: patientId,
       company_id: companyId,
@@ -70,7 +70,7 @@ export class InsuranceService {
       status: 'submitted' // submitted -> under_review -> approved -> rejected -> settled
     });
 
-    // 5. Audit Logging
+    // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,

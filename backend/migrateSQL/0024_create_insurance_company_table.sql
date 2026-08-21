@@ -4,8 +4,7 @@
 -- NOTE: tenant_id added here (was missing in the earlier draft, inconsistent
 -- with every other table in this domain). Decision made: each hospital
 -- manages its own insurance/TPA relationships, so this is tenant-scoped. If
--- insurance companies should instead be a shared platform-wide catalog, drop
--- tenant_id and the associated unique constraint before merging.
+-- insurance companies should instead be a shared platform-wide catalog
 
 CREATE TABLE insurance_company (
     company_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -6,8 +6,7 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 export class InventoryService {
   
   static async addMedicine({ tenantId, userId, data, ipAddress }) {
-    // schema column is NUMERIC(10,2) — stores decimals natively, no
-    // integer-paise conversion needed (that was inflating every price 100x).
+
     const purchasePrice = Number(data.purchasePrice);
     const sellingPrice = Number(data.sellingPrice);
 

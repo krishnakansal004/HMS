@@ -38,28 +38,28 @@ export class TenantPlanService {
   }
 
   static async provisionHospitalTenant({ name, slug, planId, adminName, adminEmail, adminPassword, ipAddress }) {
-    // 1. Verify Plan exists
+    // Verify Plan exists
     const plan = await TenantPlanRepository.findPlanById(planId);
     if (!plan || plan.status !== 'active') {
       throw new AppError('Selected subscription plan is invalid or inactive.', HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 2. Check if slug is taken
+    // Check if slug is taken
     const existingTenant = await TenantPlanRepository.findTenantBySlug(slug);
     if (existingTenant) {
       throw new AppError('Hospital portal slug is already taken. Choose another.', HTTP_STATUS.CONFLICT);
     }
 
-    // 3. Resolve Hospital Admin role ID
+    // Resolve Hospital Admin role ID
     const adminRole = await db.role.findUnique({ where: { name: 'HOSPITAL_ADMIN' } });
     if (!adminRole) {
       throw new AppError('System configuration error: HOSPITAL_ADMIN role missing.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    // 4. Hash password
+    // Hash password
     const passwordHash = await bcrypt.hash(adminPassword, 12);
 
-    // 5. Execute Provisioning Transaction
+    // Execute Provisioning Transaction
     const { tenant, adminUser } = await TenantPlanRepository.createTenantTransaction(
       {
         name,

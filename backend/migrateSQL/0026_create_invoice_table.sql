@@ -1,8 +1,7 @@
 -- Migration: 0026
 -- Table: invoice
 -- Depends on: tenant, patient, plan
--- NOTE: invoice_number is unique per tenant, not globally unique (multi-tenant
--- fix flagged during review -- a bare NOT NULL gave no real uniqueness guarantee).
+-- NOTE: invoice_number is unique per tenant, not globally unique (multi-tenant)
 -- plan_id is nullable: set only for subscription/hospital-billing invoices,
 -- null for normal patient invoices. Same table intentionally serves both cases.
 

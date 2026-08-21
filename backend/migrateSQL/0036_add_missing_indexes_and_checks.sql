@@ -2,7 +2,6 @@
 -- Purpose: Fixes found during a follow-up audit -- missing FK indexes and
 -- missing CHECK constraints on numeric columns that were overlooked in the
 -- initial pass. Added as a separate migration rather than editing 0000-0035,
--- since those may already be in review/shared with the team.
 
 -- Missing FK indexes ---------------------------------------------------
 

@@ -6,7 +6,7 @@ import { db } from '../config/db.js';
 
 export class AdmissionService {
   static async admitPatient({ tenantId, userId, patientId, bedId, admittingDoctorId, diagnosis, ipAddress }) {
-    // FIXED: this used to do the bed lock (db.bed.update) and the
+    // this used to do the bed lock (db.bed.update) and the
     // admission record creation (AdmissionRepository.createAdmission) as
     // two separate, un-transactioned writes. If the second failed after
     // the first succeeded — a validation error, a dropped connection,

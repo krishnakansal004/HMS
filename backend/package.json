@@ -14,6 +14,8 @@
     "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "^7.9.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@sendgrid/mail": "^8.1.6",
@@ -49,7 +51,8 @@
     "razorpay": "^2.8.3",
     "streamifier": "^0.1.1",
     "twilio": "^5.10.5",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@express-rate-limit/tsconfig": "^1.0.5",

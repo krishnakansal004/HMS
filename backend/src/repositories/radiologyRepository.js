@@ -27,7 +27,7 @@ export class RadiologyRepository {
 
   static async updateOrderTransaction({ tenantId, orderId, status, findings, impression, scanMetadata, shouldBill, invoiceId, billingItem }) {
     return db.$transaction(async (tx) => {
-      // 1. Update the Radiology Order details
+      // Update the Radiology Order details
       const updatedOrder = await tx.radiology_order.update({
         where: { radiology_order_id: orderId },
         data: {
@@ -40,7 +40,7 @@ export class RadiologyRepository {
         }
       });
 
-      // 2. If completed and billing requested, append charge to the invoice item list
+      // If completed and billing requested, append charge to the invoice item list
       if (shouldBill && invoiceId) {
         await tx.invoice_item.create({
           data: {
@@ -80,18 +80,21 @@ export class RadiologyRepository {
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 
-    return db.$transaction([
-      db.radiology_order.count({ where }),
-      db.radiology_order.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { created_at: 'desc' },
-        include: {
-          patient: { select: { first_name: true, last_name: true, mrn: true } },
-          doctor_profile: { include: { users: { select: { name: true } } } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, orders] = await Promise.all([
+        tx.radiology_order.count({ where }),
+        tx.radiology_order.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+          include: {
+            patient: { select: { first_name: true, last_name: true } }, // REMOVED mrn
+            doctor_profile: { include: { users: { select: { name: true } } } }
+          }
+        })
+      ]);
+      return [total, orders];
+    });
   }
 }

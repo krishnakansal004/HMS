@@ -18,19 +18,20 @@ export class AuditService {
     try {
       // We do not await this in the main thread to prevent slowing down the HTTP response.
       // It runs in the background.
-      db.auditLog.create({
+      db.audit_log.create({
         data: {
-          tenantId,
-          userId,
-          action,
-          entityType,
-          entityId,
-          oldValue,
-          newValue,
-          ipAddress
+          // Mapped strictly to the snake_case Prisma schema
+          tenant_id: tenantId,
+          user_id: userId || null,
+          action: action,
+          entity_type: entityType,
+          entity_id: entityId || null,
+          old_value: oldValue ? JSON.parse(JSON.stringify(oldValue)) : null,
+          new_value: newValue ? JSON.parse(JSON.stringify(newValue)) : null,
+          ip_address: ipAddress || null
         }
       }).catch((err) => {
-        logger.error('[AuditService] Failed to save audit log to DB', { error: err.message, action, entityId });
+        logger.error('[AuditService] Failed to save audit log to DB', { error: err.message, action, entityId })
       });
     } catch (error) {
       logger.error('[AuditService] Critical failure in audit logging mechanism', { error: error.message });

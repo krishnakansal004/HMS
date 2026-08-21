@@ -32,13 +32,13 @@ export class LabService {
   }
 
   static async orderLabTest({ tenantId, userId, patientId, testId, doctorProfileId, prescriptionId, ipAddress }) {
-    // 1. Verify Test exists in catalog
+    // Verify Test exists in catalog
     const testCatalog = await LabRepository.findTestById(tenantId, testId);
     if (!testCatalog || testCatalog.status !== 'active') {
       throw new AppError('Requested lab test not found or inactive in catalog.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Fetch patient to snapshot name
+    // Fetch patient to snapshot name
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId }
     });
@@ -46,7 +46,7 @@ export class LabService {
       throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 3. Create Lab Order
+    // Create Lab Order
     const labOrder = await LabRepository.createOrder(tenantId, {
       patient_id: patientId,
       patient_name_snapshot: `${patient.first_name} ${patient.last_name || ''}`.trim(),

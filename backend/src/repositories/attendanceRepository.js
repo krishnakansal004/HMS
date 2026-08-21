@@ -1,23 +1,23 @@
 import { db } from '../config/db.js';
 
+
 export class AttendanceRepository {
-  
-  static async findByUserAndDate(tenantId, userId, date) {
+
+  static async findByUserAndDate(tenantId, userId, attendanceDate) {
     return db.attendance.findUnique({
-      // Prisma requires the exact unique compound key for findUnique
       where: {
-        userId_date: {
-          userId: userId,
-          date: date
+        user_id_attendance_date: {
+          user_id: userId,
+          attendance_date: attendanceDate
         },
-        tenantId: tenantId
+        tenant_id: tenantId
       }
     });
   }
 
-  static async findByIdAndTenant(id, tenantId) {
+  static async findByIdAndTenant(attendanceId, tenantId) {
     return db.attendance.findFirst({
-      where: { id, tenantId }
+      where: { attendance_id: attendanceId, tenant_id: tenantId }
     });
   }
 
@@ -25,44 +25,47 @@ export class AttendanceRepository {
     return db.attendance.create({
       data,
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } }
+        users: { select: { name: true, email: true } }
       }
     });
   }
 
-  static async update(id, data) {
+  static async update(attendanceId, data) {
     return db.attendance.update({
-      where: { id },
+      where: { attendance_id: attendanceId },
       data,
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } }
+        users: { select: { name: true, email: true } }
       }
     });
   }
 
   static async findManyPaginated({ tenantId, userId, startDate, endDate, status, skip, take }) {
-    const where = { tenantId };
+    const where = { tenant_id: tenantId };
 
-    if (userId) where.userId = userId;
+    if (userId) where.user_id = userId;
     if (status) where.status = status;
-    
+
     if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date.gte = new Date(startDate);
-      if (endDate) where.date.lte = new Date(endDate);
+      where.attendance_date = {};
+      if (startDate) where.attendance_date.gte = new Date(startDate);
+      if (endDate) where.attendance_date.lte = new Date(endDate);
     }
 
-    return db.$transaction([
-      db.attendance.count({ where }),
-      db.attendance.findMany({
-        where,
-        skip,
-        take,
-        orderBy: [{ date: 'desc' }, { checkIn: 'desc' }],
-        include: {
-          user: { select: { firstName: true, lastName: true, email: true } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, records] = await Promise.all([
+        tx.attendance.count({ where }),
+        tx.attendance.findMany({
+          where,
+          skip,
+          take,
+          orderBy: [{ attendance_date: 'desc' }, { check_in_at: 'desc' }],
+          include: {
+            users: { select: { name: true, email: true } }
+          }
+        })
+      ]);
+      return [total, records];
+    });
   }
 }

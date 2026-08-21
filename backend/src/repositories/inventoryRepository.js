@@ -18,7 +18,6 @@ export class InventoryRepository {
 
   static async findManyPaginated({ tenantId, search, lowStockOnly, skip, take }) {
     const where = { tenant_id: tenantId };
-
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -26,20 +25,19 @@ export class InventoryRepository {
       ];
     }
 
-    // Vanilla Prisma's `where` doesn't support comparing two columns of the
-    // same row (there's no `db.medicine.fields.x` runtime API — that was
-    // silently doing nothing). Field-to-field comparison needs raw SQL.
-    if (lowStockOnly) {
-      const lowStockIds = await db.$queryRaw`
-        SELECT medicine_id FROM medicine
-        WHERE tenant_id = ${tenantId}::uuid
-          AND quantity <= reorder_level
-          AND deleted_at IS NULL
-      `;
-      where.medicine_id = { in: lowStockIds.map(r => r.medicine_id) };
-    }
-
     return db.$transaction(async (tx) => {
+      // Moved $queryRaw INSIDE the transaction so it runs on the RLS-secured connection
+      if (lowStockOnly) {
+        const lowStockIds = await tx.$queryRaw`
+          SELECT medicine_id FROM medicine
+          WHERE tenant_id = ${tenantId}::uuid
+            AND quantity <= reorder_level
+            AND deleted_at IS NULL
+        `;
+        const mappedIds = Array.isArray(lowStockIds) ? lowStockIds.map(r => r.medicine_id).filter(Boolean) : [];
+        where.medicine_id = { in: mappedIds.length > 0 ? mappedIds : ['00000000-0000-0000-0000-000000000000'] };
+      }
+
       const [total, medicines] = await Promise.all([
         tx.medicine.count({ where }),
         tx.medicine.findMany({

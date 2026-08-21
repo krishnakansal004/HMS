@@ -42,7 +42,7 @@ export class LabRepository {
 
   static async updateOrderStatusTransaction({ tenantId, orderId, sampleStatus, technicianNotes, results, shouldBill, invoiceId, billingItem }) {
     return db.$transaction(async (tx) => {
-      // 1. Update the Lab Order status & results
+      // Update the Lab Order status & results
       const updatedOrder = await tx.lab_order.update({
         where: { lab_order_id: orderId },
         data: {
@@ -54,7 +54,7 @@ export class LabRepository {
         include: { lab_test: true, patient: true }
       });
 
-      // 2. If the test is completed and requires billing, append to an existing invoice or create an invoice item
+      // If the test is completed and requires billing, append to an existing invoice or create an invoice item
       if (shouldBill && invoiceId) {
         await tx.invoice_item.create({
           data: {
@@ -94,18 +94,21 @@ export class LabRepository {
     if (patientId) where.patient_id = patientId;
     if (status) where.sample_status = status;
 
-    return db.$transaction([
-      db.lab_order.count({ where }),
-      db.lab_order.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { created_at: 'desc' },
-        include: {
-          patient: { select: { first_name: true, last_name: true, mrn: true } },
-          lab_test: { select: { name: true, code: true } }
-        }
-      })
-    ]);
+    return db.$transaction(async (tx) => {
+      const [total, orders] = await Promise.all([
+        tx.lab_order.count({ where }),
+        tx.lab_order.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+          include: {
+            patient: { select: { first_name: true, last_name: true } }, 
+            lab_test: { select: { name: true, code: true } }
+          }
+        })
+      ]);
+      return [total, orders];
+    });
   }
 }

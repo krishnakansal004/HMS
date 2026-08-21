@@ -7,7 +7,7 @@ import { db } from '../config/db.js';
 export class PurchaseService {
   
   static async createPurchaseOrder({ tenantId, userId, supplierId, orderId, orderDate, status, items, ipAddress }) {
-    // 1. Verify Supplier exists in tenant
+    // Verify Supplier exists in tenant
     const supplier = await db.supplier.findFirst({
       where: { supplier_id: supplierId, tenant_id: tenantId }
     });
@@ -15,7 +15,7 @@ export class PurchaseService {
       throw new AppError('Supplier not found.', HTTP_STATUS.NOT_FOUND);
     }
 
-    // 2. Verify all medicines belong to this tenant
+    // Verify all medicines belong to this tenant
     const medicineIds = items.map(i => i.medicineId);
     const medicines = await db.medicine.findMany({
       where: { medicine_id: { in: medicineIds }, tenant_id: tenantId }
@@ -25,13 +25,13 @@ export class PurchaseService {
       throw new AppError('One or more medicines specified do not exist in inventory.', HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 3. Format unit costs to minor currency integers
+    // Format unit costs to minor currency integers
     const formattedItems = items.map(item => ({
       ...item,
       unitCost: Math.round(Number(item.unitCost) * 100)
     }));
 
-    // 4. Create purchase transaction
+    // Create purchase transaction
     const purchase = await PurchaseRepository.createPurchaseTransaction({
       tenantId,
       supplierId,
@@ -41,7 +41,6 @@ export class PurchaseService {
       items: formattedItems
     });
 
-    // 5. Audit Logging
     AuditService.logAction({
       tenantId,
       userId,
