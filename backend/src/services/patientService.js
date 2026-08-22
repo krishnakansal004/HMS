@@ -7,23 +7,7 @@ import crypto from 'crypto';
 export class PatientService {
   
   static async registerPatient({ tenantId, userId, data, ipAddress }) {
-    // Conflict Check: Ensure email or phone doesn't already exist in this tenant
-    if (data.email || data.phone) {
-      const existing = await PatientRepository.findByEmailOrPhone(
-        tenantId,
-        data.email,
-        data.phone
-      );
-
-      if (existing) {
-        throw new AppError(
-          'A patient with this email or phone number already exists in this hospital.',
-          HTTP_STATUS.CONFLICT
-        );
-      }
-    }
-
-    // Build the insert object exactly matching the Prisma schema
+    
     const patientData = {
       first_name: data.firstName,
       last_name: data.lastName || null,
@@ -43,8 +27,6 @@ export class PatientService {
       abha_id: data.abhaId ? data.abhaId.replace(/-/g, '') : null,
       abha_address: data.abhaAddress || null,
 
-      // Default state for a brand new patient
-      is_admitted: false
     };
 
     // Persist to Database via Repository
@@ -94,20 +76,6 @@ static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
         'Patient record not found.',
         HTTP_STATUS.NOT_FOUND
       );
-    }
-    if (data.email || data.phone) {
-      const existing = await PatientRepository.findByEmailOrPhone(
-        tenantId,
-        data.email,
-        data.phone
-      );
-
-      if (existing && existing.patient_id !== patientId) {
-        throw new AppError(
-          'A patient with this email or phone number already exists in this hospital.',
-          HTTP_STATUS.CONFLICT
-        );
-      }
     }
 
     // Build partial update object based on Prisma schema

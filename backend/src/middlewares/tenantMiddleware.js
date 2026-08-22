@@ -1,5 +1,5 @@
 import { HTTP_STATUS } from '../constants/httpStatus.js';
-
+import { tenantStorage } from '../config/db.js';
 export const requireTenant = (req, res, next) => {
   // System Owners bypass tenant scoping
   if (req.userRole === 'SYSTEM_OWNER') {
@@ -12,6 +12,5 @@ export const requireTenant = (req, res, next) => {
       message: 'Access denied: Tenant context could not be established.'
     });
   }
-
-  next();
+  tenantStorage.run({ tenantId: req.currentTenantId }, next);
 };

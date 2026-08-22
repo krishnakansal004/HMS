@@ -61,14 +61,18 @@ export class HrmsService {
       ];
     }
 
-    return db.$transaction([
-      db.users.count({ where }),
-      db.users.findMany({
-        where,
-        skip,
-        take,
-        select: { user_id: true, name: true, email: true, role: { select: { name: true } }, created_at: true }
-      })
-    ]);
+    
+    return db.$transaction(async (tx) => {
+      const [total, staff] = await Promise.all([
+        tx.users.count({ where }),
+        tx.users.findMany({
+          where,
+          skip,
+          take,
+          select: { user_id: true, name: true, email: true, role: { select: { name: true } }, created_at: true }
+        })
+      ]);
+      return [total, staff];
+    });
   }
 }

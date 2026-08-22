@@ -51,7 +51,6 @@ export class AuthService {
       phone: phone,
       gender: gender,
       date_of_birth: new Date(dob),
-      is_admitted: false
     };
 
     const user = await UserRepository.createPatientUser(userData, patientData);

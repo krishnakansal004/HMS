@@ -89,7 +89,7 @@ export class RadiologyRepository {
           take,
           orderBy: { created_at: 'desc' },
           include: {
-            patient: { select: { first_name: true, last_name: true } }, // REMOVED mrn
+            patient: { select: { first_name: true, last_name: true } },
             doctor_profile: { include: { users: { select: { name: true } } } }
           }
         })

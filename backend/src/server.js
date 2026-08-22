@@ -5,10 +5,10 @@ import { logger } from './config/logger.js';
 
 const startServer = async () => {
   try {
-    // 1. Establish database connection
+    // Establish database connection
     await connectDB();
 
-    // 2. Start Express HTTP server
+    // Start Express HTTP server
     const server = app.listen(env.port, () => {
       logger.info(`[SERVER] Hospital Management System running on port ${env.port} in [${env.nodeEnv}] mode.`);
     });

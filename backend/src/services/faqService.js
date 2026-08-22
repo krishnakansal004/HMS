@@ -1,64 +1,42 @@
 import { db } from '../config/db.js';
-import { AuditService } from './auditService.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class FaqService {
-  static async createFaq({ tenantId, userId, question, answer, category, ipAddress }) {
-    const faq = await db.faq.create({
-      data: {
-        tenant_id: tenantId || null, // Can be global or tenant-specific
-        question,
-        answer,
-        category: category || 'GENERAL',
-        created_by: userId
+  static async createFaq(currentUser, faqData) {
+    const isGlobalRequest = !faqData.tenantId;
+
+    if (isGlobalRequest) {
+      // RULE 1: If creating a global FAQ (tenant_id is NULL), user MUST be a System Owner
+      if (currentUser.role !== 'SYSTEM_OWNER') {
+        throw new AppError('Only System Administrators can create global FAQs.', HTTP_STATUS.FORBIDDEN);
       }
-    });
 
-    AuditService.logAction({
-      tenantId: tenantId || 'GLOBAL',
-      userId,
-      action: 'CREATE_FAQ',
-      entityType: 'FAQ',
-      entityId: faq.faq_id,
-      newValue: { question, category },
-      ipAddress
-    });
+      return db.faq.create({
+        data: {
+          tenant_id: null, // Explicitly global
+          created_by: currentUser.userId,
+          question: faqData.question,
+          answer: faqData.answer,
+          category: faqData.category || 'GENERAL'
+        }
+      });
 
-    return faq;
-  }
+    } else {
+      // RULE 2: If creating a Hospital FAQ, the creator MUST belong to that Hospital
+      if (currentUser.tenantId !== faqData.tenantId && currentUser.role !== 'SYSTEM_OWNER') {
+        throw new AppError('You cannot create resources for another hospital.', HTTP_STATUS.FORBIDDEN);
+      }
 
-  static async listFaqs({ tenantId, category }) {
-    const where = {
-      OR: [
-        { tenant_id: tenantId },
-        { tenant_id: null } // Global FAQs
-      ]
-    };
-    if (category) where.category = category;
-
-    return db.faq.findMany({
-      where,
-      orderBy: { created_at: 'desc' }
-    });
-  }
-
-  static async deleteFaq({ tenantId, userId, faqId, ipAddress }) {
-    const faq = await db.faq.findUnique({ where: { faq_id: faqId } });
-    if (!faq) throw new AppError('FAQ not found.', HTTP_STATUS.NOT_FOUND);
-
-    await db.faq.delete({ where: { faq_id: faqId } });
-
-    AuditService.logAction({
-      tenantId: tenantId || 'GLOBAL',
-      userId,
-      action: 'DELETE_FAQ',
-      entityType: 'FAQ',
-      entityId: faqId,
-      oldValue: { question: faq.question },
-      ipAddress
-    });
-
-    return { faq_id: faqId, deleted: true };
+      return db.faq.create({
+        data: {
+          tenant_id: faqData.tenantId,
+          created_by: currentUser.userId,
+          question: faqData.question,
+          answer: faqData.answer,
+          category: faqData.category || 'GENERAL'
+        }
+      });
+    }
   }
 }
