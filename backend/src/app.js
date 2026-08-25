@@ -27,6 +27,13 @@ import plansRoutes from './routes/plans.js';
 import tenantsRoutes from './routes/tenants.js';
 import planRequestsRoutes from './routes/planRequests.js';
 import doctorRoutes from './routes/doctors.js';
+import doctorApplicationsRoutes from './routes/doctorApplications.js'
+import supplierRoutes from './routes/suppliers.js';
+import emergencyRoutes from './routes/emergency.js';
+import paymentRoutes from './routes/payments.js';
+import analyticsRoutes from './routes/analytics.js';
+import staffRoutes from './routes/staff.js';
+import hrmsRoutes from './routes/hrms.js';
 const app = express();
 
 // Security & Utility Middlewares
@@ -52,6 +59,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/suppliers', supplierRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/lab', labRoutes);
 app.use('/api/radiology', radiologyRoutes);
@@ -66,7 +74,12 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/plan-requests', planRequestsRoutes);
 app.use('/api/doctors', doctorRoutes);
-
+app.use('/api/doctor-applications', doctorApplicationsRoutes);
+app.use('/api/emergency', emergencyRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/hrms', hrmsRoutes);
 // Catch-all 404 Route handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });

@@ -1,20 +1,19 @@
-import { TenantPlanService } from '../services/tenantPlanService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { TenantPlanService } from "../services/tenantPlanService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class TenantPlanController {
-  
   static async createPlan(req, res, next) {
     try {
       const plan = await TenantPlanService.createPlan({
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Subscription plan created successfully',
-        data: plan
+        message: "Subscription plan created successfully",
+        data: plan,
       });
     } catch (error) {
       next(error);
@@ -26,7 +25,7 @@ export class TenantPlanController {
       const plans = await TenantPlanService.listPlans();
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: plans
+        data: plans,
       });
     } catch (error) {
       next(error);
@@ -37,16 +36,16 @@ export class TenantPlanController {
     try {
       const result = await TenantPlanService.provisionHospitalTenant({
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Hospital tenant provisioned successfully',
+        message: "Hospital tenant provisioned successfully",
         data: {
           tenant: result.tenant,
-          adminEmail: result.adminUser.email
-        }
+          adminEmail: result.adminUser.email,
+        },
       });
     } catch (error) {
       next(error);
@@ -59,13 +58,13 @@ export class TenantPlanController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Plan change request submitted successfully',
-        data: request
+        message: "Plan change request submitted successfully",
+        data: request,
       });
     } catch (error) {
       next(error);
@@ -78,13 +77,13 @@ export class TenantPlanController {
         userId: req.userId,
         requestId: req.params.id,
         status: req.body.status,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Plan request reviewed successfully',
-        data: request
+        message: "Plan request reviewed successfully",
+        data: request,
       });
     } catch (error) {
       next(error);
@@ -94,12 +93,12 @@ export class TenantPlanController {
   static async listRequests(req, res, next) {
     try {
       const result = await TenantPlanService.listPlanRequests({
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

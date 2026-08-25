@@ -22,6 +22,8 @@ export class DoctorRepository {
           name: data.name,
           email: data.email,
           password_hash: data.passwordHash,
+          password_reset_token: data.passwordResetTokenHash || null,
+          password_reset_expires: data.passwordResetExpires || null,
           must_change_password: true
         }
       });
@@ -82,7 +84,7 @@ export class DoctorRepository {
       if (updateData.email) userUpdate.email = updateData.email;
 
       if (Object.keys(userUpdate).length > 0) {
-        // user_id is the PK, so update() is valid here
+
         await tx.users.update({
           where: { user_id: doctorId },
           data: userUpdate
@@ -98,7 +100,7 @@ export class DoctorRepository {
       if (updateData.active !== undefined) profileUpdate.active = updateData.active;
 
       if (Object.keys(profileUpdate).length > 0) {
-        // user_id is @unique in Prisma, so update() is valid here
+
         await tx.doctor_profile.update({
           where: { user_id: doctorId },
           data: profileUpdate
@@ -112,8 +114,15 @@ export class DoctorRepository {
     });
   }
 
+  static async findByIdAndTenant(tenantId, doctorId) {
+    return db.users.findFirst({
+      where: { user_id: doctorId, tenant_id: tenantId, role: { name: 'DOCTOR' }, deleted_at: null },
+      include: { doctor_profile: true }
+    });
+  }
+  
   static async softDelete(tenantId, doctorId) {
-    // updateMany safely supports non-composite multi-field queries (tenant_id)
+
     return db.doctor_profile.updateMany({
       where: { user_id: doctorId, tenant_id: tenantId },
       data: { active: false }
@@ -121,7 +130,7 @@ export class DoctorRepository {
   }
 
   static async hardDelete(tenantId, doctorId) {
-    // deleteMany safely supports non-composite multi-field queries (tenant_id)
+
     return db.users.deleteMany({
       where: { user_id: doctorId, tenant_id: tenantId }
     });

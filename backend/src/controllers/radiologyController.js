@@ -1,21 +1,20 @@
-import { RadiologyService } from '../services/radiologyService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { RadiologyService } from "../services/radiologyService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class RadiologyController {
-  
   static async order(req, res, next) {
     try {
       const order = await RadiologyService.orderRadiologyStudy({
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Radiology study ordered successfully',
-        data: order
+        message: "Radiology study ordered successfully",
+        data: order,
       });
     } catch (error) {
       next(error);
@@ -33,13 +32,13 @@ export class RadiologyController {
         impression: req.body.impression,
         scanMetadata: req.body.scanMetadata,
         invoiceId: req.body.invoiceId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Radiology order updated successfully',
-        data: order
+        message: "Radiology order updated successfully",
+        data: order,
       });
     } catch (error) {
       next(error);
@@ -50,12 +49,12 @@ export class RadiologyController {
     try {
       const result = await RadiologyService.getOrders({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

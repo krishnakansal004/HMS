@@ -1,21 +1,20 @@
-import { InventoryService } from '../services/inventoryService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { InventoryService } from "../services/inventoryService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class InventoryController {
-  
   static async add(req, res, next) {
     try {
       const medicine = await InventoryService.addMedicine({
         tenantId: req.currentTenantId,
         userId: req.userId,
         data: req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Medicine added successfully',
-        data: medicine
+        message: "Medicine added successfully",
+        data: medicine,
       });
     } catch (error) {
       next(error);
@@ -26,12 +25,12 @@ export class InventoryController {
     try {
       const result = await InventoryService.listMedicines({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);
@@ -47,13 +46,13 @@ export class InventoryController {
         quantity: req.body.quantity,
         prescriptionId: req.body.prescriptionId,
         notes: req.body.notes,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Medicine dispensed successfully',
-        data: medicine
+        message: "Medicine dispensed successfully",
+        data: medicine,
       });
     } catch (error) {
       next(error);
@@ -69,13 +68,13 @@ export class InventoryController {
         quantity: req.body.quantity,
         purchaseOrderId: req.body.purchaseOrderId,
         notes: req.body.notes,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Purchase received and stock updated',
-        data: medicine
+        message: "Purchase received and stock updated",
+        data: medicine,
       });
     } catch (error) {
       next(error);

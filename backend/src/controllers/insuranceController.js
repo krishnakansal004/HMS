@@ -1,21 +1,20 @@
-import { InsuranceService } from '../services/insuranceService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { InsuranceService } from "../services/insuranceService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class InsuranceController {
-  
   static async registerCompany(req, res, next) {
     try {
       const company = await InsuranceService.registerInsuranceCompany({
         tenantId: req.currentTenantId,
         userId: req.userId,
         data: req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Insurance company registered successfully',
-        data: company
+        message: "Insurance company registered successfully",
+        data: company,
       });
     } catch (error) {
       next(error);
@@ -25,12 +24,12 @@ export class InsuranceController {
   static async listCompanies(req, res, next) {
     try {
       const companies = await InsuranceService.listCompanies({
-        tenantId: req.currentTenantId
+        tenantId: req.currentTenantId,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: companies
+        data: companies,
       });
     } catch (error) {
       next(error);
@@ -43,13 +42,13 @@ export class InsuranceController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Insurance claim submitted successfully',
-        data: claim
+        message: "Insurance claim submitted successfully",
+        data: claim,
       });
     } catch (error) {
       next(error);
@@ -66,13 +65,13 @@ export class InsuranceController {
         approvedAmount: req.body.approvedAmount,
         rejectionReason: req.body.rejectionReason,
         settlementDate: req.body.settlementDate,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Insurance claim status updated successfully',
-        data: claim
+        message: "Insurance claim status updated successfully",
+        data: claim,
       });
     } catch (error) {
       next(error);
@@ -83,12 +82,12 @@ export class InsuranceController {
     try {
       const result = await InsuranceService.getClaims({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

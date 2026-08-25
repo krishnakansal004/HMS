@@ -15,7 +15,7 @@ async function runMigrations() {
 
   try {
     await client.connect();
-    console.log('✅ Connected to NeonDB successfully.');
+    console.log('Connected to NeonDB successfully.');
 
     // 1. Wipe the remote public schema clean to prevent "already exists" errors
     console.log('🧹 Resetting remote database schema (dropping public schema)...');
@@ -24,7 +24,7 @@ async function runMigrations() {
 
     const migrationDir = path.resolve('migrateSQL');
     if (!fs.existsSync(migrationDir)) {
-      console.error(`❌ Directory not found: ${migrationDir}`);
+      console.error(`Directory not found: ${migrationDir}`);
       process.exit(1);
     }
 
@@ -32,7 +32,7 @@ async function runMigrations() {
       .filter(file => file.endsWith('.sql'))
       .sort();
 
-    console.log(`📂 Found ${files.length} migration files to execute.`);
+    console.log(`Found ${files.length} migration files to execute.`);
 
     // 2. Run all migration files sequentially
     for (const file of files) {
@@ -44,9 +44,9 @@ async function runMigrations() {
       console.log(`✨ Completed: ${file}`);
     }
 
-    console.log('🎉 All migrations executed successfully on NeonDB!');
+    console.log(' All migrations executed successfully on NeonDB!');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error(' Migration failed:', error);
   } finally {
     await client.end();
   }

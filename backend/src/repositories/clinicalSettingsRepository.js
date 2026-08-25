@@ -1,7 +1,6 @@
-import { db } from '../config/db.js';
+import { db } from "../config/db.js";
 
 export class ClinicalSettingsRepository {
-  
   static async createTemplate(tenantId, userId, data) {
     return db.prescription_template.create({
       data: {
@@ -10,31 +9,31 @@ export class ClinicalSettingsRepository {
         name: data.name,
         medicines: JSON.parse(JSON.stringify(data.medicines || [])),
         tests: JSON.parse(JSON.stringify(data.tests || [])),
-        html: data.html || null
-      }
+        html: data.html || null,
+      },
     });
   }
 
   static async findTemplates(tenantId) {
     return db.prescription_template.findMany({
       where: { tenant_id: tenantId },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
       include: {
-        users: { select: { name: true } }
-      }
+        users: { select: { name: true } },
+      },
     });
   }
 
   static async findTemplateById(tenantId, templateId) {
     return db.prescription_template.findFirst({
-      where: { template_id: templateId, tenant_id: tenantId }
+      where: { template_id: templateId, tenant_id: tenantId },
     });
   }
 
   static async deleteTemplate(tenantId, templateId) {
     return db.prescription_template.updateMany({
       where: { template_id: templateId, tenant_id: tenantId },
-      data: { deleted_at: new Date(), updated_at: new Date() }
+      data: { deleted_at: new Date(), updated_at: new Date() },
     });
   }
 
@@ -43,29 +42,29 @@ export class ClinicalSettingsRepository {
       where: {
         tenant_id_key: {
           tenant_id: tenantId,
-          key: key
-        }
+          key: key,
+        },
       },
       update: {
         value: String(value),
-        group: group || 'general',
+        group: group || "general",
         updated_by: userId,
-        updated_at: new Date()
+        updated_at: new Date(),
       },
       create: {
         tenant_id: tenantId,
         key: key,
         value: String(value),
-        group: group || 'general',
-        updated_by: userId
-      }
+        group: group || "general",
+        updated_by: userId,
+      },
     });
   }
 
   static async findSettings(tenantId) {
     return db.setting.findMany({
       where: { tenant_id: tenantId },
-      orderBy: { group: 'asc' }
+      orderBy: { group: "asc" },
     });
   }
 }

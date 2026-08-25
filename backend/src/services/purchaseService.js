@@ -1,34 +1,45 @@
-import { PurchaseRepository } from '../repositories/purchaseRepository.js';
-import { AuditService } from './auditService.js';
-import { AppError } from '../middlewares/errorHandler.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
-import { db } from '../config/db.js';
+import { PurchaseRepository } from "../repositories/purchaseRepository.js";
+import { AuditService } from "./auditService.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { db } from "../config/db.js";
 
 export class PurchaseService {
-  
-  static async createPurchaseOrder({ tenantId, userId, supplierId, orderId, orderDate, status, items, ipAddress }) {
+  static async createPurchaseOrder({
+    tenantId,
+    userId,
+    supplierId,
+    orderId,
+    orderDate,
+    status,
+    items,
+    ipAddress,
+  }) {
     // Verify Supplier exists in tenant
     const supplier = await db.supplier.findFirst({
-      where: { supplier_id: supplierId, tenant_id: tenantId }
+      where: { supplier_id: supplierId, tenant_id: tenantId },
     });
     if (!supplier) {
-      throw new AppError('Supplier not found.', HTTP_STATUS.NOT_FOUND);
+      throw new AppError("Supplier not found.", HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify all medicines belong to this tenant
-    const medicineIds = items.map(i => i.medicineId);
+    const medicineIds = items.map((i) => i.medicineId);
     const medicines = await db.medicine.findMany({
-      where: { medicine_id: { in: medicineIds }, tenant_id: tenantId }
+      where: { medicine_id: { in: medicineIds }, tenant_id: tenantId },
     });
 
     if (medicines.length !== medicineIds.length) {
-      throw new AppError('One or more medicines specified do not exist in inventory.', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "One or more medicines specified do not exist in inventory.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     // Format unit costs to minor currency integers
-    const formattedItems = items.map(item => ({
+    const formattedItems = items.map((item) => ({
       ...item,
-      unitCost: Math.round(Number(item.unitCost) * 100)
+      unitCost: Math.round(Number(item.unitCost) * 100),
     }));
 
     // Create purchase transaction
@@ -37,50 +48,69 @@ export class PurchaseService {
       supplierId,
       orderId,
       orderDate,
-      status: status || 'pending',
-      items: formattedItems
+      status: status || "pending",
+      items: formattedItems,
     });
 
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'CREATE_PURCHASE_ORDER',
-      entityType: 'PURCHASE',
+      action: "CREATE_PURCHASE_ORDER",
+      entityType: "PURCHASE",
       entityId: purchase.purchase_id,
-      newValue: { supplierId, totalCost: purchase.total_cost, status: purchase.status },
-      ipAddress
+      newValue: {
+        supplierId,
+        totalCost: purchase.total_cost,
+        status: purchase.status,
+      },
+      ipAddress,
     });
 
     return purchase;
   }
 
-  static async updatePurchaseStatus({ tenantId, userId, purchaseId, status, ipAddress }) {
-    const validStatuses = ['pending', 'ordered', 'received', 'completed', 'cancelled'];
+  static async updatePurchaseStatus({
+    tenantId,
+    userId,
+    purchaseId,
+    status,
+    ipAddress,
+  }) {
+    const validStatuses = [
+      "pending",
+      "ordered",
+      "received",
+      "completed",
+      "cancelled",
+    ];
     if (!validStatuses.includes(status)) {
-      throw new AppError('Invalid purchase status workflow.', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Invalid purchase status workflow.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     try {
       const updated = await PurchaseRepository.updateStatusTransaction({
         tenantId,
         purchaseId,
-        newStatus: status
+        newStatus: status,
       });
 
       AuditService.logAction({
         tenantId,
         userId,
         action: `UPDATE_PURCHASE_STATUS_${status.toUpperCase()}`,
-        entityType: 'PURCHASE',
+        entityType: "PURCHASE",
         entityId: purchaseId,
         newValue: { status },
-        ipAddress
+        ipAddress,
       });
 
       return updated;
     } catch (error) {
-      if (error.message === 'PURCHASE_NOT_FOUND') {
-        throw new AppError('Purchase order not found.', HTTP_STATUS.NOT_FOUND);
+      if (error.message === "PURCHASE_NOT_FOUND") {
+        throw new AppError("Purchase order not found.", HTTP_STATUS.NOT_FOUND);
       }
       throw error;
     }
@@ -92,14 +122,18 @@ export class PurchaseService {
     const take = Number(limit);
 
     const [total, purchases] = await PurchaseRepository.findManyPaginated({
-      tenantId, supplierId, status, skip, take
+      tenantId,
+      supplierId,
+      status,
+      skip,
+      take,
     });
 
     return {
       total,
       page: Number(page),
       pages: Math.ceil(total / limit),
-      data: purchases
+      data: purchases,
     };
   }
 }

@@ -56,7 +56,7 @@ export class InvoiceRepository {
 
   static async recordPaymentTransaction({ tenantId, invoiceId, amount, method, transactionId }) {
     return db.$transaction(async (tx) => {
-      // 1. Create the payment record
+      // Create the payment record
       const payment = await tx.payment.create({
         data: {
           tenant_id: tenantId,
@@ -68,7 +68,7 @@ export class InvoiceRepository {
         }
       });
 
-      // 2. Fetch current invoice totals
+      // Fetch current invoice totals
       const invoice = await tx.invoice.findFirst({
         where: { invoice_id: invoiceId, tenant_id: tenantId },
         select: { invoice_id: true, total: true, amount_paid: true }
@@ -83,7 +83,7 @@ export class InvoiceRepository {
         newStatus = 'paid';
       }
 
-      // 3. Update invoice running total + status
+      // Update invoice running total + status
       const updatedInvoice = await tx.invoice.update({
         where: { invoice_id: invoiceId },
         data: {

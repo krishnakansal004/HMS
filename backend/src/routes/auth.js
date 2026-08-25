@@ -1,8 +1,12 @@
-import express from 'express';
-import { AuthController } from '../controllers/authController.js';
-import { registerValidator, loginValidator } from '../validators/authValidator.js';
-import { authLimiter } from '../middlewares/rateLimiters.js';
-import { requireCsrfHeader } from '../middlewares/csrfMiddleware.js';
+import express from "express";
+import { AuthController } from "../controllers/authController.js";
+import {
+  registerValidator,
+  loginValidator,
+  setupPasswordValidator,
+} from "../validators/authValidator.js";
+import { authLimiter } from "../middlewares/rateLimiters.js";
+import { requireCsrfHeader } from "../middlewares/csrfMiddleware.js";
 
 const router = express.Router();
 
@@ -12,10 +16,10 @@ const router = express.Router();
 // refreshToken cookie (see authController.js), so it isn't part of the
 // login-CSRF vector requireCsrfHeader exists to close.
 router.post(
-  '/register', 
-  authLimiter, 
-  registerValidator, 
-  AuthController.register
+  "/register",
+  authLimiter,
+  registerValidator,
+  AuthController.register,
 );
 
 // Endpoint: POST /api/auth/login
@@ -25,21 +29,23 @@ router.post(
 // cookie in a victim's browser. See csrfMiddleware.js for the full
 // reasoning.
 router.post(
-  '/login', 
-  authLimiter, 
+  "/login",
+  authLimiter,
   requireCsrfHeader,
-  loginValidator, 
-  AuthController.login
+  loginValidator,
+  AuthController.login,
 );
 
 // Endpoint: POST /api/auth/logout
 // Roles: Authenticated Users
-router.post(
-  '/logout', 
-  requireCsrfHeader,
-  AuthController.logout
-);
+router.post("/logout", requireCsrfHeader, AuthController.logout);
 
+router.post(
+  "/setup-password",
+  authLimiter,
+  setupPasswordValidator,
+  AuthController.setupPassword,
+);
 // Endpoint: POST /api/auth/refresh
 // Roles: Public (gated by possession of a valid refreshToken cookie, not
 // a login session — this IS the thing that renews the login session).
@@ -47,10 +53,6 @@ router.post(
 // signed cookie is the gate, and rate-limiting it would undermine the
 // silent-renewal UX it exists for. requireCsrfHeader still applies since
 // it's cookie-gated like login/logout.
-router.post(
-  '/refresh',
-  requireCsrfHeader,
-  AuthController.refresh
-);
+router.post("/refresh", requireCsrfHeader, AuthController.refresh);
 
 export default router;

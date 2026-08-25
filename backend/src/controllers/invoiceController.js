@@ -1,8 +1,7 @@
-import { InvoiceService } from '../services/invoiceService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { InvoiceService } from "../services/invoiceService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class InvoiceController {
-  
   static async generate(req, res, next) {
     try {
       const invoice = await InvoiceService.generateInvoice({
@@ -12,13 +11,13 @@ export class InvoiceController {
         items: req.body.items,
         discount: req.body.discount,
         taxRate: req.body.taxRate,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Invoice generated successfully',
-        data: invoice
+        message: "Invoice generated successfully",
+        data: invoice,
       });
     } catch (error) {
       next(error);
@@ -34,13 +33,13 @@ export class InvoiceController {
         amount: req.body.amount,
         method: req.body.method,
         transactionId: req.body.transactionId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Payment recorded successfully',
-        data: updatedInvoice
+        message: "Payment recorded successfully",
+        data: updatedInvoice,
       });
     } catch (error) {
       next(error);
@@ -51,12 +50,12 @@ export class InvoiceController {
     try {
       const result = await InvoiceService.getInvoices({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

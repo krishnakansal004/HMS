@@ -1,11 +1,19 @@
-import { AdmissionRepository } from '../repositories/admissionRepository.js';
-import { AuditService } from './auditService.js';
-import { AppError } from '../middlewares/errorHandler.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
-import { db } from '../config/db.js';
+import { AdmissionRepository } from "../repositories/admissionRepository.js";
+import { AuditService } from "./auditService.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { db } from "../config/db.js";
 
 export class AdmissionService {
-  static async admitPatient({ tenantId, userId, patientId, bedId, admittingDoctorId, diagnosis, ipAddress }) {
+  static async admitPatient({
+    tenantId,
+    userId,
+    patientId,
+    bedId,
+    admittingDoctorId,
+    diagnosis,
+    ipAddress,
+  }) {
     // this used to do the bed lock (db.bed.update) and the
     // admission record creation (AdmissionRepository.createAdmission) as
     // two separate, un-transactioned writes. If the second failed after
@@ -17,70 +25,94 @@ export class AdmissionService {
     // already used correctly elsewhere in this file's sibling
     // (updateAdmissionTransaction) and in wardBedRepository.js.
     const admission = await db.$transaction(async (tx) => {
-      // 1. Verify patient exists
-      const patient = await tx.patient.findFirst({ where: { patient_id: patientId, tenant_id: tenantId } });
-      if (!patient) throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
+      // Verify patient exists
+      const patient = await tx.patient.findFirst({
+        where: { patient_id: patientId, tenant_id: tenantId },
+      });
+      if (!patient)
+        throw new AppError("Patient not found.", HTTP_STATUS.NOT_FOUND);
 
-      // 2. If bed is specified, check if it's free, then lock it
+      // If bed is specified, check if it's free, then lock it
       if (bedId) {
-        const bed = await tx.bed.findFirst({ where: { bed_id: bedId, tenant_id: tenantId } });
-        if (!bed) throw new AppError('Bed not found.', HTTP_STATUS.NOT_FOUND);
-        if (bed.is_occupied) throw new AppError('Selected bed is already occupied.', HTTP_STATUS.CONFLICT);
+        const bed = await tx.bed.findFirst({
+          where: { bed_id: bedId, tenant_id: tenantId },
+        });
+        if (!bed) throw new AppError("Bed not found.", HTTP_STATUS.NOT_FOUND);
+        if (bed.is_occupied)
+          throw new AppError(
+            "Selected bed is already occupied.",
+            HTTP_STATUS.CONFLICT,
+          );
 
         await tx.bed.update({
           where: { bed_id: bedId },
-          data: { is_occupied: true, patient_id: patientId }
+          data: { is_occupied: true, patient_id: patientId },
         });
       }
 
-      // 3. Create the admission record
-      return AdmissionRepository.createAdmission(tenantId, {
-        patient_id: patientId,
-        bed_id: bedId || null,
-        admitting_doctor_id: admittingDoctorId || null,
-        diagnosis: diagnosis || null,
-        admission_date: new Date(),
-        status: 'admitted'
-      }, tx);
+      // Create the admission record
+      return AdmissionRepository.createAdmission(
+        tenantId,
+        {
+          patient_id: patientId,
+          bed_id: bedId || null,
+          admitting_doctor_id: admittingDoctorId || null,
+          diagnosis: diagnosis || null,
+          admission_date: new Date(),
+          status: "admitted",
+        },
+        tx,
+      );
     });
 
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'ADMIT_PATIENT',
-      entityType: 'ADMISSION',
+      action: "ADMIT_PATIENT",
+      entityType: "ADMISSION",
       entityId: admission.admission_id,
       newValue: { patientId, bedId, diagnosis },
-      ipAddress
+      ipAddress,
     });
 
     return admission;
   }
 
-  static async updateAdmission({ tenantId, userId, admissionId, status, dischargeDate, dischargeNotes, ipAddress }) {
+  static async updateAdmission({
+    tenantId,
+    userId,
+    admissionId,
+    status,
+    dischargeDate,
+    dischargeNotes,
+    ipAddress,
+  }) {
     try {
       const admission = await AdmissionRepository.updateAdmissionTransaction({
         tenantId,
         admissionId,
         status,
         dischargeDate,
-        dischargeNotes
+        dischargeNotes,
       });
 
       AuditService.logAction({
         tenantId,
         userId,
         action: `UPDATE_ADMISSION_${status}`,
-        entityType: 'ADMISSION',
+        entityType: "ADMISSION",
         entityId: admissionId,
         newValue: { status },
-        ipAddress
+        ipAddress,
       });
 
       return admission;
     } catch (error) {
-      if (error.message === 'ADMISSION_NOT_FOUND') {
-        throw new AppError('Admission record not found.', HTTP_STATUS.NOT_FOUND);
+      if (error.message === "ADMISSION_NOT_FOUND") {
+        throw new AppError(
+          "Admission record not found.",
+          HTTP_STATUS.NOT_FOUND,
+        );
       }
       throw error;
     }
@@ -91,15 +123,19 @@ export class AdmissionService {
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const [total, admissions] = await AdmissionRepository.findAdmissionsPaginated({
-      tenantId, status, skip, take
-    });
+    const [total, admissions] =
+      await AdmissionRepository.findAdmissionsPaginated({
+        tenantId,
+        status,
+        skip,
+        take,
+      });
 
     return {
       total,
       page: Number(page),
       pages: Math.ceil(total / limit),
-      data: admissions
+      data: admissions,
     };
   }
 }

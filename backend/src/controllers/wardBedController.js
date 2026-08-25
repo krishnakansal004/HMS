@@ -1,21 +1,20 @@
-import { WardBedService } from '../services/wardBedService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { WardBedService } from "../services/wardBedService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class WardBedController {
-  
   static async createWard(req, res, next) {
     try {
       const ward = await WardBedService.createWard({
         tenantId: req.currentTenantId,
         userId: req.userId,
         data: req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Ward created successfully',
-        data: ward
+        message: "Ward created successfully",
+        data: ward,
       });
     } catch (error) {
       next(error);
@@ -25,12 +24,12 @@ export class WardBedController {
   static async listWards(req, res, next) {
     try {
       const wards = await WardBedService.listWards({
-        tenantId: req.currentTenantId
+        tenantId: req.currentTenantId,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: wards
+        data: wards,
       });
     } catch (error) {
       next(error);
@@ -45,13 +44,13 @@ export class WardBedController {
         wardId: req.params.wardId,
         bedNumber: req.body.bedNumber,
         pricePerDay: req.body.pricePerDay,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Bed added to ward successfully',
-        data: bed
+        message: "Bed added to ward successfully",
+        data: bed,
       });
     } catch (error) {
       next(error);
@@ -65,13 +64,13 @@ export class WardBedController {
         userId: req.userId,
         bedId: req.params.bedId,
         patientId: req.body.patientId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Bed assigned to patient successfully',
-        data: bed
+        message: "Bed assigned to patient successfully",
+        data: bed,
       });
     } catch (error) {
       next(error);
@@ -84,13 +83,13 @@ export class WardBedController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         bedId: req.params.bedId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Bed released successfully',
-        data: bed
+        message: "Bed released successfully",
+        data: bed,
       });
     } catch (error) {
       next(error);

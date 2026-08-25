@@ -1,23 +1,21 @@
-import { db } from '../config/db.js';
-
+import { db } from "../config/db.js";
 
 export class AttendanceRepository {
-
   static async findByUserAndDate(tenantId, userId, attendanceDate) {
     return db.attendance.findUnique({
       where: {
         user_id_attendance_date: {
           user_id: userId,
-          attendance_date: attendanceDate
+          attendance_date: attendanceDate,
         },
-        tenant_id: tenantId
-      }
+        tenant_id: tenantId,
+      },
     });
   }
 
   static async findByIdAndTenant(attendanceId, tenantId) {
     return db.attendance.findFirst({
-      where: { attendance_id: attendanceId, tenant_id: tenantId }
+      where: { attendance_id: attendanceId, tenant_id: tenantId },
     });
   }
 
@@ -25,8 +23,8 @@ export class AttendanceRepository {
     return db.attendance.create({
       data,
       include: {
-        users: { select: { name: true, email: true } }
-      }
+        users: { select: { name: true, email: true } },
+      },
     });
   }
 
@@ -35,12 +33,20 @@ export class AttendanceRepository {
       where: { attendance_id: attendanceId },
       data,
       include: {
-        users: { select: { name: true, email: true } }
-      }
+        users: { select: { name: true, email: true } },
+      },
     });
   }
 
-  static async findManyPaginated({ tenantId, userId, startDate, endDate, status, skip, take }) {
+  static async findManyPaginated({
+    tenantId,
+    userId,
+    startDate,
+    endDate,
+    status,
+    skip,
+    take,
+  }) {
     const where = { tenant_id: tenantId };
 
     if (userId) where.user_id = userId;
@@ -59,11 +65,11 @@ export class AttendanceRepository {
           where,
           skip,
           take,
-          orderBy: [{ attendance_date: 'desc' }, { check_in_at: 'desc' }],
+          orderBy: [{ attendance_date: "desc" }, { check_in_at: "desc" }],
           include: {
-            users: { select: { name: true, email: true } }
-          }
-        })
+            users: { select: { name: true, email: true } },
+          },
+        }),
       ]);
       return [total, records];
     });

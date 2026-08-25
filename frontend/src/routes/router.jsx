@@ -11,18 +11,24 @@ import { NotFound, Unauthorized } from "../pages/StatusPages.jsx";
 import { ROLES } from "../utils/roles.js";
 import DoctorsList from "../pages/doctors/DoctorsList.jsx";
 import PatientDetails from "../pages/patients/PatientDetails.jsx";
-import WardsList from "../pages/wards/WardsList.jsx"; // <-- Phase 2 Import
-
+import WardsList from "../pages/wards/WardsList.jsx";
+import ApplyDoctor from "../pages/public/ApplyDoctor.jsx";
+import DoctorApplicationsList from "../pages/doctors/DoctorApplicationsList.jsx";
+import DoctorDetails from "../pages/doctors/DoctorDetails.jsx";
+import SetupPassword from "../pages/auth/SetupPassword.jsx";
+import InventoryList from "../pages/inventory/InventoryList.jsx";
+import AdmissionsList from "../pages/admissions/AdmissionsList.jsx";
+import HrmsDashboard from "../pages/hrms/HrmsDashboard.jsx";
 // Modules below have a full API layer (src/api/) but no screen yet —
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
-  ["admissions", "Admissions", "Phase 2"],
+  // ["admissions", "Admissions", "Phase 2"],
   // Wards & Beds removed from roadmap and wired below
   ["prescriptions", "Prescriptions", "Phase 4"],
   ["lab", "Laboratory", "Phase 4"],
   ["radiology", "Radiology", "Phase 4"],
-  ["inventory", "Pharmacy Inventory", "Phase 5"],
+  // ["inventory", "Pharmacy Inventory", "Phase 5"],
   ["purchases", "Purchases", "Phase 5"],
   ["invoices", "Billing", "Phase 3"],
   ["insurance", "Insurance Claims", "Phase 3"],
@@ -33,9 +39,14 @@ const roadmap = [
 ];
 
 export const router = createBrowserRouter([
+  // PUBLIC / UNPROTECTED ROUTES
   { path: "/login", element: <Login /> },
   { path: "/register", element: <Register /> },
+  { path: "/apply/:hospitalSlug", element: <ApplyDoctor /> },
+  { path: "/portal/:hospitalSlug/setup-password", element: <SetupPassword /> },
   { path: "/unauthorized", element: <Unauthorized /> },
+
+  // PROTECTED ROUTES
   {
     path: "/",
     element: (
@@ -122,6 +133,68 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "Medical Staff" },
+      },
+      {
+        path: "doctors/:id",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DIRECTOR]}>
+            <DoctorDetails />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Doctor Profile" },
+      },
+      {
+        path: "doctor-applications",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DIRECTOR]}>
+            <DoctorApplicationsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Review Applicant" },
+      },
+      {
+        path: "inventory",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.PHARMACIST,
+              ROLES.STORE_MANAGER,
+              ROLES.NURSE,
+              ROLES.DOCTOR,
+            ]}
+          >
+            <InventoryList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Pharmacy Inventory" },
+      },
+      {
+        path: "admissions",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.DOCTOR,
+              ROLES.NURSE,
+              ROLES.RECEPTIONIST,
+            ]}
+          >
+            <AdmissionsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Admissions" },
+      },
+      {
+        path: "hrms",
+        element: (
+          <ProtectedRoute
+            roles={[ROLES.HOSPITAL_ADMIN, ROLES.HR, ROLES.DIRECTOR]}
+          >
+            <HrmsDashboard />
+          </ProtectedRoute>
+        ),
+        handle: { title: "HRMS & Staff" },
       },
       ...roadmap.map(([path, title, phase]) => ({
         path,

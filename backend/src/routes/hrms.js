@@ -1,13 +1,13 @@
-import express from 'express';
-import { HrmsController } from '../controllers/hrmsController.js';
-import { protect, requireRoles } from '../middlewares/authMiddleware.js';
-import { requireTenant } from '../middlewares/tenantMiddleware.js';
+import express from "express";
+import { HrmsController } from "../controllers/hrmsController.js";
+import { protect, requireRoles } from "../middlewares/authMiddleware.js";
+import { requireTenant } from "../middlewares/tenantMiddleware.js";
 import {
   applyLeaveValidator,
   reviewLeaveValidator,
   createShiftValidator,
-  listStaffValidator
-} from '../validators/hrmsValidator.js';
+  listStaffValidator,
+} from "../validators/hrmsValidator.js";
 
 const router = express.Router();
 
@@ -19,27 +19,27 @@ router.use(requireTenant);
 // controller, not here -- targetUserId is silently ignored for anyone
 // else, not rejected, since sending it is harmless for a normal staff
 // member applying for themselves).
-router.post('/leaves', applyLeaveValidator, HrmsController.applyLeave);
+router.post("/leaves", applyLeaveValidator, HrmsController.applyLeave);
 
 router.patch(
-  '/leaves/:id/review',
-  requireRoles('HOSPITAL_ADMIN', 'HR'),
+  "/leaves/:id/review",
+  requireRoles("HOSPITAL_ADMIN", "HR"),
   reviewLeaveValidator,
-  HrmsController.reviewLeave
+  HrmsController.reviewLeave,
 );
 
 router.post(
-  '/shifts',
-  requireRoles('HOSPITAL_ADMIN', 'HR'),
+  "/shifts",
+  requireRoles("HOSPITAL_ADMIN", "HR"),
   createShiftValidator,
-  HrmsController.createShift
+  HrmsController.createShift,
 );
 
 router.get(
-  '/staff',
-  requireRoles('HOSPITAL_ADMIN', 'HR', 'DIRECTOR'),
+  "/staff",
+  requireRoles("HOSPITAL_ADMIN", "HR", "DIRECTOR"),
   listStaffValidator,
-  HrmsController.listStaff
+  HrmsController.listStaff,
 );
 
 export default router;

@@ -1,12 +1,6 @@
 import { api } from './client.js';
 
 // Maps to backend/src/routes/patients.js + patientValidator.js.
-//
-// emergencyContact/allergies/medicalHistory are now safe to send on both
-// register and update — migration 0041 added the missing columns and
-// patientService.js persists them on create (it previously silently
-// dropped them) and update (it already wrote them, but 500'd since the
-// columns didn't exist). See README "Fixed backend gaps" for the history.
 
 export const patientsApi = {
   /**

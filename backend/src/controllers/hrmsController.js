@@ -1,11 +1,6 @@
-import { HrmsService } from '../services/hrmsService.js';
+import { HrmsService } from "../services/hrmsService.js";
 
-// Method names mirror HrmsService 1:1 (createShift, applyLeave, reviewLeave,
-// listStaff) -- the same pattern every other controller in this codebase
-// follows against its service. req.userId/req.userRole/req.currentTenantId
-// come from authMiddleware.js's `protect` req.ip is Express's built-in.
 export class HrmsController {
-
   static async createShift(req, res, next) {
     try {
       const { name, startTime, endTime } = req.body;
@@ -15,7 +10,7 @@ export class HrmsController {
         name,
         startTime,
         endTime,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(201).json({ success: true, data: shift });
     } catch (error) {
@@ -31,7 +26,7 @@ export class HrmsController {
       // targetUserId they send. Mirrors the same
       // only-privileged-roles-can-act-on-others pattern AttendanceService
       // already uses for checkIn/checkOut.
-      const canActForOthers = ['HOSPITAL_ADMIN', 'HR'].includes(req.userRole);
+      const canActForOthers = ["HOSPITAL_ADMIN", "HR"].includes(req.userRole);
       const leave = await HrmsService.applyLeave({
         tenantId: req.currentTenantId,
         userId: req.userId,
@@ -39,7 +34,7 @@ export class HrmsController {
         startDate,
         endDate,
         reason,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(201).json({ success: true, data: leave });
     } catch (error) {
@@ -55,7 +50,7 @@ export class HrmsController {
         userId: req.userId,
         leaveId: req.params.id,
         status,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(200).json({ success: true, data: leave });
     } catch (error) {
@@ -67,7 +62,7 @@ export class HrmsController {
     try {
       const [total, data] = await HrmsService.listStaff({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
       const { page = 1, limit = 50 } = req.query;
       res.status(200).json({
@@ -75,7 +70,7 @@ export class HrmsController {
         total,
         page: Number(page),
         pages: Math.ceil(total / Number(limit)),
-        data
+        data,
       });
     } catch (error) {
       next(error);

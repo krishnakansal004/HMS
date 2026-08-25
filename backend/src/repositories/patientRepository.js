@@ -15,7 +15,7 @@ export class PatientRepository {
   }
 
   static async findByIdAndTenant(patientId, tenantId) {
-    // 🛡️ IDOR Protection: Always requires matching tenant_id
+    // IDOR Protection: Always requires matching tenant_id
     return db.patient.findFirst({
       where: { 
         patient_id: patientId, 

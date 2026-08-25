@@ -14,15 +14,10 @@ const TONES = {
   accent: { dot: 'bg-[var(--color-accent)]', text: 'text-[var(--color-accent)]', bg: 'bg-[var(--color-accent-soft)]' },
 };
 
-// Maps raw backend status strings (many different casings/vocabularies
-// across modules) to a consistent visual tone. Unmapped values fall back
-// to neutral rather than guessing.
 const STATUS_TONE_MAP = {
-  // appointments — lowercase, matching chk_appointment_status (migration
-  // 0042). completed/cancelled are shared with the lab/radiology entries
-  // below, not redefined here.
+  // appointments — lowercase, matching chk_appointment_status
   confirmed: 'primary', checked_in: 'accent', in_progress: 'accent', no_show: 'danger',
-  // admissions — lowercase, matching chk_admission_status (migration 0043)
+  // admissions — lowercase, matching chk_admission_status
   admitted: 'primary', discharged: 'success', transferred: 'accent',
   // invoices
   DRAFT: 'neutral', PENDING: 'warning', PARTIAL: 'accent', PAID: 'success',
