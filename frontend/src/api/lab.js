@@ -3,6 +3,8 @@ import { api } from './client.js';
 // Maps to backend/src/routes/lab.js + labValidator.js
 
 export const labApi = {
+
+  getCatalog: () => api.get('/lab/catalog'),
   /** @param {{name:string, code:string, category?:string, sampleType?:string, price:number, referenceRange?:string}} data */
   addCatalogTest: (data) => api.post('/lab/catalog', data),
 

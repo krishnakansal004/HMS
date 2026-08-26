@@ -2,7 +2,7 @@ import { db } from '../config/db.js';
 
 export class TenantPlanRepository {
 
-  // --- PLANS ---
+  // PLANS
   static async createPlan(data) {
     return await db.plan.create({
       data: {
@@ -31,7 +31,7 @@ export class TenantPlanRepository {
     });
   }
 
-  // --- TENANTS ---
+  // TENANTS
   static async createTenantTransaction(tenantData, adminUserData, adminRoleId) {
     return await db.$transaction(async (prisma) => {
       const tenant = await prisma.tenant.create({
@@ -157,5 +157,28 @@ export class TenantPlanRepository {
       ]);
       return [total, requests];
     });
+  }
+
+  static async findTenantsPaginated({ skip, take }) {
+    return await db.$transaction(async (tx) => {
+      const [total, tenants] = await Promise.all([
+        tx.tenant.count(),
+        tx.tenant.findMany({
+          skip,
+          take,
+          include: { plan: { select: { name: true } } },
+          orderBy: { created_at: 'desc' },
+        }),
+      ]);
+      return [total, tenants];
+    });
+  }
+
+  static async getTenantById({ tenantId }) {
+    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    if (!tenant) {
+      throw new AppError('Tenant not found.', HTTP_STATUS.NOT_FOUND);
+    }
+    return tenant;
   }
 }

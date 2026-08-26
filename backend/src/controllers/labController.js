@@ -81,4 +81,13 @@ export class LabController {
       next(error);
     }
   }
+
+  static async getCatalog(req, res, next) {
+    try {
+      const catalog = await LabService.getCatalog(req.currentTenantId);
+      res.status(200).json({ success: true, data: catalog });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

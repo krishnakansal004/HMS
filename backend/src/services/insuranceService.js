@@ -80,8 +80,8 @@ export class InsuranceService {
       company_id: companyId,
       invoice_id: invoiceId || null,
       policy_number: policyNumber,
-      total_bill_amount: totalBillAmount,
-      claimed_amount: claimedAmount,
+      total_bill_amount: Math.round(Number(totalBillAmount) * 100), // 
+      claimed_amount: Math.round(Number(claimedAmount) * 100),
       status: "submitted", // submitted -> under_review -> approved -> rejected -> settled
     });
 

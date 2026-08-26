@@ -46,6 +46,7 @@ export class InvoiceService {
       patientId,
       subtotal,
       gstTotal,
+      discount,
       total,
       status: "pending",
       items: processedItems,

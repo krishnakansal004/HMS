@@ -2,14 +2,11 @@ import { db } from '../config/db.js';
 
 export class InvoiceRepository {
 
-  static async createInvoiceTransaction({ tenantId, patientId, subtotal, gstTotal, total, status, items }) {
+ static async createInvoiceTransaction({ tenantId, patientId, subtotal, gstTotal, total, status, items }) {
     return db.$transaction(async (tx) => {
-      // Serialize invoice-number generation per tenant using a transaction-scoped
-      // advisory lock (auto-released at commit/rollback, no extra counter table
-      // needed). Without this, two concurrent invoices for the same tenant could
-      // both read the same MAX(invoice_number) and collide on the
-      // uq_invoice_tenant_number constraint.
+      // Serialize invoice-number generation per tenant
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}::text))`;
+      
       const [{ next_number }] = await tx.$queryRaw`
         SELECT COALESCE(MAX(invoice_number), 0) + 1 AS next_number
         FROM invoice WHERE tenant_id = ${tenantId}::uuid
@@ -25,12 +22,12 @@ export class InvoiceRepository {
           gst_total: gstTotal,
           total,
           amount_paid: 0,
+          paid: false,
           status,
           invoice_item: {
             create: items.map(item => ({
-              tenant_id: tenantId,
               medicine_id: item.medicineId ?? null,
-              item_name_snapshot: item.itemName,
+              item_name_snapshot: item.itemName || item.description,
               quantity: item.quantity,
               unit_price_snapshot: item.unitPrice,
               gst_rate_snapshot: item.gstRate ?? 0
@@ -42,7 +39,7 @@ export class InvoiceRepository {
           patient: { select: { first_name: true, last_name: true, email: true, phone: true } }
         }
       });
-
+      
       return invoice;
     });
   }

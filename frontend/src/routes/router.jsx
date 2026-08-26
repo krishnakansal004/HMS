@@ -20,22 +20,28 @@ import InventoryList from "../pages/inventory/InventoryList.jsx";
 import AdmissionsList from "../pages/admissions/AdmissionsList.jsx";
 import HrmsDashboard from "../pages/hrms/HrmsDashboard.jsx";
 // Modules below have a full API layer (src/api/) but no screen yet —
+import SystemOwnerDashboard from '../pages/plans/SystemOwnerDashboard.jsx';
+import TenantDetails from '../pages/plans/TenantDetails.jsx';
+import InvoicesList from "../pages/invoices/InvoicesList.jsx";
+import PrescriptionsList from "../pages/prescriptions/PrescriptionsList.jsx";
+import PlansDashboard from "../pages/plans/PlansDashboard.jsx";
+import LabOrdersList from "../pages/lab/LabOrdersList.jsx";
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
   // ["admissions", "Admissions", "Phase 2"],
   // Wards & Beds removed from roadmap and wired below
-  ["prescriptions", "Prescriptions", "Phase 4"],
-  ["lab", "Laboratory", "Phase 4"],
+  // ["prescriptions", "Prescriptions", "Phase 4"],
+  // ["lab", "Laboratory", "Phase 4"],
   ["radiology", "Radiology", "Phase 4"],
   // ["inventory", "Pharmacy Inventory", "Phase 5"],
   ["purchases", "Purchases", "Phase 5"],
-  ["invoices", "Billing", "Phase 3"],
+  // ["invoices", "Billing", "Phase 3"],
   ["insurance", "Insurance Claims", "Phase 3"],
   ["expenses", "Expenses", "Phase 5"],
   ["attendance", "Attendance", "Phase 6"],
   ["settings", "Settings", "Phase 6"],
-  ["plans", "Plans & Tenants", "Phase 6"],
+  // ["plans", "Plans & Tenants", "Phase 6"],
 ];
 
 export const router = createBrowserRouter([
@@ -195,6 +201,52 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "HRMS & Staff" },
+      },
+      {
+        path: "plans",
+        element: (
+          <ProtectedRoute roles={[ROLES.SYSTEM_OWNER, ROLES.DIRECTOR]}>
+            <SystemOwnerDashboard />
+            <PlansDashboard />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Plans & Tenants" },
+      },
+      {
+        path: "tenants/:id",
+        element: (
+          <ProtectedRoute roles={[ROLES.SYSTEM_OWNER, ROLES.DIRECTOR]}>
+            <TenantDetails />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Tenant Profile" },
+      },
+      {
+        path: "invoices",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.CASHIER, ROLES.RECEPTIONIST, ROLES.DOCTOR]}>
+            <InvoicesList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Billing" },
+      },
+      {
+        path: "prescriptions",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.PHARMACIST, ROLES.NURSE]}>
+            <PrescriptionsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Prescriptions" },
+      },
+      {
+        path: "lab",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.LAB_TECHNICIAN, ROLES.RECEPTIONIST]}>
+            <LabOrdersList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Laboratory" },
       },
       ...roadmap.map(([path, title, phase]) => ({
         path,

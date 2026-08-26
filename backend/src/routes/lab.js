@@ -50,4 +50,9 @@ router.get(
   LabController.list,
 );
 
+router.get(
+  '/catalog',
+  requireRoles('HOSPITAL_ADMIN', 'DOCTOR', 'LAB_TECHNICIAN'),
+  LabController.getCatalog
+);
 export default router;

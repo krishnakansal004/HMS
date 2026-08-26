@@ -51,12 +51,14 @@ function mapPrismaError(err) {
         return null;
     }
   }
+  const instance = err instanceof Prisma.PrismaClientValidationError
 
-  if (err instanceof Prisma.PrismaClientValidationError) {
+  if (instance) {
     // Malformed query (unknown field, wrong type, etc.) — this is a
     // programming bug, not user input, so keep it a 500 but at least make
     // sure it's logged loudly and doesn't leak the raw Prisma message to
     // the client in production.
+    console.log(err instanceof Prisma.PrismaClientValidationError)
     return new AppError(
       "A database query error occurred.",
       HTTP_STATUS.INTERNAL_SERVER_ERROR,

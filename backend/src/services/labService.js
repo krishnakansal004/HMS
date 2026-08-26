@@ -2,7 +2,7 @@ import { LabRepository } from "../repositories/labRepository.js";
 import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
-
+import { db } from '../config/db.js';
 export class LabService {
   static async createTestCatalogItem({ tenantId, userId, data, ipAddress }) {
     const price = Math.round(Number(data.price) * 100); // Store in minor currency
@@ -170,5 +170,9 @@ export class LabService {
       pages: Math.ceil(total / limit),
       data: orders,
     };
+  }
+  
+  static async getCatalog(tenantId) {
+    return LabRepository.getCatalog(tenantId);
   }
 }

@@ -225,4 +225,26 @@ export class TenantPlanService {
       data: requests,
     };
   }
+
+  static async getTenantById({ tenantId }) {
+    // The repository method expects a direct string, not an object
+    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    if (!tenant) {
+      throw new AppError('Tenant not found.', HTTP_STATUS.NOT_FOUND);
+    }
+    return tenant;
+  }
+
+  static async listTenants({ query }) {
+    const { page = 1, limit = 50 } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+    const [total, tenants] = await TenantPlanRepository.findTenantsPaginated({ skip, take });
+    return {
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
+      data: tenants
+    };
+  }
 }

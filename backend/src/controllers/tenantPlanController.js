@@ -104,4 +104,22 @@ export class TenantPlanController {
       next(error);
     }
   }
+
+  static async listTenants(req, res, next) {
+    try {
+      const result = await TenantPlanService.listTenants({ query: req.query });
+      res.status(HTTP_STATUS.OK).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getTenant(req, res, next) {
+    try {
+      const tenant = await TenantPlanService.getTenantById({ tenantId: req.params.id });
+      res.status(HTTP_STATUS.OK).json({ success: true, data: tenant });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -111,4 +111,11 @@ export class LabRepository {
       return [total, orders];
     });
   }
+
+  static async getCatalog(tenantId) {
+    return db.lab_test.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { name: 'asc' }
+    });
+  }
 }

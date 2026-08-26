@@ -10,6 +10,7 @@ export class PrescriptionRepository {
         patient_id: patientId,
         appointment_id: appointmentId || null,
         patient_name_snapshot: '', // Populated via service
+        diagnosis: diagnosis,
         approval_status: 'pending',
         notes: instructions,
         medicines: items.map(i => ({
