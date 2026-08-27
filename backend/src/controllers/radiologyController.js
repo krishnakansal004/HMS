@@ -49,6 +49,8 @@ export class RadiologyController {
     try {
       const result = await RadiologyService.getOrders({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query,
       });
 

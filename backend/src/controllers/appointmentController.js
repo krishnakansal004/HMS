@@ -7,6 +7,7 @@ export class AppointmentController {
       const appointment = await AppointmentService.bookAppointment({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ipAddress: req.ip,
         ...req.body,
       });
@@ -25,6 +26,9 @@ export class AppointmentController {
     try {
       const result = await AppointmentService.getAppointments({
         tenantId: req.currentTenantId,
+        query: req.query,
+        userRole: req.userRole,
+        userId: req.userId,  
         query: req.query,
       });
 

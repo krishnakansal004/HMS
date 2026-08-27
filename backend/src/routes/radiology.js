@@ -40,6 +40,7 @@ router.get(
     "DOCTOR",
     "RADIOLOGY_TECHNICIAN",
     "RECEPTIONIST",
+    "PATIENT"
   ),
   listRadiologyOrdersValidator,
   RadiologyController.list,

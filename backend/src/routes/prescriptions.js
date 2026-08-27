@@ -26,7 +26,7 @@ router.post(
 // Who: Hospital Admin, Doctor, Pharmacist, Nurse
 router.get(
   "/",
-  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "PHARMACIST", "NURSE"),
+  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "PHARMACIST", "NURSE", "PATIENT"),
   listPrescriptionsValidator,
   PrescriptionController.list,
 );

@@ -16,7 +16,7 @@ export class ExpenseRepository {
 
   static async findByIdAndTenant(tenantId, expenseId) {
     return db.expense.findFirst({
-      where: { expense_id: expenseId, tenant_id: tenantId },
+      where: { expense_id: expenseId, tenant_id: tenantId, deleted_at: null },
       include: {
         users: { select: { name: true, email: true } }
       }
@@ -31,7 +31,7 @@ export class ExpenseRepository {
   }
 
 static async findManyPaginated({ tenantId, category, startDate, endDate, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     
     if (category) where.category = category;
     if (startDate || endDate) {

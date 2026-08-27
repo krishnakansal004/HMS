@@ -9,14 +9,18 @@ import { wardsApi } from '../../api/wards.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import { fullName } from '../../utils/format.js';
 import { Spinner } from '../../components/ui/Table.jsx';
+import { useAuthStore } from '../../store/authStore.js';
+import { ROLES } from '../../utils/roles.js';
 
 export default function AdmissionForm({ open, onClose, onSaved }) {
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === ROLES.DOCTOR;
+
   const [form, setForm] = useState({ patientId: '', bedId: '', admittingDoctorId: '', diagnosis: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loadingDeps, setLoadingDeps] = useState(false);
 
-  // Relational Dependencies
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [wards, setWards] = useState([]);
@@ -24,23 +28,35 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
   useEffect(() => {
     if (open) {
       setLoadingDeps(true);
-      Promise.all([
-        patientsApi.list({ limit: 100 }),
-        doctorsApi.list(),
-        wardsApi.list()
-      ])
-      .then(([patientsRes, doctorsRes, wardsRes]) => {
+      
+      const fetches = [patientsApi.list({ limit: 100 }), wardsApi.list()];
+      if (isDoctor) {
+        fetches.push(doctorsApi.getById(user.id));
+      } else {
+        fetches.push(doctorsApi.list());
+      }
+
+      Promise.all(fetches)
+      .then(([patientsRes, wardsRes, doctorsRes]) => {
         setPatients(patientsRes.data || []);
-        setDoctors(Array.isArray(doctorsRes) ? doctorsRes : (doctorsRes.data || []));
         setWards(wardsRes.data || []);
+
+        if (isDoctor) {
+          const profileId = doctorsRes.data?.doctor_profile?.doctor_profile_id;
+          if (profileId) {
+            setForm(f => ({ ...f, admittingDoctorId: profileId }));
+          }
+        } else {
+          setDoctors(Array.isArray(doctorsRes) ? doctorsRes : (doctorsRes.data || []));
+        }
       })
-      .catch(() => toast.error('Failed to load form dependencies'))
+      .catch((err) => toast.error('Failed to load admission dependencies: ' + err.message))
       .finally(() => setLoadingDeps(false));
     } else {
       setForm({ patientId: '', bedId: '', admittingDoctorId: '', diagnosis: '' });
       setErrors({});
     }
-  }, [open]);
+  }, [open, isDoctor, user]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -50,12 +66,11 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-
     try {
       const payload = { ...form };
       if (!payload.bedId) delete payload.bedId;
       if (!payload.admittingDoctorId) delete payload.admittingDoctorId;
-
+      
       await admissionsApi.create(payload);
       toast.success('Patient admitted successfully!');
       onSaved();
@@ -99,7 +114,25 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
             ))}
           </Select>
 
-          <Select label="Assign Bed (Optional)" value={form.bedId} onChange={update('bedId')} error={errors.bedId}>
+          {/* Doctor vs Admin UI handling */}
+          {isDoctor ? (
+             <Input label="Admitting Doctor" disabled value={`Dr. ${user.name}`} />
+          ) : (
+            <Select label="Admitting Doctor" required value={form.admittingDoctorId} onChange={update('admittingDoctorId')} error={errors.admittingDoctorId}>
+              <option value="">Select doctor...</option>
+              {doctors.map((doc) => {
+                const profileId = doc.doctor_profile?.doctor_profile_id;
+                if (!profileId) return null;
+                return (
+                  <option key={profileId} value={profileId}>
+                    {doc.doctor_profile?.designation || 'Dr.'} {doc.name}
+                  </option>
+                );
+              })}
+            </Select>
+          )}
+
+          <Select label="Assign Bed (Optional - Ops Team can assign later)" value={form.bedId} onChange={update('bedId')} error={errors.bedId}>
             <option value="">No bed assigned yet</option>
             {wards.map((w) => {
               const availableBeds = (w.bed || []).filter(b => !b.is_occupied);
@@ -116,28 +149,13 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
             })}
           </Select>
 
-          <Select label="Admitting Doctor (Optional)" value={form.admittingDoctorId} onChange={update('admittingDoctorId')} error={errors.admittingDoctorId}>
-            <option value="">Select doctor...</option>
-            {doctors.map((doc) => {
-              const profile = doc.doctor_profile || {};
-              const profileId = profile.doctor_profile_id; // The exact PK required by Prisma
-              
-              if (!profileId) return null; // Skip if clinical profile isn't fully loaded
-
-              return (
-                <option key={profileId} value={profileId}>
-                  {profile.designation || 'Dr.'} {doc.name} {profile.department_label ? `- ${profile.department_label}` : ''}
-                </option>
-              );
-            })}
-          </Select>
-
           <Textarea 
             label="Initial Diagnosis / Reason for Admission" 
+            required
             value={form.diagnosis} 
             onChange={update('diagnosis')} 
             error={errors.diagnosis} 
-            placeholder="Describe the clinical reason for this inpatient admission..."
+            placeholder="Describe the clinical reason for this inpatient admission..." 
           />
         </form>
       )}

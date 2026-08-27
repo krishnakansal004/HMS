@@ -20,8 +20,7 @@ export class ExpenseService {
       );
     }
 
-    // Convert amount to minor currency integer (e.g., paisa/cents)
-    const formattedAmount = Math.round(Number(amount) * 100);
+    const formattedAmount = Number(amount);
 
     const expense = await ExpenseRepository.create(tenantId, {
       title,

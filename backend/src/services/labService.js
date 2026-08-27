@@ -2,7 +2,7 @@ import { LabRepository } from "../repositories/labRepository.js";
 import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
-import { db } from '../config/db.js';
+import { db } from "../config/db.js";
 export class LabService {
   static async createTestCatalogItem({ tenantId, userId, data, ipAddress }) {
     const price = Math.round(Number(data.price) * 100); // Store in minor currency
@@ -151,10 +151,21 @@ export class LabService {
     return updatedOrder;
   }
 
-  static async getOrders({ tenantId, query }) {
-    const { patientId, status, page = 1, limit = 50 } = query;
+  static async getOrders({ tenantId, userId, userRole, query }) {
+    let { patientId, status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
+
+    // ZERO-TRUST ISOLATION: Overwrite patientId query param
+    if (userRole === "PATIENT") {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true },
+      });
+      if (!ownPatientRecord)
+        return { total: 0, page: Number(page), pages: 0, data: [] };
+      patientId = ownPatientRecord.patient_id; // Secure reassignment
+    }
 
     const [total, orders] = await LabRepository.findOrdersPaginated({
       tenantId,
@@ -171,7 +182,7 @@ export class LabService {
       data: orders,
     };
   }
-  
+
   static async getCatalog(tenantId) {
     return LabRepository.getCatalog(tenantId);
   }

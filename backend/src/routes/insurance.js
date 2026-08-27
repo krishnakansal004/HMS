@@ -35,7 +35,7 @@ router.post(
 // Who: Hospital Admin, Accountant, Receptionist
 router.get(
   "/claims",
-  requireRoles("HOSPITAL_ADMIN", "ACCOUNTANT", "RECEPTIONIST"),
+  requireRoles("HOSPITAL_ADMIN", "ACCOUNTANT", "RECEPTIONIST","PATIENT"),
   listClaimsValidator,
   InsuranceController.listClaims,
 );

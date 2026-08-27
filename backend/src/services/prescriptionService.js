@@ -57,14 +57,19 @@ export class PrescriptionService {
     return prescription;
   }
 
-  static async getPrescriptionById({ tenantId, prescriptionId }) {
-    const prescription = await PrescriptionRepository.findByIdAndTenant(
-      prescriptionId,
-      tenantId,
-    );
-    if (!prescription) {
-      throw new AppError("Prescription not found.", HTTP_STATUS.NOT_FOUND);
+  static async getPrescriptionById({ tenantId, userId, userRole, prescriptionId }) {
+    const prescription = await PrescriptionRepository.findByIdAndTenant(prescriptionId, tenantId);
+    if (!prescription) throw new AppError("Prescription not found.", HTTP_STATUS.NOT_FOUND);
+    if (userRole === 'PATIENT') {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true }
+      });
+      if (!ownPatientRecord || prescription.patient_id !== ownPatientRecord.patient_id) {
+        throw new AppError("Prescription not found.", HTTP_STATUS.NOT_FOUND); // Fail ambiguously
+      }
     }
+
     return prescription;
   }
 
@@ -108,25 +113,25 @@ export class PrescriptionService {
     return { prescription_id: prescriptionId, approval_status: status };
   }
 
-  static async listPrescriptions({ tenantId, query }) {
-    const { patientId, doctorId, page = 1, limit = 50 } = query;
+ static async listPrescriptions({ tenantId, userId, userRole, query }) {
+    let { patientId, doctorId, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const [total, prescriptions] =
-      await PrescriptionRepository.findManyPaginated({
-        tenantId,
-        patientId,
-        doctorId,
-        skip,
-        take,
+    // ZERO-TRUST ISOLATION: Overwrite patientId query param
+    if (userRole === 'PATIENT') {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true }
       });
+      if (!ownPatientRecord) return { total: 0, page: Number(page), pages: 0, data: [] };
+      patientId = ownPatientRecord.patient_id; // Secure reassignment
+    }
 
-    return {
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / limit),
-      data: prescriptions,
-    };
+    const [total, prescriptions] = await PrescriptionRepository.findManyPaginated({
+      tenantId, patientId, doctorId, skip, take,
+    });
+
+    return { total, page: Number(page), pages: Math.ceil(total / take), data: prescriptions };
   }
 }

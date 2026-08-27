@@ -10,7 +10,7 @@ import { formatDate, fullName } from '../../utils/format.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import { useAuthStore } from '../../store/authStore.js';
 import { ROLES } from '../../utils/roles.js';
-import CreatePrescriptionModal from './CreatePrescriptionModal.jsx';
+import PrescriptionDrawer from './PrescriptionDrawer.jsx';
 
 export default function PrescriptionsList() {
   const user = useAuthStore((s) => s.user);
@@ -84,7 +84,11 @@ export default function PrescriptionsList() {
         )}
       </Card>
 
-      <CreatePrescriptionModal open={formOpen} onClose={() => setFormOpen(false)} onSaved={refetch} />
+      <PrescriptionDrawer 
+        open={formOpen} 
+        onClose={() => setFormOpen(false)} 
+        onSaved={refetch} 
+      />
     </div>
   );
 }

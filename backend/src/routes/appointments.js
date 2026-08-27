@@ -18,7 +18,7 @@ router.use(requireTenant);
 // Who: Receptionist, Hospital Admin, Patient (Booking for themselves)
 router.post(
   "/",
-  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "PATIENT"),
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "PATIENT", "DOCTOR"),
   bookAppointmentValidator,
   AppointmentController.book,
 );

@@ -19,13 +19,18 @@ import SetupPassword from "../pages/auth/SetupPassword.jsx";
 import InventoryList from "../pages/inventory/InventoryList.jsx";
 import AdmissionsList from "../pages/admissions/AdmissionsList.jsx";
 import HrmsDashboard from "../pages/hrms/HrmsDashboard.jsx";
-// Modules below have a full API layer (src/api/) but no screen yet —
 import SystemOwnerDashboard from '../pages/plans/SystemOwnerDashboard.jsx';
 import TenantDetails from '../pages/plans/TenantDetails.jsx';
 import InvoicesList from "../pages/invoices/InvoicesList.jsx";
 import PrescriptionsList from "../pages/prescriptions/PrescriptionsList.jsx";
 import PlansDashboard from "../pages/plans/PlansDashboard.jsx";
 import LabOrdersList from "../pages/lab/LabOrdersList.jsx";
+import RadiologyList from "../pages/radiology/RadiologyList.jsx";
+import InsuranceList from "../pages/insurance/InsuranceList.jsx";
+import PurchasesList from "../pages/purchases/PurchasesList.jsx";
+
+
+// Modules below have a full API layer (src/api/) but no screen yet —
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
@@ -33,7 +38,7 @@ const roadmap = [
   // Wards & Beds removed from roadmap and wired below
   // ["prescriptions", "Prescriptions", "Phase 4"],
   // ["lab", "Laboratory", "Phase 4"],
-  ["radiology", "Radiology", "Phase 4"],
+  // ["radiology", "Radiology", "Phase 4"],
   // ["inventory", "Pharmacy Inventory", "Phase 5"],
   ["purchases", "Purchases", "Phase 5"],
   // ["invoices", "Billing", "Phase 3"],
@@ -247,6 +252,33 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "Laboratory" },
+      },
+      {
+        path: "radiology",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.RADIOLOGY_TECHNICIAN, ROLES.RECEPTIONIST]}>
+            <RadiologyList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Radiology" },
+      },
+      {
+        path: "insurance",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.RECEPTIONIST, ROLES.DOCTOR]}>
+            <InsuranceList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Insurance Claims" },
+      },
+      {
+        path: "purchases",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.STORE_MANAGER, ROLES.ACCOUNTANT]}>
+            <PurchasesList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Purchases" },
       },
       ...roadmap.map(([path, title, phase]) => ({
         path,

@@ -15,18 +15,19 @@ export class PurchaseService {
     items,
     ipAddress,
   }) {
-    // Verify Supplier exists in tenant
     const supplier = await db.supplier.findFirst({
-      where: { supplier_id: supplierId, tenant_id: tenantId },
+      where: { supplier_id: supplierId, tenant_id: tenantId, deleted_at: null },
     });
     if (!supplier) {
       throw new AppError("Supplier not found.", HTTP_STATUS.NOT_FOUND);
     }
 
-    // Verify all medicines belong to this tenant
     const medicineIds = items.map((i) => i.medicineId);
+    if (new Set(medicineIds).size !== medicineIds.length) {
+      throw new AppError("A medicine can appear only once in a purchase order.", HTTP_STATUS.BAD_REQUEST);
+    }
     const medicines = await db.medicine.findMany({
-      where: { medicine_id: { in: medicineIds }, tenant_id: tenantId },
+      where: { medicine_id: { in: medicineIds }, tenant_id: tenantId, deleted_at: null },
     });
 
     if (medicines.length !== medicineIds.length) {
@@ -36,10 +37,9 @@ export class PurchaseService {
       );
     }
 
-    // Format unit costs to minor currency integers
     const formattedItems = items.map((item) => ({
       ...item,
-      unitCost: Math.round(Number(item.unitCost) * 100),
+      unitCost: Number(item.unitCost),
     }));
 
     // Create purchase transaction
@@ -76,20 +76,6 @@ export class PurchaseService {
     status,
     ipAddress,
   }) {
-    const validStatuses = [
-      "pending",
-      "ordered",
-      "received",
-      "completed",
-      "cancelled",
-    ];
-    if (!validStatuses.includes(status)) {
-      throw new AppError(
-        "Invalid purchase status workflow.",
-        HTTP_STATUS.BAD_REQUEST,
-      );
-    }
-
     try {
       const updated = await PurchaseRepository.updateStatusTransaction({
         tenantId,
@@ -111,6 +97,12 @@ export class PurchaseService {
     } catch (error) {
       if (error.message === "PURCHASE_NOT_FOUND") {
         throw new AppError("Purchase order not found.", HTTP_STATUS.NOT_FOUND);
+      }
+      if (error.message === "INVALID_PURCHASE_TRANSITION") {
+        throw new AppError("Invalid purchase status transition.", HTTP_STATUS.CONFLICT);
+      }
+      if (error.message === "INSUFFICIENT_STOCK_FOR_PURCHASE_REVERSAL") {
+        throw new AppError("Purchase cannot be cancelled because some received stock has already been consumed.", HTTP_STATUS.CONFLICT);
       }
       throw error;
     }

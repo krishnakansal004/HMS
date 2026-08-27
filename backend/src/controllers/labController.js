@@ -70,6 +70,8 @@ export class LabController {
     try {
       const result = await LabService.getOrders({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query,
       });
 

@@ -47,6 +47,8 @@ export class AdmissionController {
     try {
       const result = await AdmissionService.getAdmissions({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });

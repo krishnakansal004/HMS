@@ -50,6 +50,8 @@ export class InvoiceController {
     try {
       const result = await InvoiceService.getInvoices({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query,
       });
 

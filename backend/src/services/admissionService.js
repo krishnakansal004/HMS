@@ -118,24 +118,25 @@ export class AdmissionService {
     }
   }
 
-  static async getAdmissions({ tenantId, query }) {
-    const { status, page = 1, limit = 50 } = query;
+  static async getAdmissions({ tenantId, userId, userRole, query }) {
+    let { patientId, status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const [total, admissions] =
-      await AdmissionRepository.findAdmissionsPaginated({
-        tenantId,
-        status,
-        skip,
-        take,
+    // ZERO-TRUST ISOLATION
+    if (userRole === 'PATIENT') {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true }
       });
+      if (!ownPatientRecord) return { total: 0, page: Number(page), pages: 0, data: [] };
+      patientId = ownPatientRecord.patient_id; 
+    }
 
-    return {
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / limit),
-      data: admissions,
-    };
+    const [total, admissions] = await AdmissionRepository.findAdmissionsPaginated({
+      tenantId, patientId, status, skip, take,
+    });
+
+    return { total, page: Number(page), pages: Math.ceil(total / limit), data: admissions };
   }
 }

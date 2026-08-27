@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal.jsx';
-import { Select } from '../../components/ui/Input.jsx';
+import { Select, Input } from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { labApi } from '../../api/lab.js';
 import { patientsApi } from '../../api/patients.js';
@@ -8,13 +8,18 @@ import { doctorsApi } from '../../api/doctors.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import { fullName, formatPaise } from '../../utils/format.js';
 import { Spinner } from '../../components/ui/Table.jsx';
+import { useAuthStore } from '../../store/authStore.js';
+import { ROLES } from '../../utils/roles.js';
 
 export default function CreateLabOrderModal({ open, onClose, onSaved }) {
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === ROLES.DOCTOR;
+
   const [form, setForm] = useState({ patientId: '', testId: '', doctorProfileId: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loadingDeps, setLoadingDeps] = useState(false);
-
+  
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [catalog, setCatalog] = useState([]);
@@ -22,23 +27,37 @@ export default function CreateLabOrderModal({ open, onClose, onSaved }) {
   useEffect(() => {
     if (open) {
       setLoadingDeps(true);
-      Promise.all([
-        patientsApi.list({ limit: 100 }),
-        doctorsApi.list(),
-        labApi.getCatalog()
-      ])
-      .then(([patientsRes, doctorsRes, catalogRes]) => {
+      
+      const fetches = [patientsApi.list({ limit: 100 }), labApi.getCatalog()];
+      
+      // SAFELY FETCH DOCTORS BASED ON RBAC
+      if (isDoctor) {
+        fetches.push(doctorsApi.getById(user.id));
+      } else {
+        fetches.push(doctorsApi.list());
+      }
+
+      Promise.all(fetches)
+      .then(([patientsRes, catalogRes, doctorsRes]) => {
         setPatients(patientsRes.data || []);
-        setDoctors(Array.isArray(doctorsRes) ? doctorsRes : (doctorsRes.data || []));
         setCatalog(catalogRes.data || []);
+
+        if (isDoctor) {
+          const profileId = doctorsRes.data?.doctor_profile?.doctor_profile_id;
+          if (profileId) {
+            setForm(f => ({ ...f, doctorProfileId: profileId }));
+          }
+        } else {
+          setDoctors(Array.isArray(doctorsRes) ? doctorsRes : (doctorsRes.data || []));
+        }
       })
-      .catch(() => toast.error('Failed to load clinical dependencies'))
+      .catch((err) => toast.error('Failed to load clinical dependencies: ' + err.message))
       .finally(() => setLoadingDeps(false));
     } else {
       setForm({ patientId: '', testId: '', doctorProfileId: '' });
       setErrors({});
     }
-  }, [open]);
+  }, [open, isDoctor, user]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -48,11 +67,9 @@ export default function CreateLabOrderModal({ open, onClose, onSaved }) {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-
     try {
       const payload = { ...form };
       if (!payload.doctorProfileId) delete payload.doctorProfileId;
-
       await labApi.createOrder(payload);
       toast.success('Lab test ordered successfully!');
       onSaved();
@@ -92,7 +109,7 @@ export default function CreateLabOrderModal({ open, onClose, onSaved }) {
               <option key={p.patient_id} value={p.patient_id}>{fullName(p)}</option>
             ))}
           </Select>
-
+          
           <Select label="Lab Test" required value={form.testId} onChange={update('testId')} error={errors.testId}>
             <option value="">Select a test from the catalog...</option>
             {catalog.map(t => (
@@ -102,14 +119,18 @@ export default function CreateLabOrderModal({ open, onClose, onSaved }) {
             ))}
           </Select>
 
-          <Select label="Referring Doctor (Optional)" value={form.doctorProfileId} onChange={update('doctorProfileId')} error={errors.doctorProfileId}>
-            <option value="">None / External</option>
-            {doctors.map((doc) => {
-              const profileId = doc.doctor_profile?.doctor_profile_id;
-              if (!profileId) return null;
-              return <option key={profileId} value={profileId}>Dr. {doc.name}</option>;
-            })}
-          </Select>
+          {isDoctor ? (
+             <Input label="Referring Doctor" disabled value={`Dr. ${user.name}`} />
+          ) : (
+            <Select label="Referring Doctor (Optional)" value={form.doctorProfileId} onChange={update('doctorProfileId')} error={errors.doctorProfileId}>
+              <option value="">None / External</option>
+              {doctors.map((doc) => {
+                const profileId = doc.doctor_profile?.doctor_profile_id;
+                if (!profileId) return null;
+                return <option key={profileId} value={profileId}>Dr. {doc.name}</option>;
+              })}
+            </Select>
+          )}
 
           {catalog.length === 0 && (
             <p className="text-xs text-[var(--color-danger)] font-medium mt-1">

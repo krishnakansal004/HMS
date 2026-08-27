@@ -61,6 +61,8 @@ export class PrescriptionController {
     try {
       const result = await PrescriptionService.listPrescriptions({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query,
       });
 

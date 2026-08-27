@@ -76,6 +76,7 @@ export class AdmissionRepository {
 
   static async findAdmissionsPaginated({ tenantId, status, skip, take }) {
     const where = { tenant_id: tenantId };
+    if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 
     // Converted to callback transaction

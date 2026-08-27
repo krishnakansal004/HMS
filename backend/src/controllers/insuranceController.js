@@ -25,6 +25,8 @@ export class InsuranceController {
     try {
       const companies = await InsuranceService.listCompanies({
         tenantId: req.currentTenantId,
+        userId: req.userId, 
+        userRole: req.userRole
       });
 
       res.status(HTTP_STATUS.OK).json({

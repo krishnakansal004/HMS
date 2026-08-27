@@ -2,7 +2,7 @@ import { InvoiceRepository } from "../repositories/invoiceRepository.js";
 import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
-
+import {db} from "../config/db.js"
 export class InvoiceService {
   static async generateInvoice({
     tenantId,
@@ -144,24 +144,27 @@ export class InvoiceService {
     }
   }
 
-  static async getInvoices({ tenantId, query }) {
-    const { patientId, status, page = 1, limit = 50 } = query;
+  static async getInvoices({ tenantId, userId, userRole, query }) {
+    let { patientId, status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
+    // PATIENT ISOLATION ENFORCEMENT
+    if (userRole === 'PATIENT') {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true }
+      });
+      if (!ownPatientRecord) {
+        return { total: 0, page: Number(page), pages: 0, data: [] };
+      }
+      patientId = ownPatientRecord.patient_id;
+    }
+
     const { total, invoices } = await InvoiceRepository.findManyPaginated({
-      tenantId,
-      patientId,
-      status,
-      skip,
-      take,
+      tenantId, patientId, status, skip, take,
     });
 
-    return {
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / take),
-      data: invoices,
-    };
+    return { total, page: Number(page), pages: Math.ceil(total / take), data: invoices };
   }
 }

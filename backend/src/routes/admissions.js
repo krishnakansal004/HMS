@@ -16,7 +16,7 @@ router.use(requireTenant);
 // GET /api/admissions
 router.get(
   "/",
-  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "NURSE", "RECEPTIONIST"),
+  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "NURSE", "RECEPTIONIST","PATIENT"),
   listAdmissionsValidator,
   AdmissionController.list,
 );

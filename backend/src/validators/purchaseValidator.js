@@ -22,7 +22,7 @@ export const createPurchaseValidator = [
   body('items').isArray({ min: 1 }).withMessage('At least one purchase item is required'),
   body('items.*.medicineId').isUUID().withMessage('Valid Medicine ID is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be an integer >= 1'),
-  body('items.*.unitCost').isFloat({ min: 0 }).withMessage('Unit cost must be a positive number'),
+  body('items.*.unitCost').isInt({ min: 0, max: 99999999 }).withMessage('Unit cost must be a non-negative minor-currency integer within the current ledger limit'),
   
   handleValidationErrors
 ];

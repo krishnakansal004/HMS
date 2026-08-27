@@ -42,6 +42,7 @@ router.get(
     "CASHIER",
     "RECEPTIONIST",
     "DOCTOR",
+    "PATIENT"
   ),
   listInvoicesValidator,
   InvoiceController.list,

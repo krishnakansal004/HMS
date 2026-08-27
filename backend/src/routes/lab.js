@@ -45,7 +45,7 @@ router.patch(
 // Who: Doctors, Lab Techs, Admins, Patients (Patient access filtering can be layered if needed)
 router.get(
   "/orders",
-  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "LAB_TECHNICIAN", "RECEPTIONIST"),
+  requireRoles("HOSPITAL_ADMIN", "DOCTOR", "LAB_TECHNICIAN", "RECEPTIONIST", "PATIENT"),
   listLabOrdersValidator,
   LabController.list,
 );

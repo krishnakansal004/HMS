@@ -18,7 +18,7 @@ export const createExpenseValidator = [
   body('category').trim().notEmpty().withMessage('Category is required').isIn([
     'SALARY', 'MAINTENANCE', 'UTILITIES', 'EQUIPMENT', 'MEDICINE_PURCHASE', 'MARKETING', 'RENT', 'MISCELLANEOUS'
   ]).withMessage('Invalid expense category'),
-  body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than zero'),
+  body('amount').isInt({ min: 1, max: 99999999 }).withMessage('Amount must be a positive minor-currency integer within the current ledger limit'),
   body('expenseDate').optional().isISO8601().toDate().withMessage('Valid expense date required (YYYY-MM-DD)'),
   handleValidationErrors
 ];

@@ -128,24 +128,25 @@ export class RadiologyService {
     return updatedOrder;
   }
 
-  static async getOrders({ tenantId, query }) {
-    const { patientId, status, page = 1, limit = 50 } = query;
+  static async getOrders({ tenantId, userId, userRole, query }) {
+    let { patientId, status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
+    // ZERO-TRUST ISOLATION
+    if (userRole === 'PATIENT') {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true }
+      });
+      if (!ownPatientRecord) return { total: 0, page: Number(page), pages: 0, data: [] };
+      patientId = ownPatientRecord.patient_id; // Secure reassignment
+    }
+
     const [total, orders] = await RadiologyRepository.findOrdersPaginated({
-      tenantId,
-      patientId,
-      status,
-      skip,
-      take,
+      tenantId, patientId, status, skip, take,
     });
 
-    return {
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / limit),
-      data: orders,
-    };
+    return { total, page: Number(page), pages: Math.ceil(total / limit), data: orders };
   }
 }

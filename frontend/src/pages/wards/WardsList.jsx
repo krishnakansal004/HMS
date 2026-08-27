@@ -7,12 +7,24 @@ import Button from '../../components/ui/Button.jsx';
 import { Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
 import { toast } from '../../components/ui/Toast.jsx';
 
+// Role-Based Access Control
+import { useAuthStore } from '../../store/authStore.js';
+import { ROLES } from '../../utils/roles.js';
+
 // Modals
 import WardForm from './WardForm.jsx';
 import AddBedModal from './AddBedModal.jsx';
 import AssignBedModal from './AssignBedModal.jsx';
 
 export default function WardsList() {
+  const user = useAuthStore((s) => s.user);
+  
+  // Backend RBAC matching: Only Admins/Directors can create Wards and Beds
+  const canManageInfrastructure = user?.role === ROLES.HOSPITAL_ADMIN || user?.role === ROLES.DIRECTOR;
+  
+  // Backend RBAC matching: Doctors cannot manually assign/release beds
+  const canManageBeds = [ROLES.HOSPITAL_ADMIN, ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.DIRECTOR].includes(user?.role);
+
   const [wardFormOpen, setWardFormOpen] = useState(false);
   const [addBedWard, setAddBedWard] = useState(null);
   const [assignBed, setAssignBed] = useState(null);
@@ -38,7 +50,11 @@ export default function WardsList() {
           <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Wards & Beds</h2>
           <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage inpatient facility capacity</p>
         </div>
-        <Button icon={Plus} onClick={() => setWardFormOpen(true)}>Add Ward</Button>
+        
+        {/* FIX 4: Add Ward button only visible to authorized roles */}
+        {canManageInfrastructure && (
+          <Button icon={Plus} onClick={() => setWardFormOpen(true)}>Add Ward</Button>
+        )}
       </div>
 
       {loading ? (
@@ -50,15 +66,14 @@ export default function WardsList() {
           <EmptyState
             icon={BedDouble}
             title="No Wards Configured"
-            description="Create your first ward to start managing inpatient beds."
-            action={<Button size="sm" icon={Plus} onClick={() => setWardFormOpen(true)}>Add Ward</Button>}
+            description={canManageInfrastructure ? "Create your first ward to start managing inpatient beds." : "No wards have been configured by the hospital administration yet."}
+            action={canManageInfrastructure && <Button size="sm" icon={Plus} onClick={() => setWardFormOpen(true)}>Add Ward</Button>}
           />
         </Card>
       ) : (
         <div className="flex flex-col gap-6">
           {wards.map(ward => {
             const isFull = ward.bed?.length >= ward.capacity;
-
             return (
               <Card key={ward.ward_id} className="overflow-hidden">
                 <div className="bg-[var(--color-paper)] border-b border-[var(--color-border)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -71,15 +86,19 @@ export default function WardsList() {
                       Floor: {ward.floor || 'N/A'} • Capacity: <span className="font-mono-data font-semibold">{ward.bed?.length || 0}/{ward.capacity}</span> Beds
                     </p>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
-                    icon={Plus} 
-                    onClick={() => setAddBedWard(ward)}
-                    disabled={isFull}
-                  >
-                    {isFull ? 'Ward Full' : 'Add Bed'}
-                  </Button>
+                  
+                  {/* FIX 4: Add Bed button only visible to authorized roles */}
+                  {canManageInfrastructure && (
+                    <Button 
+                      size="sm" 
+                      variant="secondary" 
+                      icon={Plus} 
+                      onClick={() => setAddBedWard(ward)} 
+                      disabled={isFull}
+                    >
+                      {isFull ? 'Ward Full' : 'Add Bed'}
+                    </Button>
+                  )}
                 </div>
 
                 <div className="p-5">
@@ -101,29 +120,36 @@ export default function WardsList() {
                             <span className="font-mono-data font-semibold text-sm text-[var(--color-ink)]">{bed.bed_number}</span>
                           </div>
                           
-                          <div className="w-full">
-                            {bed.is_occupied ? (
-                              <Button 
-                                size="sm" 
-                                variant="danger" 
-                                icon={UserMinus} 
-                                className="w-full text-[11px] h-7 px-0" 
-                                onClick={() => handleReleaseBed(bed.bed_id, bed.bed_number)}
-                              >
-                                Release
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                variant="secondary" 
-                                icon={UserCheck} 
-                                className="w-full text-[11px] h-7 px-0 !text-[var(--color-success)] !border-[var(--color-success)] hover:!bg-[var(--color-success)] hover:!text-white" 
-                                onClick={() => setAssignBed(bed)}
-                              >
-                                Assign
-                              </Button>
-                            )}
-                          </div>
+                          {/* Assign / Release functionality locked to authorized roles */}
+                          {canManageBeds ? (
+                            <div className="w-full">
+                              {bed.is_occupied ? (
+                                <Button 
+                                  size="sm" 
+                                  variant="danger" 
+                                  icon={UserMinus} 
+                                  className="w-full text-[11px] h-7 px-0" 
+                                  onClick={() => handleReleaseBed(bed.bed_id, bed.bed_number)}
+                                >
+                                  Release
+                                </Button>
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary" 
+                                  icon={UserCheck} 
+                                  className="w-full text-[11px] h-7 px-0 !text-[var(--color-success)] !border-[var(--color-success)] hover:!bg-[var(--color-success)] hover:!text-white" 
+                                  onClick={() => setAssignBed(bed)}
+                                >
+                                  Assign
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] uppercase font-semibold text-[var(--color-ink-faint)] tracking-wider">
+                              {bed.is_occupied ? 'Occupied' : 'Available'}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
