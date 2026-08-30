@@ -1,6 +1,6 @@
 import express from "express";
 import { PaymentController } from "../controllers/paymentController.js";
-import { webhookValidator } from "../validators/paymentValidator.js";
+import { initiatePaymentValidator, webhookValidator } from "../validators/paymentValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
 
@@ -16,19 +16,19 @@ router.post(
   protect,
   requireTenant,
   requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "CASHIER", "PATIENT"),
-  // TODO: Add initiatePaymentValidator here (requires: invoiceId, amount)
-  PaymentController.initiatePayment,
+  initiatePaymentValidator,
+  PaymentController.initiatePayment
 );
 
 // ------------------------------------------------------------------
 // POST /api/payments/webhook/verify
-// Purpose: Gateway callback confirming the transaction is settled.
-// Who: Public (Razorpay Servers). Authenticated via HMAC signature.
+// Purpose: Frontend callback confirming the transaction is settled.
+// Who: Public callback endpoint. Authenticated via HMAC signature.
 // ------------------------------------------------------------------
 router.post(
   "/webhook/verify",
   webhookValidator,
-  PaymentController.handleWebhook,
+  PaymentController.handleWebhook
 );
 
 export default router;

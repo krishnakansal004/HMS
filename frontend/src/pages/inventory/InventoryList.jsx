@@ -7,18 +7,18 @@ import Button from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { Table, Thead, Th, Tr, Td, Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
 import DispenseModal from './DispenseModal.jsx';
-import MedicineForm from './MedicineForm.jsx';
+import MedicineDrawer from './MedicineDrawer.jsx';
+
 export default function InventoryList() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [dispensingMed, setDispensingMed] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
-  
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const { data, loading, error, refetch } = useAsync(
     () => inventoryApi.list({ search: search || undefined, limit: 50 }),
     [search]
   );
-
   const medicines = data?.data || [];
 
   function handleSearchSubmit(e) {
@@ -33,13 +33,7 @@ export default function InventoryList() {
           <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Pharmacy Inventory</h2>
           <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage stock, dispensations, and low-stock alerts</p>
         </div>
-        {/* Medicine Modal */}
-      <MedicineForm 
-        open={formOpen} 
-        onClose={() => setFormOpen(false)} 
-        onSaved={refetch} 
-      />
-        <Button icon={Plus} onClick={() => setFormOpen(true)}>Add Medicine</Button>
+        <Button icon={Plus} onClick={() => setDrawerOpen(true)}>Add Medicine</Button>
       </div>
 
       <Card>
@@ -60,7 +54,12 @@ export default function InventoryList() {
         ) : error ? (
           <ErrorState message={error} onRetry={refetch} />
         ) : medicines.length === 0 ? (
-          <EmptyState icon={Pill} title="No medicines found in inventory" />
+          <EmptyState 
+            icon={Pill} 
+            title="No medicines found in inventory" 
+            description={search ? "Try clearing your search." : "Add your first medicine to establish the catalog."}
+            action={!search && <Button size="sm" icon={Plus} onClick={() => setDrawerOpen(true)}>Add Medicine</Button>}
+          />
         ) : (
           <Table>
             <Thead>
@@ -105,7 +104,11 @@ export default function InventoryList() {
         )}
       </Card>
 
-      {/* Dispense Modal */}
+      <MedicineDrawer 
+        open={drawerOpen} 
+        onClose={() => setDrawerOpen(false)} 
+        onSaved={refetch} 
+      />
       {dispensingMed && (
         <DispenseModal 
           medicine={dispensingMed} 

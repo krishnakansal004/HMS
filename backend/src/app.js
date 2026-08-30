@@ -34,6 +34,7 @@ import paymentRoutes from './routes/payments.js';
 import analyticsRoutes from './routes/analytics.js';
 import staffRoutes from './routes/staff.js';
 import hrmsRoutes from './routes/hrms.js';
+
 const app = express();
 
 // Security & Utility Middlewares
@@ -87,5 +88,5 @@ app.use((req, res, next) => {
 
 // Global Error Handler
 app.use(errorHandler);
-
+import './jobs/worker.js';
 export default app;

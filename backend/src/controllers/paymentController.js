@@ -2,15 +2,13 @@ import { PaymentService } from "../services/paymentService.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class PaymentController {
-  // Secure payment initiation
   static async initiatePayment(req, res, next) {
     try {
-      const { invoiceId, amount } = req.body;
+      const { invoiceId } = req.body;
 
       const order = await PaymentService.createPaymentOrder({
-        tenantId: req.currentTenantId, // Extracted securely from the tenant middleware
+        tenantId: req.currentTenantId, 
         invoiceId,
-        amount,
       });
 
       res.status(HTTP_STATUS.CREATED).json({ success: true, data: order });
@@ -19,8 +17,7 @@ export class PaymentController {
     }
   }
 
-  // Public webhook handling
-  // No `protect` or `requireTenant` -- gateways cannot authenticate as users.
+  // Processes the success callback from the frontend Razorpay checkout
   static async handleWebhook(req, res, next) {
     try {
       const {

@@ -30,22 +30,19 @@ export default function PrescriptionDrawer({ open, onClose, onSaved, prefilledPa
       
       if (prefilledPatient) {
         setForm(f => ({ ...f, patientId: prefilledPatient.patient_id }));
-        setPatients([prefilledPatient]); // Seed dropdown with this single patient
+        setPatients([prefilledPatient]); 
       }
-
-      doctorsApi.getById(user.id).then(async (docRes) => {
+      Promise.all([
+        doctorsApi.getById(user.id),
+        !prefilledPatient ? patientsApi.list({ limit: 100 }) : Promise.resolve({ data: [] })
+      ])
+      .then(([docRes, patientsRes]) => {
         const profileId = docRes.data?.doctor_profile?.doctor_profile_id;
         if (!profileId) throw new Error('Clinical profile missing');
         setForm(f => ({ ...f, doctorProfileId: profileId }));
 
-        // Only fetch "My Patients" if we didn't open this from a specific Patient's Chart
         if (!prefilledPatient) {
-          const appts = await appointmentsApi.list({ doctorId: profileId, limit: 100 });
-          const uniquePatients = new Map();
-          (appts.data || []).forEach(a => {
-            if (a.patient) uniquePatients.set(a.patient_id, a.patient);
-          });
-          setPatients(Array.from(uniquePatients.values()));
+          setPatients(patientsRes.data || []); // Load all patients
         }
       })
       .catch(err => toast.error('Failed to load clinical context: ' + err.message))

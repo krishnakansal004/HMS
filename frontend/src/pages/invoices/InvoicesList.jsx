@@ -1,28 +1,69 @@
 import { useState } from 'react';
 import { Plus, Receipt, CreditCard } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
-import { invoicesApi, INVOICE_STATUSES } from '../../api/invoices.js';
+import { invoicesApi, INVOICE_STATUSES, paymentsApi } from '../../api/invoices.js';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { Select } from '../../components/ui/Input.jsx';
 import StatusPill from '../../components/ui/StatusPill.jsx';
 import { Table, Thead, Th, Tr, Td, Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
 import { formatPaise, formatDate, fullName } from '../../utils/format.js';
+import { useAuthStore } from '../../store/authStore.js';
+import { ROLES } from '../../utils/roles.js';
+import { loadRazorpay } from '../../utils/loadRazorpay.js';
+import { toast } from '../../components/ui/Toast.jsx';
 
 import GenerateInvoiceForm from './GenerateInvoiceForm.jsx';
 import RecordPaymentModal from './RecordPaymentModal.jsx';
 
 export default function InvoicesList() {
+  const user = useAuthStore(s => s.user);
+  const isPatient = user?.role === ROLES.PATIENT;
+  const canGenerate = ['HOSPITAL_ADMIN', 'RECEPTIONIST', 'ACCOUNTANT', 'DOCTOR'].includes(user?.role);
+
   const [statusFilter, setStatusFilter] = useState('');
   const [generateOpen, setGenerateOpen] = useState(false);
   const [payingInvoice, setPayingInvoice] = useState(null);
+  const [onlinePayingId, setOnlinePayingId] = useState(null);
 
   const { data, loading, error, refetch } = useAsync(
     () => invoicesApi.list({ status: statusFilter || undefined, limit: 50 }),
     [statusFilter]
   );
 
-  const invoices = data?.data || data?.invoices || []; // Handle tuple or generic array wrapping
+  const invoices = data?.data || data?.invoices || [];
+
+  async function handleOnlinePayment(invoiceId) {
+    setOnlinePayingId(invoiceId);
+    try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) throw new Error('Failed to load payment gateway. Check your connection.');
+
+      const { data } = await paymentsApi.initiate(invoiceId);
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: user.tenantName || 'Hospital Billing',
+        description: 'Online Medical Bill Payment',
+        order_id: data.orderId,
+        prefill: { name: data.patient.name, email: data.patient.email, contact: data.patient.contact },
+        theme: { color: '#0ea5e9' },
+        handler: function () {
+          toast.success('Payment successful! Processing receipt...');
+          refetch();
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (res) => toast.error(`Payment Failed: ${res.error.description}`));
+      rzp.open();
+    } catch (err) {
+      toast.error(err.message || 'Unable to initiate payment.');
+    } finally {
+      setOnlinePayingId(null);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -31,7 +72,7 @@ export default function InvoicesList() {
           <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Billing & Invoices</h2>
           <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage patient billing and payment collection</p>
         </div>
-        <Button icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>
+        {canGenerate && <Button icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>}
       </div>
 
       <Card>
@@ -53,13 +94,13 @@ export default function InvoicesList() {
             icon={Receipt}
             title="No invoices found"
             description={statusFilter ? 'Try clearing your status filter.' : 'Generate your first bill to start collecting revenue.'}
-            action={!statusFilter && <Button size="sm" icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>}
+            action={!statusFilter && canGenerate && <Button size="sm" icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>}
           />
         ) : (
           <Table>
             <Thead>
               <Th>Invoice #</Th>
-              <Th>Patient</Th>
+              {!isPatient && <Th>Patient</Th>}
               <Th>Created On</Th>
               <Th>Amount</Th>
               <Th>Status</Th>
@@ -69,7 +110,7 @@ export default function InvoicesList() {
               {invoices.map((inv) => (
                 <Tr key={inv.invoice_id}>
                   <Td className="font-mono-data font-medium">#{inv.invoice_number}</Td>
-                  <Td>{fullName(inv.patient) || 'Unknown'}</Td>
+                  {!isPatient && <Td>{fullName(inv.patient) || 'Unknown'}</Td>}
                   <Td>{formatDate(inv.created_at)}</Td>
                   <Td>
                     <div className="flex flex-col">
@@ -82,9 +123,22 @@ export default function InvoicesList() {
                   <Td><StatusPill status={inv.status} /></Td>
                   <Td className="text-right">
                     {(inv.status === 'PENDING' || inv.status === 'PARTIAL' || inv.status === 'DRAFT') && (
-                      <Button size="sm" variant="primary" icon={CreditCard} onClick={() => setPayingInvoice(inv)}>
-                        Pay
-                      </Button>
+                      isPatient ? (
+                        <Button 
+                          size="sm" 
+                          variant="primary" 
+                          icon={CreditCard} 
+                          onClick={() => handleOnlinePayment(inv.invoice_id)}
+                          loading={onlinePayingId === inv.invoice_id}
+                          disabled={onlinePayingId !== null && onlinePayingId !== inv.invoice_id}
+                        >
+                          Pay Online
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="primary" icon={CreditCard} onClick={() => setPayingInvoice(inv)}>
+                          Record Payment
+                        </Button>
+                      )
                     )}
                   </Td>
                 </Tr>
@@ -94,9 +148,10 @@ export default function InvoicesList() {
         )}
       </Card>
 
-      {/* Mounted Modals */}
       <GenerateInvoiceForm open={generateOpen} onClose={() => setGenerateOpen(false)} onSaved={refetch} />
-      <RecordPaymentModal open={!!payingInvoice} onClose={() => setPayingInvoice(null)} invoice={payingInvoice} onSaved={refetch} />
+      {payingInvoice && (
+        <RecordPaymentModal open={!!payingInvoice} onClose={() => setPayingInvoice(null)} invoice={payingInvoice} onSaved={refetch} />
+      )}
     </div>
   );
 }

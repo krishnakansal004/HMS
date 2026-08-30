@@ -74,7 +74,7 @@ export class AdmissionRepository {
     });
   }
 
-  static async findAdmissionsPaginated({ tenantId, status, skip, take }) {
+  static async findAdmissionsPaginated({ tenantId, status, skip, take, patientId }) {
     const where = { tenant_id: tenantId };
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;

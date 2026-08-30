@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Users, CalendarClock, ClipboardList, BedDouble, ArrowRight, ArrowUpRight,
   FlaskConical, Receipt, PackageX, UserCheck, Construction, History, CreditCard, 
-  Video, CheckCircle2, FileStack, Scan, Clock,Mic
+  Video, CheckCircle2, FileStack, Scan, Clock, Mic
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -13,7 +13,7 @@ import { admissionsApi } from '../api/admissions.js';
 import { wardsApi } from '../api/wards.js';
 import { inventoryApi } from '../api/inventory.js';
 import { labApi } from '../api/lab.js';
-import { invoicesApi } from '../api/invoices.js';
+import { invoicesApi, paymentsApi } from '../api/invoices.js';
 import { attendanceApi } from '../api/attendance.js';
 import { prescriptionsApi } from '../api/prescriptions.js';
 import { radiologyApi } from '../api/radiology.js';
@@ -24,6 +24,8 @@ import { Table, Thead, Th, Td, Tr, Spinner, ErrorState, EmptyState } from '../co
 import { navForRole } from '../utils/navConfig.js';
 import { ROLE_LABELS, ROLES } from '../utils/roles.js';
 import { fullName, formatPaise, formatDateTime, formatDate } from '../utils/format.js';
+import { loadRazorpay } from '../utils/loadRazorpay.js';
+import { toast } from '../components/ui/Toast.jsx';
 
 function formatTime(value) {
   if (!value) return '';
@@ -36,11 +38,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
-  
-  if (user?.role === ROLES.PATIENT) {
-    return <PatientDashboard user={user} />;
-  }
-  
+  if (user?.role === ROLES.PATIENT) return <PatientDashboard user={user} />;
   return <StaffDashboard user={user} />;
 }
 
@@ -48,11 +46,9 @@ export default function Dashboard() {
 function PatientDashboard({ user }) {
   const navigate = useNavigate();
 
-  // Patients securely fetch their own data (Backend forces patientId = self)
   const { data: apptsData, loading: apptsLoading, error: apptsError } = useAsync(() => appointmentsApi.list({ limit: 10 }), [], 'pat_appts');
-  const { data: invoicesData, loading: invLoading, error: invError } = useAsync(() => invoicesApi.list({ status: 'PENDING', limit: 10 }), [], 'pat_invs');
+  const { data: invoicesData, loading: invLoading, error: invError, refetch: refetchInvs } = useAsync(() => invoicesApi.list({ status: 'PENDING', limit: 10 }), [], 'pat_invs');
   
-  // Timeline Compilation
   const { data: timelineData, loading: timelineLoading, error: timelineError } = useAsync(async () => {
     const results = await Promise.allSettled([
       prescriptionsApi.list({ limit: 10 }),
@@ -65,8 +61,42 @@ function PatientDashboard({ user }) {
 
   const appts = apptsData?.data || [];
   const pendingInvoices = invoicesData?.data || invoicesData?.invoices || [];
-  
   const upcomingAppt = appts.find(a => ['scheduled', 'confirmed'].includes(a.status) && new Date(a.slot_start) >= new Date());
+  
+  const [payingId, setPayingId] = useState(null);
+
+  async function handleOnlinePayment(invoiceId) {
+    setPayingId(invoiceId);
+    try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) throw new Error('Failed to load payment gateway. Check your connection.');
+
+      const { data } = await paymentsApi.initiate(invoiceId);
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: user.tenantName || 'Hospital Billing',
+        description: 'Online Medical Bill Payment',
+        order_id: data.orderId,
+        prefill: { name: data.patient.name, email: data.patient.email, contact: data.patient.contact },
+        theme: { color: '#0ea5e9' },
+        handler: function () {
+          toast.success('Payment successful! Processing receipt...');
+          refetchInvs();
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (res) => toast.error(`Payment Failed: ${res.error.description}`));
+      rzp.open();
+    } catch (err) {
+      toast.error(err.message || 'Unable to initiate payment.');
+    } finally {
+      setPayingId(null);
+    }
+  }
 
   const timeline = useMemo(() => {
     if (!timelineData) return [];
@@ -85,7 +115,6 @@ function PatientDashboard({ user }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-       {/* Next Appointment Card */}
         <Card className="border-l-4 border-l-[var(--color-primary)]">
           <CardBody>
             <h3 className="text-xs font-bold text-[var(--color-ink-soft)] uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -108,8 +137,6 @@ function PatientDashboard({ user }) {
             ) : (
               <EmptyState title="No upcoming appointments" description="Need to see a doctor? Book a visit." action={<Button size="sm" onClick={() => navigate('/appointments')}>Book Appointment</Button>} />
             )}
-
-            {/* TODO: patient can be able to use voice methods to upload his/her recording stating his problem */}
             <div className="mt-5 p-4 border border-dashed border-[var(--color-border-strong)] rounded-[var(--radius-md)] bg-[var(--color-paper)]">
                <div className="flex items-start gap-3">
                  <div className="h-8 w-8 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
@@ -122,11 +149,9 @@ function PatientDashboard({ user }) {
                  </div>
                </div>
             </div>
-
           </CardBody>
         </Card>
 
-        {/* Pending Bills Card */}
         <Card className={pendingInvoices.length > 0 ? "border-l-4 border-l-[var(--color-danger)]" : ""}>
           <CardBody>
             <div className="flex items-center justify-between mb-4">
@@ -144,7 +169,9 @@ function PatientDashboard({ user }) {
                         <p className="font-mono-data font-bold text-[var(--color-ink)]">{formatPaise(remaining)}</p>
                         <p className="text-xs text-[var(--color-ink-soft)]">Invoice #{inv.invoice_number}</p>
                       </div>
-                      <Button size="sm" variant="danger" icon={CreditCard} onClick={() => navigate('/invoices')}>Pay Now</Button>
+                      <Button size="sm" variant="danger" icon={CreditCard} onClick={() => handleOnlinePayment(inv.invoice_id)} loading={payingId === inv.invoice_id} disabled={payingId !== null && payingId !== inv.invoice_id}>
+                        Pay Now
+                      </Button>
                     </div>
                   );
                 })}
@@ -164,7 +191,6 @@ function PatientDashboard({ user }) {
         </Card>
       </div>
 
-      {/* EHR Read-Only Timeline */}
       <Card className="flex-1 min-h-[400px]">
         <CardHeader title="My Medical Records" subtitle="Lab results, prescriptions, and radiology" action={<History size={18} className="text-[var(--color-primary)]" />} />
         <CardBody>
@@ -196,6 +222,7 @@ function PatientDashboard({ user }) {
     </div>
   );
 }
+// ... (KEEP StaffDashboard, TimelineIcon, StatCard, AttentionRow, RoadmapNote EXACTLY AS THEY WERE) ...
 
 // STAFF DASHBOARD
 function StaffDashboard({ user }) {
