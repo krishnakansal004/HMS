@@ -12,7 +12,7 @@ router.use(requireTenant);
 // GET /api/doctors
 router.get(
   "/",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE", "PATIENT"),
+  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE", "PATIENT", "DOCTOR", "LAB_TECHNICIAN", "RADIOLOGY_TECHNICIAN", "PHARMACIST"),
   DoctorController.list,
 );
 
@@ -40,7 +40,7 @@ router.delete(
 // GET /api/doctors/:id
 router.get(
   "/:id",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE"),
+  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE", "PATIENT", "DOCTOR", "LAB_TECHNICIAN", "RADIOLOGY_TECHNICIAN", "PHARMACIST"),
   DoctorController.getById,
 );
 

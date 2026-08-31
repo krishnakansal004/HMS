@@ -17,22 +17,22 @@ export class PaymentService {
     if (invoice.status === "paid") throw new AppError("Invoice is already paid.", HTTP_STATUS.BAD_REQUEST);
 
     // SECURITY FIX: Backend calculates exact pending amount, never trust the frontend
-    const pendingAmountRupees = Number(invoice.total) - Number(invoice.amount_paid);
-    if (pendingAmountRupees <= 0) throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
+    // SECURITY FIX: Backend calculates exact pending amount in minor currency (Paise)
+    const pendingAmountPaise = Number(invoice.total) - Number(invoice.amount_paid);
+    
+    if (pendingAmountPaise <= 0) throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
 
     const rzp = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_SECRET, 
+      key_secret: process.env.RAZORPAY_SECRET,
     });
 
-    const amountInPaise = Math.round(pendingAmountRupees * 100);
-
     const options = {
-      amount: amountInPaise,
+      amount: pendingAmountPaise, // <-- Removed the * 100 logic here
       currency: "INR",
-      receipt: invoiceId.slice(0, 40), // Razorpay has a strict 40-char limit
+      receipt: invoiceId.slice(0, 40), 
     };
-
+    
     const order = await rzp.orders.create(options);
     
     return {
@@ -69,7 +69,7 @@ export class PaymentService {
     if (!invoice) throw new AppError("Invoice not found for webhook.", HTTP_STATUS.NOT_FOUND);
     if (invoice.status === "paid") return { success: true, message: "Already marked as paid" }; // Idempotency check
 
-    return tenantStorage.run({ currentTenantId: invoice.tenant_id }, async () => {
+    return tenantStorage.run({ tenantId: invoice.tenant_id }, async () => {
       return db.$transaction(async (tx) => {
         const payment = await tx.payment.create({
           data: {
@@ -78,7 +78,7 @@ export class PaymentService {
             amount: Number(amountPaid), // Assumes frontend sends this in Rupees
             method: "ONLINE_GATEWAY",
             transaction_id: gatewayPaymentId,
-            status: "SUCCESS",
+            status: "success",
           },
         });
 

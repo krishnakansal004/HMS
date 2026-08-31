@@ -13,7 +13,7 @@ export class CustomizationRequestRepository {
           requester_name: requesterName || null,
           requester_email: requesterEmail || null,
           requester_phone: requesterPhone || null,
-          requester_address: requesterAddxress || null,
+          requester_address: requesterAddress || null,
           company: company || null,
           purpose: purpose || null,
           price_range: priceRange || null,

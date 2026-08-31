@@ -12,17 +12,18 @@ import { useAuthStore } from '../../store/authStore.js';
 import { ROLES } from '../../utils/roles.js';
 import { loadRazorpay } from '../../utils/loadRazorpay.js';
 import { toast } from '../../components/ui/Toast.jsx';
-
+import { useNavigate } from 'react-router-dom';
 import GenerateInvoiceForm from './GenerateInvoiceForm.jsx';
 import RecordPaymentModal from './RecordPaymentModal.jsx';
 
 export default function InvoicesList() {
+  const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const isPatient = user?.role === ROLES.PATIENT;
   const canGenerate = ['HOSPITAL_ADMIN', 'RECEPTIONIST', 'ACCOUNTANT', 'DOCTOR'].includes(user?.role);
 
   const [statusFilter, setStatusFilter] = useState('');
-  const [generateOpen, setGenerateOpen] = useState(false);
+
   const [payingInvoice, setPayingInvoice] = useState(null);
   const [onlinePayingId, setOnlinePayingId] = useState(null);
 
@@ -72,7 +73,7 @@ export default function InvoicesList() {
           <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Billing & Invoices</h2>
           <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage patient billing and payment collection</p>
         </div>
-        {canGenerate && <Button icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>}
+        {canGenerate && <Button icon={Plus} onClick={() => navigate('/invoices/new')}>Generate Invoice</Button>}
       </div>
 
       <Card>
@@ -94,7 +95,7 @@ export default function InvoicesList() {
             icon={Receipt}
             title="No invoices found"
             description={statusFilter ? 'Try clearing your status filter.' : 'Generate your first bill to start collecting revenue.'}
-            action={!statusFilter && canGenerate && <Button size="sm" icon={Plus} onClick={() => setGenerateOpen(true)}>Generate Invoice</Button>}
+            action={!statusFilter && canGenerate && <Button size="sm" icon={Plus} onClick={() => navigate('/invoices/new')}>Generate Invoice</Button>}
           />
         ) : (
           <Table>
@@ -122,7 +123,7 @@ export default function InvoicesList() {
                   </Td>
                   <Td><StatusPill status={inv.status} /></Td>
                   <Td className="text-right">
-                    {(inv.status === 'PENDING' || inv.status === 'PARTIAL' || inv.status === 'DRAFT') && (
+                    {(inv.status === 'pending' || inv.status === 'partial' || inv.status === 'draft') && (
                       isPatient ? (
                         <Button 
                           size="sm" 
@@ -148,7 +149,6 @@ export default function InvoicesList() {
         )}
       </Card>
 
-      <GenerateInvoiceForm open={generateOpen} onClose={() => setGenerateOpen(false)} onSaved={refetch} />
       {payingInvoice && (
         <RecordPaymentModal open={!!payingInvoice} onClose={() => setPayingInvoice(null)} invoice={payingInvoice} onSaved={refetch} />
       )}

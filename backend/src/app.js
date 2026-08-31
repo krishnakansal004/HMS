@@ -88,5 +88,6 @@ app.use((req, res, next) => {
 
 // Global Error Handler
 app.use(errorHandler);
-import './jobs/worker.js';
+import './queues/notificationQueue.js';
+import './queues/pdfQueue.js';
 export default app;

@@ -48,6 +48,7 @@ export class AppointmentController {
           tenantId: req.currentTenantId,
           userId: req.userId,
           appointmentId: req.params.id,
+          userRole: req.userRole,
           ipAddress: req.ip,
           status: req.body.status,
           reason: req.body.reason,

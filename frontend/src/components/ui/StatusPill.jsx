@@ -20,7 +20,7 @@ const STATUS_TONE_MAP = {
   // admissions — lowercase, matching chk_admission_status
   admitted: 'primary', discharged: 'success', transferred: 'accent',
   // invoices
-  DRAFT: 'neutral', PENDING: 'warning', PARTIAL: 'accent', PAID: 'success',
+  draft: 'neutral', pending: 'warning', partial: 'accent', paid: 'success', cancelled: 'danger',
   // lab / radiology
   pending: 'warning', collected: 'accent', processing: 'accent', ordered: 'warning',
   scheduled: 'accent', scanning: 'accent', completed: 'success', cancelled: 'danger',

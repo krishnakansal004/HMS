@@ -39,7 +39,7 @@ export default function CreateClaimModal({ open, onClose, onSaved, companies = [
   useEffect(() => {
     if (form.patientId) {
       setLoadingInvoices(true);
-      invoicesApi.list({ patientId: form.patientId, status: 'PENDING', limit: 20 })
+      invoicesApi.list({ patientId: form.patientId, status: 'pending', limit: 20 })
         .then(res => setInvoices(res.data || res.invoices || []))
         .catch(() => setInvoices([]))
         .finally(() => setLoadingInvoices(false));

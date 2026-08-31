@@ -28,6 +28,8 @@ import LabOrdersList from "../pages/lab/LabOrdersList.jsx";
 import RadiologyList from "../pages/radiology/RadiologyList.jsx";
 import InsuranceList from "../pages/insurance/InsuranceList.jsx";
 import PurchasesList from "../pages/purchases/PurchasesList.jsx";
+import GenerateInvoicePage from "../pages/invoices/GenerateInvoicePage.jsx";
+import CreatePurchasePage from "../pages/purchases/CreatePurchasePage.jsx";
 
 
 // Modules below have a full API layer (src/api/) but no screen yet —
@@ -236,6 +238,15 @@ export const router = createBrowserRouter([
         handle: { title: "Billing" },
       },
       {
+        path: "invoices/new",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.CASHIER, ROLES.RECEPTIONIST, ROLES.DOCTOR]}>
+            <GenerateInvoicePage />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Generate Invoice" },
+      },
+      {
         path: "prescriptions",
         element: (
           <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.PHARMACIST, ROLES.NURSE]}>
@@ -280,6 +291,16 @@ export const router = createBrowserRouter([
         ),
         handle: { title: "Purchases" },
       },
+      {
+        path: "purchases/new",
+        element: (
+          <ProtectedRoute roles={[ROLES.HOSPITAL_ADMIN, ROLES.STORE_MANAGER, ROLES.ACCOUNTANT]}>
+            <CreatePurchasePage />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Create Purchase Order" },
+      },
+      
       ...roadmap.map(([path, title, phase]) => ({
         path,
         element: <ComingSoon moduleName={title} phase={phase} />,

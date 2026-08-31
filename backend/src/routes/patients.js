@@ -36,7 +36,7 @@ router.get(
 // Who: Hospital Admin, Receptionist, Doctor, Nurse
 router.get(
   "/:id",
-  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"),
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE", "PATIENT"),
   getPatientValidator,
   PatientController.getById,
 );

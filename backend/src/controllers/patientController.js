@@ -25,6 +25,8 @@ export class PatientController {
     try {
       const patient = await PatientService.getPatientById({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         patientId: req.params.id,
       });
 

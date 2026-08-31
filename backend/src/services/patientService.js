@@ -50,13 +50,21 @@ export class PatientService {
     return patient;
   }
 
-  static async getPatientById({ tenantId, patientId }) {
+  static async getPatientById({ tenantId, patientId, userId, userRole }) {
     const patient = await PatientRepository.findByIdAndTenant(
       patientId,
       tenantId,
     );
     if (!patient) {
       throw new AppError("Patient record not found.", HTTP_STATUS.NOT_FOUND);
+    }
+    if (userRole === "PATIENT") {
+      const ownRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+      });
+      if (!ownRecord || ownRecord.patient_id !== patientId) {
+        throw new AppError("Patient record not found.", HTTP_STATUS.NOT_FOUND);
+      }
     }
     return patient;
   }

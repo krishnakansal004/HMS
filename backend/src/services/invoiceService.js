@@ -15,29 +15,24 @@ export class InvoiceService {
   }) {
     // items array expects { itemName, medicineId?, quantity, unitPrice, gstRate? }
     let subtotal = 0;
+    let gstTotal = 0;
 
     const processedItems = items.map((item) => {
       if (item.quantity <= 0 || item.unitPrice < 0) {
-        throw new AppError(
-          "Quantity must be > 0 and unit price cannot be negative.",
-          HTTP_STATUS.BAD_REQUEST,
-        );
+        throw new AppError("Quantity must be > 0 and unit price cannot be negative.", HTTP_STATUS.BAD_REQUEST);
       }
-
-      subtotal += item.quantity * item.unitPrice;
+      
+      const lineTotal = item.quantity * item.unitPrice;
+      const lineGst = Math.floor((lineTotal * (item.gstRate || 0)) / 100);
+      
+      subtotal += lineTotal;
+      gstTotal += lineGst;
       return item;
     });
 
-    // Calculate Tax and Total
-    // taxRate is provided as an integer percentage (e.g., 18 for 18%)
-    const gstTotal = Math.floor((subtotal * taxRate) / 100);
     const total = subtotal + gstTotal - discount;
-
     if (total < 0) {
-      throw new AppError(
-        "Discount cannot exceed the total invoice amount.",
-        HTTP_STATUS.BAD_REQUEST,
-      );
+      throw new AppError("Discount cannot exceed the total invoice amount.", HTTP_STATUS.BAD_REQUEST);
     }
 
     // Persist to DB via transaction — the repository generates the per-tenant sequential invoice_number under an advisory lock, in the same transaction as the insert.

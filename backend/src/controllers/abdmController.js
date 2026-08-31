@@ -6,7 +6,7 @@ import {
   updateAbdmConsentStatus,
   syncAbdmHealthRecord,
 } from "../services/abdmService.js";
-import { logActivity } from "../utils/auditHelper.js";
+import { AuditService } from "../services/auditService.js";
 
 function handleError(res, error, defaultMessage) {
   const status = error.status || 500;
@@ -38,7 +38,7 @@ export async function confirmAbhaOtpHandler(req, res) {
 
 export async function getConsents(req, res) {
   try {
-    const consents = await listAbdmConsents(req.db, req.user, req.tenant);
+    const consents = await listAbdmConsents(null, req.user, req.tenant);
     res.json(consents);
   } catch (error) {
     handleError(res, error, "Failed to load consent logs");
@@ -47,16 +47,21 @@ export async function getConsents(req, res) {
 
 export async function createConsent(req, res) {
   try {
-    const tenantId = req.tenant?._id || req.user?.tenantId;
+    const tenantId = req.currentTenantId || req.user?.tenant_id;
     const consent = await createAbdmConsent(
-      req.db,
+      null,
       tenantId,
       req.userId,
       req.body,
     );
-    await logActivity(req, "REQUEST_ABDM_CONSENT", "abdmconsent", consent._id, {
-      patientId: req.body.patientId,
-      consentId: consent.consentId,
+    AuditService.logAction({
+      tenantId,
+      userId: req.userId,
+      action: "REQUEST_ABDM_CONSENT",
+      entityType: "ABDM_CONSENT",
+      entityId: consent.consent_id,
+      newValue: { patientId: req.body.patientId, consentRef: consent.consent_ref },
+      ipAddress: req.ip,
     });
     res.status(201).json(consent);
   } catch (error) {
@@ -68,17 +73,19 @@ export async function updateConsentStatus(req, res) {
   try {
     const { status } = req.body;
     const updated = await updateAbdmConsentStatus(
-      req.db,
+      null,
       req.params.id,
       status,
     );
-    await logActivity(
-      req,
-      "UPDATE_ABDM_CONSENT_STATUS",
-      "abdmconsent",
-      updated._id,
-      { status },
-    );
+    AuditService.logAction({
+      tenantId: req.currentTenantId || req.user?.tenant_id,
+      userId: req.userId,
+      action: "UPDATE_ABDM_CONSENT_STATUS",
+      entityType: "ABDM_CONSENT",
+      entityId: updated.consent_id,
+      newValue: { status },
+      ipAddress: req.ip,
+    });
     res.json(updated);
   } catch (error) {
     handleError(res, error, "Failed to update consent status");
@@ -89,15 +96,19 @@ export async function syncRecords(req, res) {
   try {
     const { patientId, recordType, recordId } = req.body;
     const result = await syncAbdmHealthRecord(
-      req.db,
+      null,
       patientId,
       recordType,
       recordId,
     );
-    await logActivity(req, "SYNC_ABDM_HEALTH_RECORD", "abdmrecord", recordId, {
-      patientId,
-      recordType,
-      bundleId: result.bundleId,
+    AuditService.logAction({
+      tenantId: req.currentTenantId || req.user?.tenant_id,
+      userId: req.userId,
+      action: "SYNC_ABDM_HEALTH_RECORD",
+      entityType: "ABDM_RECORD",
+      entityId: recordId,
+      newValue: { patientId, recordType, bundleId: result.bundleId },
+      ipAddress: req.ip,
     });
     res.json(result);
   } catch (error) {

@@ -7,6 +7,7 @@ export class FaqController {
       const faq = await FaqService.createFaq({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
         ipAddress: req.ip,
       });

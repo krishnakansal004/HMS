@@ -47,7 +47,7 @@ function PatientDashboard({ user }) {
   const navigate = useNavigate();
 
   const { data: apptsData, loading: apptsLoading, error: apptsError } = useAsync(() => appointmentsApi.list({ limit: 10 }), [], 'pat_appts');
-  const { data: invoicesData, loading: invLoading, error: invError, refetch: refetchInvs } = useAsync(() => invoicesApi.list({ status: 'PENDING', limit: 10 }), [], 'pat_invs');
+  const { data: invoicesData, loading: invLoading, error: invError, refetch: refetchInvs } = useAsync(() => invoicesApi.list({ status: 'pending', limit: 10 }), [], 'pat_invs');
   
   const { data: timelineData, loading: timelineLoading, error: timelineError } = useAsync(async () => {
     const results = await Promise.allSettled([
@@ -265,7 +265,7 @@ function StaffDashboard({ user }) {
   );
 
   const pendingInvoices = useAsync(
-    () => (visible.has('invoices') ? invoicesApi.list({ status: 'PENDING', limit: 1 }) : Promise.resolve(null)),
+    () => (visible.has('invoices') ? invoicesApi.list({ status: 'pending', limit: 1 }) : Promise.resolve(null)),
     [visible.has('invoices')],
     'dash_invoices'
   );

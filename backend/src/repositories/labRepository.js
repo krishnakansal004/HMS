@@ -42,20 +42,21 @@ export class LabRepository {
 
   static async updateOrderStatusTransaction({ tenantId, orderId, sampleStatus, technicianNotes, results, shouldBill, invoiceId, billingItem }) {
     return db.$transaction(async (tx) => {
-      // Update the Lab Order status & results
+
       const updatedOrder = await tx.lab_order.update({
         where: { lab_order_id: orderId },
         data: {
           sample_status: sampleStatus,
-          technician_notes: technicianNotes,
-          results: results ? JSON.parse(JSON.stringify(results)) : undefined,
+          technician_notes: technicianNotes !== undefined ? technicianNotes : null,
+          results: results ? JSON.parse(JSON.stringify(results)) : null,
           updated_at: new Date()
         },
         include: { lab_test: true, patient: true }
       });
 
-      // If the test is completed and requires billing, append to an existing invoice or create an invoice item
-      if (shouldBill && invoiceId) {
+      const actuallyBill = shouldBill && !!invoiceId;
+
+      if (actuallyBill) {
         await tx.invoice_item.create({
           data: {
             tenant_id: tenantId,
@@ -67,21 +68,31 @@ export class LabRepository {
           }
         });
 
-        // Recalculate invoice totals inside the transaction
-        const items = await tx.invoice_item.findMany({ where: { invoice_id: invoiceId } });
+       // Recalculate invoice totals atomically
+        const items = await tx.invoice_item.findMany({
+          where: { invoice_id: invoiceId },
+        });
+        
         let subtotal = 0;
-        items.forEach(i => {
-          subtotal += Number(i.unit_price_snapshot) * i.quantity;
+        let gstTotal = 0;
+        
+        items.forEach((i) => {
+          const lineTotal = Number(i.unit_price_snapshot) * i.quantity;
+          const lineGst = Math.floor((lineTotal * Number(i.gst_rate_snapshot)) / 100);
+          subtotal += lineTotal;
+          gstTotal += lineGst;
         });
 
-        const invoice = await tx.invoice.findUnique({ where: { invoice_id: invoiceId } });
-        const gstTotal = invoice ? Number(invoice.gst_total) : 0;
+        const invoice = await tx.invoice.findUnique({
+          where: { invoice_id: invoiceId },
+        });
+        
         const discount = invoice ? Number(invoice.discount) : 0;
         const netTotal = subtotal + gstTotal - discount;
 
         await tx.invoice.update({
           where: { invoice_id: invoiceId },
-          data: { subtotal, total: netTotal }
+          data: { subtotal, gst_total: gstTotal, total: netTotal },
         });
       }
 

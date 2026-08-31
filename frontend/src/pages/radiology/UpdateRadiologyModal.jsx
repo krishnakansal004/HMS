@@ -25,7 +25,7 @@ export default function UpdateRadiologyModal({ open, onClose, onSaved, order }) 
       // If marking as completed, we can post a charge. Fetch patient's open invoices.
       if (order.status !== 'completed' && order.billing_status !== 'billed') {
         setLoadingInvoices(true);
-        invoicesApi.list({ patientId: order.patient_id, status: 'PENDING' })
+        invoicesApi.list({ patientId: order.patient_id, status: 'pending' })
           .then(res => setInvoices(res.data || res.invoices || []))
           .catch(() => setInvoices([]))
           .finally(() => setLoadingInvoices(false));

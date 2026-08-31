@@ -15,11 +15,17 @@ export function getPublicFrontendBaseUrl() {
     if (urlCandidate && typeof urlCandidate === 'string') {
       const splitCandidates = urlCandidate.split(',').map(s => s.trim()).filter(Boolean);
       for (const c of splitCandidates) {
+        if (c === '*' || c === 'http://*' || c === 'https://*') continue;
+
         const withProtocol = /^https?:\/\//i.test(c) ? c : `https://${c}`;
         try {
           const url = new URL(withProtocol);
-          // Prioritize non-localhost URLs for public links
           const h = url.hostname.toLowerCase();
+          
+          // Double-check to catch encoded wildcards
+          if (h.includes('*') || h.includes('%2a')) continue;
+
+          // Prioritize non-localhost URLs for public links
           if (h !== 'localhost' && h !== '127.0.0.1' && h !== '0.0.0.0') {
             return url.origin.replace(/\/$/, '');
           }

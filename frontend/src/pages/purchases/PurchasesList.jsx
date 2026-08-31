@@ -12,15 +12,15 @@ import { useAuthStore } from '../../store/authStore.js';
 import PurchaseDrawer from './PurchaseDrawer.jsx';
 import SupplierModal from './AddSupplierModal.jsx';
 import { toast } from '../../components/ui/Toast.jsx';
-
+import { useNavigate } from 'react-router-dom';
 const nextStatus = { pending: 'ordered', ordered: 'received', received: 'completed', completed: 'cancelled' };
 
 export default function PurchasesList() {
   const user = useAuthStore((state) => state.user);
   const canManage = ['HOSPITAL_ADMIN', 'STORE_MANAGER'].includes(user?.role);
   const [status, setStatus] = useState('');
-  
-  const [createOpen, setCreateOpen] = useState(false);
+  const navigate = useNavigate();
+
   const [supplierOpen, setSupplierOpen] = useState(false);
   
   // PRODUCTION FIX: Prevent double-click 409 transition errors
@@ -57,7 +57,7 @@ export default function PurchasesList() {
         {canManage && (
           <div className="flex gap-2">
             <Button variant="secondary" icon={Users} onClick={() => setSupplierOpen(true)}>Suppliers</Button>
-            <Button icon={Plus} onClick={() => setCreateOpen(true)}>New Purchase</Button>
+            <Button icon={Plus} onClick={() => navigate('/purchases/new')}>New Purchase</Button>
           </div>
         )}
       </div>
@@ -81,7 +81,7 @@ export default function PurchasesList() {
             icon={ClipboardPlus} 
             title="No purchase orders" 
             description={status ? 'Clear the status filter to view other orders.' : 'Create a purchase order after registering an active supplier and medicine.'} 
-            action={canManage && !status && <Button onClick={() => setCreateOpen(true)}>New Purchase</Button>} 
+            action={canManage && !status && <Button onClick={() => navigate('/purchases/new')}>New Purchase</Button>}
           />
         ) : (
           <Table>
@@ -121,12 +121,6 @@ export default function PurchasesList() {
         )}
       </Card>
 
-      <PurchaseDrawer 
-        open={createOpen} 
-        onClose={() => setCreateOpen(false)} 
-        onSaved={refetch} 
-        onRegisterSupplier={() => { setCreateOpen(false); setSupplierOpen(true); }} 
-      />
       <SupplierModal 
         open={supplierOpen} 
         onClose={() => setSupplierOpen(false)} 

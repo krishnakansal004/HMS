@@ -42,6 +42,6 @@ export const paymentsApi = {
   verifyWebhook: (data) => api.post('/payments/webhook/verify', data),
 };
 
-export const INVOICE_STATUSES = ['DRAFT', 'PENDING', 'PARTIAL', 'PAID', 'CANCELLED'];
+export const INVOICE_STATUSES = ['draft', 'pending', 'partial', 'paid', 'cancelled'];
 export const INVOICE_ITEM_TYPES = ['CONSULTATION', 'MEDICINE', 'LAB', 'RADIOLOGY', 'ROOM', 'OTHER'];
 export const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'INSURANCE', 'CHEQUE'];

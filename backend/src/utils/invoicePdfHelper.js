@@ -1,83 +1,73 @@
-import PDFDocument from 'pdfkit'
-import Invoice from '../models/Invoice.js'
-import { uploadToCloudinary } from '../config/cloudinary.js'
+import PDFDocument from 'pdfkit';
+import { uploadToCloudinary } from '../config/cloudinary.js';
+import { db, tenantStorage } from '../config/db.js';
 
 export async function generateAndUploadInvoicePdf(invoiceId, tenantId) {
   try {
-    const InvoiceModel = tenantId ? Invoice.forHospital(tenantId) : Invoice;
-    const invoice = await InvoiceModel.findById(invoiceId).populate('items.medicine');
+    const run = (fn) => tenantId ? tenantStorage.run({ tenantId }, fn) : fn();
+    
+    const invoice = await run(() => db.invoice.findUnique({
+      where: { invoice_id: invoiceId },
+      include: {
+        patient: true,
+        invoice_item: { include: { medicine: true } }
+      }
+    }));
+
     if (!invoice) {
-      console.warn(`[invoicePdfHelper] Invoice ${invoiceId} not found in tenant ${tenantId}`);
+      console.warn(`[invoicePdfHelper] Invoice ${invoiceId} not found`);
       return;
     }
 
     const doc = new PDFDocument({ margin: 50 });
     const chunks = [];
     doc.on('data', (d) => chunks.push(d));
-    
+
     const pdfBufferPromise = new Promise((resolve, reject) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', (err) => reject(err));
+      doc.on('error', reject);
     });
 
-    doc.fontSize(18).text('Invoice', { align: 'center' })
-    doc.moveDown(0.5)
-    doc.fontSize(12).text(`Invoice Number: ${invoice.invoiceNumber || invoice._id}`)
-    doc.text(`Date: ${new Date(invoice.createdAt).toLocaleString()}`)
-    doc.text(`Patient: ${invoice.patientName}`)
-    if (invoice.doctorName) doc.text(`Doctor: ${invoice.doctorName}`)
-    if (invoice.paid) {
-      doc.fontSize(12).fillColor('green').text('Status: PAID')
-    } else {
-      doc.fontSize(12).fillColor('red').text('Status: UNPAID')
-    }
-    doc.fillColor('black') // reset color
-    doc.moveDown()
-    doc.fontSize(13).text('Items:')
-    doc.moveDown(0.25)
-    invoice.items.forEach(it => {
-      const num = (v) => {
-        const n = Number(v)
-        return Number.isFinite(n) ? n : 0
-      }
-      const unitPrice = num(it.unitPrice ?? it.medicine?.sellingPrice)
-      const quantity = num(it.quantity)
-      const gstRate = num(it.gstRate ?? it.medicine?.gstRate)
-      const line = unitPrice * quantity
-      const gst = line * (gstRate / 100)
-      const isConsult = (!it.medicine && /consult/i.test((it.description || '') + ''))
-      if (isConsult) {
-        doc.fontSize(11).text(`Consultation fees :-------  x${quantity} @ ${unitPrice.toFixed(2)}  GST ${gstRate}%  Line ${(line + gst).toFixed(2)}`)
-      } else {
-        const name = it.medicine?.name || it.description || 'Item'
-        doc.fontSize(11).text(`${name}  x${quantity} @ ${unitPrice.toFixed(2)}  GST ${gstRate}%  Line ${(line + gst).toFixed(2)}`)
-      }
-    })
-    doc.moveDown()
-    const safeSubtotal = Number.isFinite(invoice.subtotal) ? invoice.subtotal : invoice.items.reduce((acc, it) => {
-      const unitPrice = Number(it.unitPrice) || Number(it.medicine?.sellingPrice) || 0
-      const quantity = Number(it.quantity) || 0
-      return acc + (unitPrice * quantity)
-    }, 0)
-    const safeGstTotal = Number.isFinite(invoice.gstTotal) ? invoice.gstTotal : invoice.items.reduce((acc, it) => {
-      const unitPrice = Number(it.unitPrice) || Number(it.medicine?.sellingPrice) || 0
-      const quantity = Number(it.quantity) || 0
-      const gstRate = Number(it.gstRate) || Number(it.medicine?.gstRate) || 0
-      const line = unitPrice * quantity
-      return acc + (line * (gstRate / 100))
-    }, 0)
-    const safeTotal = Number.isFinite(invoice.total) ? invoice.total : (safeSubtotal + safeGstTotal)
-    doc.fontSize(12).text(`Subtotal: ${safeSubtotal.toFixed(2)}`)
-    doc.text(`GST: ${safeGstTotal.toFixed(2)}`)
-    doc.text(`Total: ${safeTotal.toFixed(2)}`)
+    doc.fontSize(18).text('Invoice', { align: 'center' }).moveDown(0.5);
+    doc.fontSize(12).text(`Invoice Number: ${invoice.invoice_number}`);
+    doc.text(`Date: ${new Date(invoice.created_at).toLocaleString()}`);
+    doc.text(`Patient: ${invoice.patient?.first_name} ${invoice.patient?.last_name || ''}`);
+    
+    doc.fillColor(invoice.paid ? 'green' : 'red').text(`Status: ${invoice.paid ? 'PAID' : 'UNPAID'}`);
+    doc.fillColor('black').moveDown().fontSize(13).text('Items:').moveDown(0.25);
+
+    invoice.invoice_item.forEach(it => {
+      const unitPrice = Number(it.unit_price_snapshot) / 100;
+      const quantity = Number(it.quantity);
+      const gstRate = Number(it.gst_rate_snapshot);
+      const line = unitPrice * quantity;
+      const gst = line * (gstRate / 100);
+      const name = it.item_name_snapshot;
+      doc.fontSize(11).text(`${name}  x${quantity} @ ${unitPrice.toFixed(2)}  GST ${gstRate}%  Line ${(line + gst).toFixed(2)}`);
+    });
+
+    doc.moveDown();
+    doc.fontSize(12).text(`Subtotal: ${(Number(invoice.subtotal) / 100).toFixed(2)}`);
+    doc.text(`GST: ${(Number(invoice.gst_total) / 100).toFixed(2)}`);
+    doc.text(`Total: ${(Number(invoice.total) / 100).toFixed(2)}`);
     doc.end();
 
     const pdfBuffer = await pdfBufferPromise;
     const cldObj = await uploadToCloudinary(pdfBuffer, 'invoices', 'raw');
-    invoice.pdfUrl = cldObj.secure_url;
-    await invoice.save();
-    console.log(`[invoicePdfHelper] Uploaded invoice PDF to Firebase Storage and saved URL: ${invoice.pdfUrl}`);
+    
+    // Attach URL back to document metadata table
+    await run(() => db.document.create({
+      data: {
+        tenant_id: invoice.tenant_id,
+        entity_type: 'INVOICE',
+        entity_id: invoice.invoice_id,
+        url: cldObj.secure_url,
+        mime_type: 'application/pdf'
+      }
+    }));
+    
+    console.log(`[invoicePdfHelper] Uploaded invoice PDF to Cloudinary: ${cldObj.secure_url}`);
   } catch (err) {
-    console.error(`[invoicePdfHelper] Failed to generate/upload invoice PDF for ID ${invoiceId}:`, err);
+    console.error(`[invoicePdfHelper] Failed to generate/upload invoice PDF:`, err);
   }
 }
