@@ -1,4 +1,4 @@
-import { db } from '../config/db.js';
+import { db } from "../config/db.js";
 
 export class AdmissionRepository {
   /**
@@ -15,12 +15,12 @@ export class AdmissionRepository {
     return client.admission.create({
       data: {
         tenant_id: tenantId,
-        ...data
+        ...data,
       },
       include: {
         patient: { select: { first_name: true, last_name: true } },
-        bed: { select: { bed_number: true, ward_id: true } }
-      }
+        bed: { select: { bed_number: true, ward_id: true } },
+      },
     });
   }
 
@@ -29,34 +29,44 @@ export class AdmissionRepository {
       where: { admission_id: admissionId, tenant_id: tenantId },
       include: {
         patient: true,
-        bed: true
-      }
+        bed: true,
+      },
     });
   }
 
-  static async updateAdmissionTransaction({ tenantId, admissionId, status, dischargeDate, dischargeNotes }) {
+  static async updateAdmissionTransaction({
+    tenantId,
+    admissionId,
+    status,
+    dischargeDate,
+    dischargeNotes,
+  }) {
     return db.$transaction(async (tx) => {
       const admission = await tx.admission.findFirst({
-        where: { admission_id: admissionId, tenant_id: tenantId }
+        where: { admission_id: admissionId, tenant_id: tenantId },
       });
 
-      if (!admission) throw new Error('ADMISSION_NOT_FOUND');
+      if (!admission) throw new Error("ADMISSION_NOT_FOUND");
 
       const updated = await tx.admission.update({
         where: { admission_id: admissionId },
         data: {
           status,
-          discharge_date: dischargeDate ? new Date(dischargeDate) : (status === 'discharged' ? new Date() : undefined),
+          discharge_date: dischargeDate
+            ? new Date(dischargeDate)
+            : status === "discharged"
+              ? new Date()
+              : undefined,
           discharge_notes: dischargeNotes || undefined,
-          updated_at: new Date()
-        }
+          updated_at: new Date(),
+        },
       });
 
       // If discharged, free up the bed automatically
-      if (status === 'discharged' && admission.bed_id) {
+      if (status === "discharged" && admission.bed_id) {
         await tx.bed.update({
           where: { bed_id: admission.bed_id },
-          data: { is_occupied: false, patient_id: null }
+          data: { is_occupied: false, patient_id: null },
         });
       }
 
@@ -64,12 +74,12 @@ export class AdmissionRepository {
     });
   }
 
- static async findAdmissionsPaginated({ tenantId, status, admittingDoctorId, skip, take }) {
+  static async findAdmissionsPaginated({ tenantId, status, skip, take, patientId }) {
     const where = { tenant_id: tenantId };
+    if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
-    if (admittingDoctorId) where.admitting_doctor_id = admittingDoctorId;
 
-    // FIX: Converted to callback transaction
+    // Converted to callback transaction
     return db.$transaction(async (tx) => {
       const [total, admissions] = await Promise.all([
         tx.admission.count({ where }),
@@ -77,12 +87,12 @@ export class AdmissionRepository {
           where,
           skip,
           take,
-          orderBy: { admission_date: 'desc' },
+          orderBy: { admission_date: "desc" },
           include: {
             patient: { select: { first_name: true, last_name: true } },
-            bed: { select: { bed_number: true } }
-          }
-        })
+            bed: { select: { bed_number: true } },
+          },
+        }),
       ]);
       return [total, admissions];
     });

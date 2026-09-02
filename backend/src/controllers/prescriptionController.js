@@ -1,22 +1,20 @@
-import { PrescriptionService } from '../services/prescriptionService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { PrescriptionService } from "../services/prescriptionService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class PrescriptionController {
-  
   static async create(req, res, next) {
     try {
-      const { doctorProfileId, ...rest } = req.body;
       const prescription = await PrescriptionService.createPrescription({
         tenantId: req.currentTenantId,
         userId: req.userId,
-        ...rest,
-        ipAddress: req.ip
+        ...req.body,
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Prescription created successfully',
-        data: prescription
+        message: "Prescription created successfully",
+        data: prescription,
       });
     } catch (error) {
       next(error);
@@ -27,14 +25,12 @@ export class PrescriptionController {
     try {
       const prescription = await PrescriptionService.getPrescriptionById({
         tenantId: req.currentTenantId,
-        userId: req.userId,
-        userRole: req.userRole,
-        prescriptionId: req.params.id
+        prescriptionId: req.params.id,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: prescription
+        data: prescription,
       });
     } catch (error) {
       next(error);
@@ -48,13 +44,13 @@ export class PrescriptionController {
         userId: req.userId,
         prescriptionId: req.params.id,
         status: req.body.status,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: `Prescription ${result.approval_status} successfully`,
-        data: result
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -67,12 +63,12 @@ export class PrescriptionController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         userRole: req.userRole,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);
