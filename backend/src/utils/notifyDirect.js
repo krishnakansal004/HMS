@@ -90,15 +90,15 @@ function isSMTPConfigured() {
 }
 
 export async function sendEmail(to, subject, html, extra = {}) {
-  if (!to) return { ok: false, provider: 'none', error: 'no-recipient', errorCode: 'NO_RECIPIENT', retryable: false }
+  if (!to) return { ok: false, provider: 'none', error: 'no-recipient', errorCode: 'NO_RECIPIENT', retryable: false };
 
-  // ─── PRIMARY: Send via SMTP (Nodemailer) ───────────────────────────
-  if (process.env.NODE_ENV !== 'production' && isSMTPConfigured()) {
+  // PRIMARY: Send via SMTP (Nodemailer) - Enabled in all environments if configured
+  if (isSMTPConfigured()) {
     try {
-      const transporter = createTransporter()
+      const transporter = createTransporter();
       if (transporter) {
-        const fromName = process.env.COMPANY_NAME || 'HMS'
-        const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER
+        const fromName = process.env.COMPANY_NAME || 'HMS';
+        const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER;
         const mailOptions = {
           from: `"${fromName}" <${fromEmail}>`,
           to: Array.isArray(to) ? to.join(',') : to,
@@ -107,38 +107,27 @@ export async function sendEmail(to, subject, html, extra = {}) {
           cc: extra.cc,
           bcc: extra.bcc,
           replyTo: extra.replyTo || process.env.REPLY_TO || fromEmail,
-        }
-
+        };
         if (extra.attachments && Array.isArray(extra.attachments)) {
           mailOptions.attachments = extra.attachments.map(att => {
-            const out = { filename: att.filename || att.name || 'attachment' }
-            if (att.path) out.path = att.path
-            else if (att.content) out.content = att.content
-            if (att.cid) out.cid = att.cid
-            if (att.contentType) out.contentType = att.contentType
-            return out
-          })
+            const out = { filename: att.filename || att.name || 'attachment' };
+            if (att.path) out.path = att.path;
+            else if (att.content) out.content = att.content;
+            if (att.cid) out.cid = att.cid;
+            if (att.contentType) out.contentType = att.contentType;
+            return out;
+          });
         }
-
-        const info = await transporter.sendMail(mailOptions)
-        console.log('[notifyDirect] SMTP email sent:', info.messageId)
-        return { ok: true, provider: 'smtp', info }
+        const info = await transporter.sendMail(mailOptions);
+        console.log('[notifyDirect] SMTP email sent:', info.messageId);
+        return { ok: true, provider: 'smtp', info };
       }
     } catch (err) {
-      console.error('[notifyDirect] SMTP send failed, trying SendGrid fallback:', err?.message || err)
+      console.error('[notifyDirect] SMTP send failed, trying SendGrid fallback:', err?.message || err);
     }
   } else {
-    console.warn('[notifyDirect] SMTP not configured. Falling back to SendGrid.')
+    console.warn('[notifyDirect] SMTP not configured. Falling back to SendGrid.');
   }
-
-  // ─── FALLBACK: Send via SendGrid ──────────────────────────────────────────
-  if (SENDGRID_API_KEY && SENDGRID_API_KEY !== 'SG.dummy') {
-    return await sendViaSendGrid(to, subject, html, extra)
-  }
-
-  console.error('[notifyDirect] No email transport configured or all failed.')
-  const savedTo = await saveFailedEmailToOutbox({ to, subject, html, extra, error: 'no-transport-available', provider: 'none', statusCode: 'NO_TRANSPORT' })
-  return { ok: false, provider: 'none', error: 'No transport available', errorCode: 'NO_TRANSPORT', retryable: false, savedTo }
 }
 
 // ─── SendGrid sender ────────────────────────────────────────────────

@@ -33,3 +33,12 @@ export const loginValidator = [
   body('hospitalSlug').optional().trim().escape(),
   handleValidationErrors
 ];
+
+export const setupPasswordValidator = [
+  body('token').trim().notEmpty().withMessage('Setup token is required'),
+  body('hospitalSlug').trim().notEmpty().withMessage('Hospital identifier is required').escape(),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and a number'),
+  handleValidationErrors
+];

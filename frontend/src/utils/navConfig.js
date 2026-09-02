@@ -15,7 +15,8 @@ import {
   FileStack,
   Settings as SettingsIcon,
   Building2,
-  Stethoscope
+  Stethoscope,
+  UserPlus
 } from 'lucide-react';
 import { ROLES } from './roles.js';
 
@@ -138,12 +139,26 @@ export const NAV_ITEMS = [
     roles: [ROLES.SYSTEM_OWNER, ROLES.DIRECTOR],
   },
   {
+    key: 'doctor-applications',
+    label: 'Review Applicant',
+    to: '/doctor-applications',
+    icon: UserPlus,
+    roles: [ROLES.HOSPITAL_ADMIN, ROLES.DIRECTOR],
+  },
+  {
   key: 'doctors',
   label: 'Doctors & Staff',
   to: '/doctors',
   icon: Stethoscope,
   roles: [ROLES.HOSPITAL_ADMIN, ROLES.DIRECTOR],
 },
+{
+  key: 'hrms',
+  label: 'HRMS & Staff',
+  to: '/hrms',
+  icon: Users, 
+  roles: [ROLES.HOSPITAL_ADMIN, ROLES.HR, ROLES.DIRECTOR],
+}
 ];
 
 export function navForRole(role) {

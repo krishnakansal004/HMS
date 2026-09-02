@@ -8,41 +8,55 @@ import { doctorsApi } from '../../api/doctors.js';
 import { wardsApi } from '../../api/wards.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import { fullName } from '../../utils/format.js';
+import { Spinner } from '../../components/ui/Table.jsx';
 import { useAuthStore } from '../../store/authStore.js';
 import { ROLES } from '../../utils/roles.js';
 
-const empty = { patientId: '', bedId: '', admittingDoctorId: '', diagnosis: '' };
-
 export default function AdmissionForm({ open, onClose, onSaved }) {
-  const role = useAuthStore((s) => s.user?.role);
-  const isDoctor = role === ROLES.DOCTOR;
-  const [form, setForm] = useState(empty);
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === ROLES.DOCTOR;
+
+  const [form, setForm] = useState({ patientId: '', bedId: '', admittingDoctorId: '', diagnosis: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [loadingDeps, setLoadingDeps] = useState(false);
+
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [wards, setWards] = useState([]);
 
   useEffect(() => {
     if (open) {
-      patientsApi.list({ limit: 100 })
-        .then((res) => setPatients(res.data || []))
-        .catch(() => setPatients([]));
-
-      if (!isDoctor) {
-        doctorsApi.list()
-          .then((res) => setDoctors(Array.isArray(res) ? res : res.data || []))
-          .catch(() => setDoctors([]));
+      setLoadingDeps(true);
+      
+      const fetches = [patientsApi.list({ limit: 100 }), wardsApi.list()];
+      if (isDoctor) {
+        fetches.push(doctorsApi.getById(user.id));
+      } else {
+        fetches.push(doctorsApi.list());
       }
 
-      wardsApi.list()
-        .then((res) => setWards(res.data || []))
-        .catch(() => setWards([]));
+      Promise.all(fetches)
+      .then(([patientsRes, wardsRes, doctorsRes]) => {
+        setPatients(patientsRes.data || []);
+        setWards(wardsRes.data || []);
+
+        if (isDoctor) {
+          const profileId = doctorsRes.data?.doctor_profile?.doctor_profile_id;
+          if (profileId) {
+            setForm(f => ({ ...f, admittingDoctorId: profileId }));
+          }
+        } else {
+          setDoctors(Array.isArray(doctorsRes) ? doctorsRes : (doctorsRes.data || []));
+        }
+      })
+      .catch((err) => toast.error('Failed to load admission dependencies: ' + err.message))
+      .finally(() => setLoadingDeps(false));
     } else {
-      setForm(empty);
+      setForm({ patientId: '', bedId: '', admittingDoctorId: '', diagnosis: '' });
       setErrors({});
     }
-  }, [open, isDoctor]);
+  }, [open, isDoctor, user]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -52,16 +66,13 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-
     try {
-      await admissionsApi.create({
-        patientId: form.patientId,
-        bedId: form.bedId || undefined,
-        admittingDoctorId: form.admittingDoctorId || undefined,
-        diagnosis: form.diagnosis || undefined,
-      });
-
-      toast.success('Patient admitted successfully');
+      const payload = { ...form };
+      if (!payload.bedId) delete payload.bedId;
+      if (!payload.admittingDoctorId) delete payload.admittingDoctorId;
+      
+      await admissionsApi.create(payload);
+      toast.success('Patient admitted successfully!');
       onSaved();
       onClose();
     } catch (err) {
@@ -82,63 +93,72 @@ export default function AdmissionForm({ open, onClose, onSaved }) {
       open={open}
       onClose={onClose}
       title="Admit Patient"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} loading={saving}>Admit Patient</Button>
+          <Button onClick={handleSubmit} loading={saving} disabled={loadingDeps}>Confirm Admission</Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Select label="Patient" required value={form.patientId} onChange={update('patientId')} error={errors.patientId}>
-          <option value="">Select patient...</option>
-          {patients.map((p) => (
-            <option key={p.patient_id} value={p.patient_id}>
-              {fullName(p)} {p.phone ? `(${p.phone})` : ''}
-            </option>
-          ))}
-        </Select>
+      {loadingDeps ? (
+        <Spinner label="Loading clinical data..." />
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <Select label="Select Patient" required value={form.patientId} onChange={update('patientId')} error={errors.patientId}>
+            <option value="">Choose a patient...</option>
+            {patients.map((p) => (
+              <option key={p.patient_id} value={p.patient_id}>
+                {fullName(p)} {p.phone ? `(${p.phone})` : ''}
+              </option>
+            ))}
+          </Select>
 
-        <Select label="Bed (optional)" value={form.bedId} onChange={update('bedId')} error={errors.bedId} hint="Leave unassigned to admit without a bed">
-          <option value="">No bed assigned</option>
-          {wards.map((ward) => (
-            <optgroup key={ward.ward_id} label={ward.name}>
-              {(ward.bed || [])
-                .filter((b) => !b.is_occupied)
-                .map((b) => (
-                  <option key={b.bed_id} value={b.bed_id}>
-                    Bed {b.bed_number}
+          {/* Doctor vs Admin UI handling */}
+          {isDoctor ? (
+             <Input label="Admitting Doctor" disabled value={`Dr. ${user.name}`} />
+          ) : (
+            <Select label="Admitting Doctor" required value={form.admittingDoctorId} onChange={update('admittingDoctorId')} error={errors.admittingDoctorId}>
+              <option value="">Select doctor...</option>
+              {doctors.map((doc) => {
+                const profileId = doc.doctor_profile?.doctor_profile_id;
+                if (!profileId) return null;
+                return (
+                  <option key={profileId} value={profileId}>
+                    {doc.doctor_profile?.designation || 'Dr.'} {doc.name}
                   </option>
-                ))}
-            </optgroup>
-          ))}
-        </Select>
+                );
+              })}
+            </Select>
+          )}
 
-        {!isDoctor && (
-          <Select label="Admitting Doctor (optional)" value={form.admittingDoctorId} onChange={update('admittingDoctorId')} error={errors.admittingDoctorId}>
-            <option value="">Select doctor...</option>
-            {doctors.map((doc) => {
-              const profile = doc.doctor_profile || {};
-              const profileId = profile.doctor_profile_id;
-              if (!profileId) return null;
-              const dept = profile.department_label || doc.department || '';
+          <Select label="Assign Bed (Optional - Ops Team can assign later)" value={form.bedId} onChange={update('bedId')} error={errors.bedId}>
+            <option value="">No bed assigned yet</option>
+            {wards.map((w) => {
+              const availableBeds = (w.bed || []).filter(b => !b.is_occupied);
+              if (availableBeds.length === 0) return null;
               return (
-                <option key={profileId} value={profileId}>
-                  {profile.designation || 'Dr.'} {doc.name} {dept ? `- ${dept}` : ''}
-                </option>
+                <optgroup key={w.ward_id} label={`${w.name} (${w.type})`}>
+                  {availableBeds.map(b => (
+                    <option key={b.bed_id} value={b.bed_id}>
+                      Bed {b.bed_number} - ₹{(b.price_per_day / 100).toFixed(2)}/day
+                    </option>
+                  ))}
+                </optgroup>
               );
             })}
           </Select>
-        )}
 
-        <Textarea
-          label="Diagnosis / Reason for admission"
-          value={form.diagnosis}
-          onChange={update('diagnosis')}
-          error={errors.diagnosis}
-          placeholder="e.g. Acute appendicitis, scheduled for surgery"
-        />
-      </form>
+          <Textarea 
+            label="Initial Diagnosis / Reason for Admission" 
+            required
+            value={form.diagnosis} 
+            onChange={update('diagnosis')} 
+            error={errors.diagnosis} 
+            placeholder="Describe the clinical reason for this inpatient admission..." 
+          />
+        </form>
+      )}
     </Modal>
   );
 }

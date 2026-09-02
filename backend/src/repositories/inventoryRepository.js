@@ -45,7 +45,7 @@ export class InventoryRepository {
           skip,
           take,
           orderBy: { name: 'asc' },
-          include: { supplier: { select: { name: true, phone: true } } }
+          include: { supplier: { select: { name: true, contact_phone: true } } }
         })
       ]);
       return { total, medicines };

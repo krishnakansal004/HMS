@@ -16,6 +16,8 @@ export const tenantsApi = {
    * Provisions a new hospital tenant + its first HOSPITAL_ADMIN user.
    */
   provision: (data) => api.post('/tenants/provision', data),
+  list: (query) => api.get('/tenants', query),
+  getById: (id) => api.get(`/tenants/${id}`),
 };
 
 export const planRequestsApi = {

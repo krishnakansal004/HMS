@@ -1,13 +1,13 @@
-import express from 'express';
-import { PatientController } from '../controllers/patientController.js';
-import { 
-  registerPatientValidator, 
-  updatePatientValidator, 
-  getPatientValidator, 
-  listPatientsValidator 
-} from '../validators/patientValidator.js';
-import { protect, requireRoles } from '../middlewares/authMiddleware.js';
-import { requireTenant } from '../middlewares/tenantMiddleware.js';
+import express from "express";
+import { PatientController } from "../controllers/patientController.js";
+import {
+  registerPatientValidator,
+  updatePatientValidator,
+  getPatientValidator,
+  listPatientsValidator,
+} from "../validators/patientValidator.js";
+import { protect, requireRoles } from "../middlewares/authMiddleware.js";
+import { requireTenant } from "../middlewares/tenantMiddleware.js";
 
 const router = express.Router();
 
@@ -17,37 +17,37 @@ router.use(requireTenant);
 // POST /api/patients
 // Who: Hospital Admin, Receptionist, Doctor, Nurse
 router.post(
-  '/',
-  requireRoles('HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'),
+  "/",
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"),
   registerPatientValidator,
-  PatientController.register
+  PatientController.register,
 );
 
 // GET /api/patients
 // Who: Hospital Admin, Receptionist, Doctor, Nurse
 router.get(
-  '/',
-  requireRoles('HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'),
+  "/",
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"),
   listPatientsValidator,
-  PatientController.list
+  PatientController.list,
 );
 
 // GET /api/patients/:id
 // Who: Hospital Admin, Receptionist, Doctor, Nurse
 router.get(
-  '/:id',
-  requireRoles('HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'),
+  "/:id",
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE", "PATIENT"),
   getPatientValidator,
-  PatientController.getById
+  PatientController.getById,
 );
 
 // PUT /api/patients/:id
 // Who: Hospital Admin, Receptionist
 router.put(
-  '/:id',
-  requireRoles('HOSPITAL_ADMIN', 'RECEPTIONIST'),
+  "/:id",
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST"),
   updatePatientValidator,
-  PatientController.update
+  PatientController.update,
 );
 
 export default router;

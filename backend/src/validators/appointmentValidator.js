@@ -15,7 +15,7 @@ const handleValidationErrors = (req, res, next) => {
 
 export const bookAppointmentValidator = [
   body('doctorId').isUUID().withMessage('Valid Doctor ID is required'),
-  body('patientId').isUUID().withMessage('Valid Patient ID is required'),
+  body('patientId').optional().isUUID().withMessage('Valid Patient ID is required'), // <-- Made optional
   body('startTime').isISO8601().withMessage('Valid start time (ISO 8601) is required').toDate(),
   body('endTime').isISO8601().withMessage('Valid end time (ISO 8601) is required').toDate(),
   body('type').isIn(['online', 'walk_in']).withMessage('Type must be online or walk_in'),

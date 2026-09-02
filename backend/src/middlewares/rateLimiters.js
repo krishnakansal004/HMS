@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
 
 // Shared, named rate limiters.
 
@@ -7,7 +7,10 @@ import rateLimit from 'express-rate-limit';
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
   max: 5,
-  message: { success: false, message: 'Too many authentication attempts. Please try again later.' },
+  message: {
+    success: false,
+    message: "Too many authentication attempts. Please try again later.",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -18,7 +21,11 @@ export const authLimiter = rateLimit({
 export const tenantProvisionLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
-  message: { success: false, message: 'Too many hospital signup attempts from this network. Please try again later.' },
+  message: {
+    success: false,
+    message:
+      "Too many hospital signup attempts from this network. Please try again later.",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });

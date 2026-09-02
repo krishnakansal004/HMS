@@ -21,6 +21,27 @@ export const invoicesApi = {
   list: (query) => api.get('/invoices', query),
 };
 
-export const INVOICE_STATUSES = ['DRAFT', 'PENDING', 'PARTIAL', 'PAID', 'CANCELLED'];
+export const paymentsApi = {
+  /**
+   * Initiates a Razorpay order. The backend strictly calculates the pending amount.
+   * @param {{invoiceId: string}} data 
+   */
+  initiate: (data) => api.post('/payments/initiate', data),
+
+  /**
+   * Synchronous frontend callback to verify the Razorpay cryptographic signature 
+   * and record the payment in the database.
+   * @param {{
+   *   invoiceId: string, 
+   *   gatewayPaymentId: string, 
+   *   razorpayOrderId: string, 
+   *   amountPaid: number, 
+   *   signature: string
+   * }} data 
+   */
+  verifyWebhook: (data) => api.post('/payments/webhook/verify', data),
+};
+
+export const INVOICE_STATUSES = ['draft', 'pending', 'partial', 'paid', 'cancelled'];
 export const INVOICE_ITEM_TYPES = ['CONSULTATION', 'MEDICINE', 'LAB', 'RADIOLOGY', 'ROOM', 'OTHER'];
 export const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'INSURANCE', 'CHEQUE'];

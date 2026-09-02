@@ -27,19 +27,19 @@ import plansRoutes from './routes/plans.js';
 import tenantsRoutes from './routes/tenants.js';
 import planRequestsRoutes from './routes/planRequests.js';
 import doctorRoutes from './routes/doctors.js';
+import doctorApplicationsRoutes from './routes/doctorApplications.js'
+import supplierRoutes from './routes/suppliers.js';
+import emergencyRoutes from './routes/emergency.js';
 import paymentRoutes from './routes/payments.js';
+import analyticsRoutes from './routes/analytics.js';
+import staffRoutes from './routes/staff.js';
+import hrmsRoutes from './routes/hrms.js';
+
 const app = express();
 
 // Security & Utility Middlewares
 app.use(helmet());
 app.use(cors({
-  // env.allowedOrigins resolves ALLOWED_ORIGINS into an array (see
-  // config/env.js) — never a literal '*'. That fallback was broken, not
-  // just permissive: '*' combined with credentials:true is a combination
-  // browsers reject outright, so an unset ALLOWED_ORIGINS in production
-  // would silently break every credentialed cross-origin request rather
-  // than "openly" allow them. env.js now fails loudly at startup in
-  // production if ALLOWED_ORIGINS isn't set, instead of masking it here.
   origin: env.allowedOrigins,
   credentials: true
 }));
@@ -60,6 +60,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/suppliers', supplierRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/lab', labRoutes);
 app.use('/api/radiology', radiologyRoutes);
@@ -74,8 +75,12 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/plan-requests', planRequestsRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/doctor-applications', doctorApplicationsRoutes);
+app.use('/api/emergency', emergencyRoutes);
 app.use('/api/payments', paymentRoutes);
-
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/hrms', hrmsRoutes);
 // Catch-all 404 Route handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });
@@ -83,5 +88,6 @@ app.use((req, res, next) => {
 
 // Global Error Handler
 app.use(errorHandler);
-
+import './queues/notificationQueue.js';
+import './queues/pdfQueue.js';
 export default app;

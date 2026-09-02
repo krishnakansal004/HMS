@@ -1,21 +1,20 @@
-import { PurchaseService } from '../services/purchaseService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { PurchaseService } from "../services/purchaseService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class PurchaseController {
-  
   static async create(req, res, next) {
     try {
       const purchase = await PurchaseService.createPurchaseOrder({
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Purchase order created successfully',
-        data: purchase
+        message: "Purchase order created successfully",
+        data: purchase,
       });
     } catch (error) {
       next(error);
@@ -29,13 +28,13 @@ export class PurchaseController {
         userId: req.userId,
         purchaseId: req.params.id,
         status: req.body.status,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Purchase order status updated successfully',
-        data: purchase
+        message: "Purchase order status updated successfully",
+        data: purchase,
       });
     } catch (error) {
       next(error);
@@ -46,12 +45,12 @@ export class PurchaseController {
     try {
       const result = await PurchaseService.getPurchases({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

@@ -1,21 +1,21 @@
-import { InventoryRepository } from '../repositories/inventoryRepository.js';
-import { AuditService } from './auditService.js';
-import { AppError } from '../middlewares/errorHandler.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { InventoryRepository } from "../repositories/inventoryRepository.js";
+import { AuditService } from "./auditService.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class InventoryService {
-  
   static async addMedicine({ tenantId, userId, data, ipAddress }) {
-
     const purchasePrice = Number(data.purchasePrice);
     const sellingPrice = Number(data.sellingPrice);
 
     // Prevent past expiry dates
     if (new Date(data.expiryDate) <= new Date()) {
-      throw new AppError('Cannot add medicine that is already expired.', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Cannot add medicine that is already expired.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
-    // NOTE: the migrated `medicine` table has no `category` or `sku` columns —
     // dropped here rather than silently swallowed. Add them via a new
     // migration file first if the frontend needs them.
     const medicine = await InventoryRepository.createMedicine({
@@ -28,7 +28,7 @@ export class InventoryService {
       selling_price: sellingPrice,
       gst_rate: data.gstRate || 0,
       quantity: data.initialStock || 0,
-      reorder_level: data.reorderLevel || 10
+      reorder_level: data.reorderLevel || 10,
     });
 
     // If initial stock > 0, log it as an initial adjustment
@@ -36,20 +36,20 @@ export class InventoryService {
       await InventoryRepository.adjustStockTransaction({
         tenantId,
         medicineId: medicine.medicine_id,
-        type: 'ADJUSTMENT',
+        type: "ADJUSTMENT",
         quantity: data.initialStock,
-        notes: 'Initial stock addition upon creation'
+        notes: "Initial stock addition upon creation",
       });
     }
 
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'CREATE_MEDICINE',
-      entityType: 'MEDICINE',
+      action: "CREATE_MEDICINE",
+      entityType: "MEDICINE",
       entityId: medicine.medicine_id,
       newValue: { name: medicine.name, batchNumber: medicine.batch_number },
-      ipAddress
+      ipAddress,
     });
 
     return medicine;
@@ -63,82 +63,112 @@ export class InventoryService {
     const { total, medicines } = await InventoryRepository.findManyPaginated({
       tenantId,
       search,
-      lowStockOnly: String(lowStock).toLowerCase() === 'true',
+      lowStockOnly: String(lowStock).toLowerCase() === "true",
       skip,
-      take
+      take,
     });
 
     return {
       total,
       page: Number(page),
       pages: Math.ceil(total / take),
-      data: medicines
+      data: medicines,
     };
   }
 
-  static async dispenseMedicine({ tenantId, userId, medicineId, quantity, prescriptionId, notes, ipAddress }) {
+  static async dispenseMedicine({
+    tenantId,
+    userId,
+    medicineId,
+    quantity,
+    prescriptionId,
+    notes,
+    ipAddress,
+  }) {
     if (quantity <= 0) {
-      throw new AppError('Dispense quantity must be greater than zero.', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Dispense quantity must be greater than zero.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     try {
       const result = await InventoryRepository.adjustStockTransaction({
         tenantId,
         medicineId,
-        type: 'DISPENSE',
+        type: "DISPENSE",
         quantity: -Math.abs(quantity), // Force negative for decrement
         referenceId: prescriptionId,
-        notes
+        notes,
       });
 
       AuditService.logAction({
         tenantId,
         userId,
-        action: 'DISPENSE_MEDICINE',
-        entityType: 'MEDICINE',
+        action: "DISPENSE_MEDICINE",
+        entityType: "MEDICINE",
         entityId: medicineId,
-        newValue: { dispensed: quantity, remainingStock: result.medicine.quantity },
-        ipAddress
+        newValue: {
+          dispensed: quantity,
+          remainingStock: result.medicine.quantity,
+        },
+        ipAddress,
       });
 
       // TODO: If result.medicine.quantity <= result.medicine.reorder_level, enqueue a BullMQ job
       // to send a "Low Stock Alert" email/SMS to the Hospital Admin and Pharmacist.
 
       return result.medicine;
-
     } catch (error) {
-      if (error.message === 'INSUFFICIENT_STOCK') {
-        throw new AppError('Insufficient stock to fulfill this dispense request.', HTTP_STATUS.CONFLICT);
+      if (error.message === "INSUFFICIENT_STOCK") {
+        throw new AppError(
+          "Insufficient stock to fulfill this dispense request.",
+          HTTP_STATUS.CONFLICT,
+        );
       }
-      if (error.message === 'MEDICINE_NOT_FOUND') {
-        throw new AppError('Medicine not found in your inventory.', HTTP_STATUS.NOT_FOUND);
+      if (error.message === "MEDICINE_NOT_FOUND") {
+        throw new AppError(
+          "Medicine not found in your inventory.",
+          HTTP_STATUS.NOT_FOUND,
+        );
       }
       throw error;
     }
   }
 
-  static async receivePurchase({ tenantId, userId, medicineId, quantity, purchaseOrderId, notes, ipAddress }) {
+  static async receivePurchase({
+    tenantId,
+    userId,
+    medicineId,
+    quantity,
+    purchaseOrderId,
+    notes,
+    ipAddress,
+  }) {
     if (quantity <= 0) {
-      throw new AppError('Receive quantity must be greater than zero.', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Receive quantity must be greater than zero.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     const result = await InventoryRepository.adjustStockTransaction({
       tenantId,
       medicineId,
-      type: 'PURCHASE',
+      type: "PURCHASE",
       quantity: Math.abs(quantity), // Force positive for increment
       referenceId: purchaseOrderId,
-      notes
+      notes,
     });
 
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'RECEIVE_MEDICINE_PURCHASE',
-      entityType: 'MEDICINE',
+      action: "RECEIVE_MEDICINE_PURCHASE",
+      entityType: "MEDICINE",
       entityId: medicineId,
       newValue: { added: quantity, newStock: result.medicine.quantity },
-      ipAddress
+      ipAddress,
     });
 
     return result.medicine;

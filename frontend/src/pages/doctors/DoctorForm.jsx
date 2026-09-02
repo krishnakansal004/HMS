@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -6,19 +6,33 @@ import { doctorsApi } from '../../api/doctors.js';
 import { toast } from '../../components/ui/Toast.jsx';
 
 const initialForm = {
-  name: '',
-  email: '',
-  phone: '',
-  specialization: '',
-  department: '',
-  experienceYears: '',
-  consultationFee: ''
+  name: '', email: '', phone: '', specialization: '', 
+  department: '', experienceYears: '', consultationFee: ''
 };
 
-export default function DoctorForm({ open, onClose, onSaved }) {
+export default function DoctorForm({ open, onClose, onSaved, doctor }) {
+  const isEdit = !!doctor;
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEdit && doctor) {
+      const profile = doctor.doctor_profile || {};
+      setForm({
+        name: doctor.name || '',
+        email: doctor.email || '',
+        phone: doctor.phone || '', 
+        specialization: profile.specialization || '',
+        department: profile.department_label || '',
+        experienceYears: profile.experience_years ?? '',
+        consultationFee: profile.consultation_fee ?? ''
+      });
+    } else {
+      setForm(initialForm);
+    }
+    setErrors({});
+  }, [doctor, isEdit, open]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -28,17 +42,21 @@ export default function DoctorForm({ open, onClose, onSaved }) {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-
     try {
-      // Backend handles password generation and email dispatch automatically
-      await doctorsApi.create({
+      const payload = {
         ...form,
         experienceYears: Number(form.experienceYears) || 0,
         consultationFee: Number(form.consultationFee) || 0
-      });
+      };
+
+      if (isEdit) {
+        await doctorsApi.update(doctor.user_id, payload);
+        toast.success('Doctor profile updated successfully');
+      } else {
+        await doctorsApi.create(payload);
+        toast.success('Doctor registered and credentials emailed');
+      }
       
-      toast.success('Doctor registered and credentials emailed successfully');
-      setForm(initialForm);
       onSaved();
       onClose();
     } catch (err) {
@@ -47,7 +65,7 @@ export default function DoctorForm({ open, onClose, onSaved }) {
         err.fieldErrors.forEach((f) => (fe[f.field] = f.message));
         setErrors(fe);
       } else {
-        toast.error(err.message || 'Failed to register doctor');
+        toast.error(err.message || 'Failed to save doctor');
       }
     } finally {
       setSaving(false);
@@ -58,34 +76,34 @@ export default function DoctorForm({ open, onClose, onSaved }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Register New Doctor"
+      title={isEdit ? 'Edit Doctor Profile' : 'Register New Doctor'}
       size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} loading={saving}>Register Doctor</Button>
+          <Button onClick={handleSubmit} loading={saving}>{isEdit ? 'Save Changes' : 'Register Doctor'}</Button>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Full Name" required value={form.name} onChange={update('name')} error={errors.name} placeholder="e.g. Sarah Connor" />
-          <Input label="Email" type="email" required value={form.email} onChange={update('email')} error={errors.email} placeholder="Doctor's login email" />
+          <Input label="Full Name" required value={form.name} onChange={update('name')} error={errors.name} />
+          <Input label="Email" type="email" required value={form.email} onChange={update('email')} error={errors.email} disabled={isEdit} hint={isEdit ? "Email cannot be changed after registration" : ""} />
         </div>
         
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Department" required value={form.department} onChange={update('department')} error={errors.department} placeholder="e.g. Cardiology" />
-          <Input label="Specialization" required value={form.specialization} onChange={update('specialization')} error={errors.specialization} placeholder="e.g. Heart Surgeon" />
+          <Input label="Department" required value={form.department} onChange={update('department')} error={errors.department} />
+          <Input label="Specialization" required value={form.specialization} onChange={update('specialization')} error={errors.specialization} />
         </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <Input label="Phone" value={form.phone} onChange={update('phone')} error={errors.phone} />
+        <div className="grid grid-cols-2 gap-4">
           <Input label="Years Exp." type="number" value={form.experienceYears} onChange={update('experienceYears')} error={errors.experienceYears} />
           <Input label="Consult Fee (₹)" type="number" value={form.consultationFee} onChange={update('consultationFee')} error={errors.consultationFee} />
         </div>
-        <p className="text-xs text-[var(--color-ink-faint)] mt-2">
-          * A temporary password will be automatically generated and emailed to the doctor.
-        </p>
+        {!isEdit && (
+          <p className="text-xs text-[var(--color-ink-faint)] mt-2">
+            * A temporary password will be automatically generated and emailed to the doctor.
+          </p>
+        )}
       </form>
     </Modal>
   );

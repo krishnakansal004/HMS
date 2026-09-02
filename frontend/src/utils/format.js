@@ -9,6 +9,19 @@ export function formatPaise(paise) {
   return rupees.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 }
 
+export function toPaise(value) {
+  const normalized = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    throw new Error('Enter a valid amount with no more than two decimal places.');
+  }
+  const [whole, fraction = ''] = normalized.split('.');
+  const paise = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+  if (paise > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Amount is too large.');
+  }
+  return Number(paise);
+}
+
 export function formatDate(value) {
   if (!value) return '—';
   const d = new Date(value);

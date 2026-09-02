@@ -1,8 +1,24 @@
 import { api } from './client.js';
 
-// Maps to backend/src/routes/payments.js
+// Maps to backend/src/routes/payments.js + paymentValidator.js
 
 export const paymentsApi = {
-  /** @param {string} invoiceId @returns {Promise<{data:{orderId:string, amount:number, currency:string, keyId:string, invoiceId:string}}>} */
-  initiate: (invoiceId) => api.post('/payments/initiate', { invoiceId }),
+  /**
+   * Initiates a Razorpay order. The backend strictly calculates the pending amount.
+   * @param {{invoiceId: string}} data 
+   */
+  initiate: (data) => api.post('/payments/initiate', data),
+
+  /**
+   * Synchronous frontend callback to verify the Razorpay cryptographic signature 
+   * and record the payment in the database.
+   * @param {{
+   *   invoiceId: string, 
+   *   gatewayPaymentId: string, 
+   *   razorpayOrderId: string, 
+   *   amountPaid: number, 
+   *   signature: string
+   * }} data 
+   */
+  verifyWebhook: (data) => api.post('/payments/webhook/verify', data),
 };
