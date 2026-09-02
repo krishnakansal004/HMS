@@ -1,66 +1,102 @@
 import { useState } from 'react';
-import { Plus, Receipt } from 'lucide-react';
+import { Plus, Receipt, CreditCard } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
-import { invoicesApi, INVOICE_STATUSES } from '../../api/invoices.js';
+import { invoicesApi, INVOICE_STATUSES, paymentsApi } from '../../api/invoices.js';
 import Card from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { Select } from '../../components/ui/Input.jsx';
-import { Table, Thead, Th, Tr, Td, Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
 import StatusPill from '../../components/ui/StatusPill.jsx';
-import { formatDate, formatPaise, fullName } from '../../utils/format.js';
+import { Table, Thead, Th, Tr, Td, Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
+import { formatPaise, formatDate, fullName } from '../../utils/format.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { ROLES } from '../../utils/roles.js';
-import InvoiceForm from './InvoiceForm.jsx';
-import PayButton from './PayButton.jsx';
-
-const PAGE_SIZE = 20;
-const BILLING_ROLES = [ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.CASHIER];
-
-// invoiceService.js persists status lowercase ('pending'/'partial'/'paid'/
-// 'cancelled') while the validator/INVOICE_STATUSES use uppercase — an
-// existing inconsistency in the backend, not introduced here. Normalize
-// case-insensitively so this page (and the Pay button gating) is correct
-// regardless of which casing the API actually returns.
-const TONE_BY_STATUS = { DRAFT: 'neutral', PENDING: 'warning', PARTIAL: 'accent', PAID: 'success', CANCELLED: 'danger' };
+import { loadRazorpay } from '../../utils/loadRazorpay.js';
+import { toast } from '../../components/ui/Toast.jsx';
+import { useNavigate } from 'react-router-dom';
+import GenerateInvoiceForm from './GenerateInvoiceForm.jsx';
+import RecordPaymentModal from './RecordPaymentModal.jsx';
 
 export default function InvoicesList() {
-  const role = useAuthStore((s) => s.user?.role);
-  const canBill = BILLING_ROLES.includes(role);
+  const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
+  const isPatient = user?.role === ROLES.PATIENT;
+  const canGenerate = ['HOSPITAL_ADMIN', 'RECEPTIONIST', 'ACCOUNTANT', 'DOCTOR'].includes(user?.role);
+  // Mirrors the roles backend/src/routes/payments.js allows on POST /payments/initiate
+  const canPayOnline = isPatient || ['HOSPITAL_ADMIN', 'RECEPTIONIST', 'CASHIER', 'ACCOUNTANT'].includes(user?.role);
 
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const [payingInvoice, setPayingInvoice] = useState(null);
+  const [onlinePayingId, setOnlinePayingId] = useState(null);
 
   const { data, loading, error, refetch } = useAsync(
-    () => invoicesApi.list({ status: status || undefined, page, limit: PAGE_SIZE }),
-    [status, page],
+    () => invoicesApi.list({ status: statusFilter || undefined, limit: 50 }),
+    [statusFilter]
   );
 
-  const invoices = data?.data || [];
-  const total = data?.total ?? invoices.length;
-  const pages = data?.pages ?? 1;
+  const invoices = data?.data || data?.invoices || [];
 
-  function handleStatusFilter(e) {
-    setPage(1);
-    setStatus(e.target.value);
+  async function handleOnlinePayment(invoiceId) {
+    setOnlinePayingId(invoiceId);
+    try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) throw new Error('Failed to load payment gateway. Check your connection.');
+
+      const { data } = await paymentsApi.initiate({ invoiceId });
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: user.tenantName || 'Hospital Billing',
+        description: 'Online Medical Bill Payment',
+        order_id: data.orderId,
+        prefill: { name: data.patient.name, email: data.patient.email, contact: data.patient.contact },
+        theme: { color: '#0ea5e9' },
+        handler: async function (response) {
+          try {
+            await paymentsApi.verifyWebhook({
+              invoiceId,
+              gatewayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              amountPaid: data.amount, // already in paise, matches invoice.amount_paid's unit
+              signature: response.razorpay_signature,
+            });
+            toast.success('Payment successful! Receipt updated.');
+          } catch (err) {
+            toast.error(err.message || 'Payment succeeded but could not be recorded. Contact support.');
+          } finally {
+            refetch();
+          }
+        },
+        modal: {
+          ondismiss: () => toast.info('Payment cancelled'),
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (res) => toast.error(`Payment Failed: ${res.error.description}`));
+      rzp.open();
+    } catch (err) {
+      toast.error(err.message || 'Unable to initiate payment.');
+    } finally {
+      setOnlinePayingId(null);
+    }
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Billing</h2>
-          <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">
-            {total} invoice {total === 1 ? 'record' : 'records'}
-          </p>
+          <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Billing & Invoices</h2>
+          <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage patient billing and payment collection</p>
         </div>
-        {canBill && <Button icon={Plus} onClick={() => setFormOpen(true)}>New Invoice</Button>}
+        {canGenerate && <Button icon={Plus} onClick={() => navigate('/invoices/new')}>Generate Invoice</Button>}
       </div>
 
       <Card>
         <div className="p-4 border-b border-[var(--color-border)] flex items-center gap-3">
-          <Select value={status} onChange={handleStatusFilter} className="max-w-xs">
-            <option value="">All statuses</option>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[200px]">
+            <option value="">All Statuses</option>
             {INVOICE_STATUSES.map((s) => (
               <option key={s} value={s} className="capitalize">{s}</option>
             ))}
@@ -68,91 +104,74 @@ export default function InvoicesList() {
         </div>
 
         {loading ? (
-          <Spinner label="Loading invoices…" />
+          <Spinner label="Loading financial ledger..." />
         ) : error ? (
           <ErrorState message={error} onRetry={refetch} />
         ) : invoices.length === 0 ? (
           <EmptyState
             icon={Receipt}
-            title={status ? `No ${status} invoices` : 'No invoices yet'}
-            description={status ? 'Try a different status filter.' : 'Create an invoice to get started.'}
-            action={
-              !status && canBill && (
-                <Button size="sm" icon={Plus} onClick={() => setFormOpen(true)}>New Invoice</Button>
-              )
-            }
+            title="No invoices found"
+            description={statusFilter ? 'Try clearing your status filter.' : 'Generate your first bill to start collecting revenue.'}
+            action={!statusFilter && canGenerate && <Button size="sm" icon={Plus} onClick={() => navigate('/invoices/new')}>Generate Invoice</Button>}
           />
         ) : (
-          <>
-            <Table>
-              <Thead>
-                <Th>Patient</Th>
-                <Th>Total</Th>
-                <Th>Paid</Th>
-                <Th>Balance</Th>
-                <Th>Status</Th>
-                <Th>Created</Th>
-                <Th className="text-right">Actions</Th>
-              </Thead>
-              <tbody>
-                {invoices.map((inv) => {
-                  const balance = Number(inv.total) - Number(inv.amount_paid);
-                  const normalizedStatus = (inv.status || '').toUpperCase();
-                  const payable = canBill && balance > 0 && (normalizedStatus === 'PENDING' || normalizedStatus === 'PARTIAL');
-                  return (
-                    <Tr key={inv.invoice_id}>
-                      <Td>
-                        <p className="font-medium">{fullName(inv.patient)}</p>
-                        <p className="text-xs text-[var(--color-ink-faint)] font-mono-data">
-                          {inv.invoice_id?.slice(0, 8)}
-                        </p>
-                      </Td>
-                      <Td>{formatPaise(inv.total)}</Td>
-                      <Td>{formatPaise(inv.amount_paid)}</Td>
-                      <Td>{formatPaise(balance)}</Td>
-                      <Td>
-                        <StatusPill status={inv.status} tone={TONE_BY_STATUS[normalizedStatus]} />
-                      </Td>
-                      <Td>{formatDate(inv.created_at)}</Td>
-                      <Td className="text-right">
-                        {payable ? (
-                          <PayButton invoice={inv} balance={formatPaise(balance)} onPaid={refetch} />
-                        ) : (
-                          <span className="text-xs text-[var(--color-ink-faint)]">—</span>
+          <Table>
+            <Thead>
+              <Th>Invoice #</Th>
+              {!isPatient && <Th>Patient</Th>}
+              <Th>Created On</Th>
+              <Th>Amount</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Actions</Th>
+            </Thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <Tr key={inv.invoice_id}>
+                  <Td className="font-mono-data font-medium">#{inv.invoice_number}</Td>
+                  {!isPatient && <Td>{fullName(inv.patient) || 'Unknown'}</Td>}
+                  <Td>{formatDate(inv.created_at)}</Td>
+                  <Td>
+                    <div className="flex flex-col">
+                      <span className="font-mono-data font-semibold text-[var(--color-ink)]">{formatPaise(inv.total)}</span>
+                      {Number(inv.amount_paid) > 0 && Number(inv.amount_paid) < Number(inv.total) && (
+                        <span className="text-[10px] text-[var(--color-ink-faint)]">Paid: {formatPaise(inv.amount_paid)}</span>
+                      )}
+                    </div>
+                  </Td>
+                  <Td><StatusPill status={inv.status} /></Td>
+                  <Td className="text-right">
+                    {(inv.status === 'pending' || inv.status === 'partial' || inv.status === 'draft') && (
+                      <div className="flex gap-2 justify-end">
+                        {canPayOnline && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            icon={CreditCard}
+                            onClick={() => handleOnlinePayment(inv.invoice_id)}
+                            loading={onlinePayingId === inv.invoice_id}
+                            disabled={onlinePayingId !== null && onlinePayingId !== inv.invoice_id}
+                          >
+                            Pay Online
+                          </Button>
                         )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-border)]">
-              <p className="text-xs text-[var(--color-ink-soft)]">Page {page} of {pages}</p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Prev
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={page >= pages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </>
+                        {!isPatient && (
+                          <Button size="sm" variant="secondary" icon={CreditCard} onClick={() => setPayingInvoice(inv)}>
+                            Record Payment
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
         )}
       </Card>
 
-      <InvoiceForm open={formOpen} onClose={() => setFormOpen(false)} onSaved={refetch} />
+      {payingInvoice && (
+        <RecordPaymentModal open={!!payingInvoice} onClose={() => setPayingInvoice(null)} invoice={payingInvoice} onSaved={refetch} />
+      )}
     </div>
   );
 }

@@ -5,13 +5,6 @@ import { HTTP_STATUS } from '../constants/httpStatus.js';
 export class PatientRepository {
   
   static async create(tenantId, data) {
-    // Check if phone or email already exists WITHIN THIS TENANT ONLY
-    if (data.phone || data.email) {
-      const existing = await this.findByEmailOrPhone(tenantId, data.email, data.phone);
-      if (existing) {
-        throw new AppError('A patient with this phone number or email already exists in this hospital.', HTTP_STATUS.CONFLICT);
-      }
-    }
 
     return db.patient.create({
       data: {
@@ -22,7 +15,7 @@ export class PatientRepository {
   }
 
   static async findByIdAndTenant(patientId, tenantId) {
-    // 🛡️ IDOR Protection: Always requires matching tenant_id
+    // IDOR Protection: Always requires matching tenant_id
     return db.patient.findFirst({
       where: { 
         patient_id: patientId, 

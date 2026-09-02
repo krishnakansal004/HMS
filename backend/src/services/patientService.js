@@ -1,29 +1,11 @@
-import { PatientRepository } from '../repositories/patientRepository.js';
-import { AuditService } from './auditService.js';
-import { AppError } from '../middlewares/errorHandler.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
-import crypto from 'crypto';
+import { PatientRepository } from "../repositories/patientRepository.js";
+import { AuditService } from "./auditService.js";
+import { AppError } from "../middlewares/errorHandler.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
+import crypto from "crypto";
 
 export class PatientService {
-  
   static async registerPatient({ tenantId, userId, data, ipAddress }) {
-    // Conflict Check: Ensure email or phone doesn't already exist in this tenant
-    if (data.email || data.phone) {
-      const existing = await PatientRepository.findByEmailOrPhone(
-        tenantId,
-        data.email,
-        data.phone
-      );
-
-      if (existing) {
-        throw new AppError(
-          'A patient with this email or phone number already exists in this hospital.',
-          HTTP_STATUS.CONFLICT
-        );
-      }
-    }
-
-    // Build the insert object exactly matching the Prisma schema
     const patientData = {
       first_name: data.firstName,
       last_name: data.lastName || null,
@@ -33,32 +15,26 @@ export class PatientService {
       gender: data.gender,
       blood_group: data.bloodGroup || null,
       address: data.address || null,
-      
+
       // Clinical Fields
       emergency_contact: data.emergencyContact || null,
       allergies: data.allergies || null,
       medical_history: data.medicalHistory || null,
 
       // ABHA Normalization: Strip hyphens before saving so it's a clean 14-digit string
-      abha_id: data.abhaId ? data.abhaId.replace(/-/g, '') : null,
+      abha_id: data.abhaId ? data.abhaId.replace(/-/g, "") : null,
       abha_address: data.abhaAddress || null,
-
-      // Default state for a brand new patient
-      is_admitted: false
     };
 
     // Persist to Database via Repository
-    const patient = await PatientRepository.create(
-      tenantId, 
-      patientData
-    );
+    const patient = await PatientRepository.create(tenantId, patientData);
 
     // Audit Logging
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'REGISTER_PATIENT',
-      entityType: 'PATIENT',
+      action: "REGISTER_PATIENT",
+      entityType: "PATIENT",
       entityId: patient.patient_id,
       newValue: {
         firstName: patient.first_name,
@@ -66,70 +42,71 @@ export class PatientService {
         email: patient.email,
         phone: patient.phone,
         bloodGroup: patient.blood_group,
-        abhaLinked: !!patient.abha_id
+        abhaLinked: !!patient.abha_id,
       },
-      ipAddress
+      ipAddress,
     });
 
     return patient;
   }
 
-  static async getPatientById({ tenantId, patientId }) {
-    const patient = await PatientRepository.findByIdAndTenant(patientId, tenantId);
+  static async getPatientById({ tenantId, patientId, userId, userRole }) {
+    const patient = await PatientRepository.findByIdAndTenant(
+      patientId,
+      tenantId,
+    );
     if (!patient) {
-      throw new AppError('Patient record not found.', HTTP_STATUS.NOT_FOUND);
+      throw new AppError("Patient record not found.", HTTP_STATUS.NOT_FOUND);
+    }
+    if (userRole === "PATIENT") {
+      const ownRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+      });
+      if (!ownRecord || ownRecord.patient_id !== patientId) {
+        throw new AppError("Patient record not found.", HTTP_STATUS.NOT_FOUND);
+      }
     }
     return patient;
   }
 
-static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
+  static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
     // Find patient within the current tenant
     const patient = await PatientRepository.findByIdAndTenant(
       patientId,
-      tenantId
+      tenantId,
     );
 
     if (!patient) {
-      throw new AppError(
-        'Patient record not found.',
-        HTTP_STATUS.NOT_FOUND
-      );
-    }
-    if (data.email || data.phone) {
-      const existing = await PatientRepository.findByEmailOrPhone(
-        tenantId,
-        data.email,
-        data.phone
-      );
-
-      if (existing && existing.patient_id !== patientId) {
-        throw new AppError(
-          'A patient with this email or phone number already exists in this hospital.',
-          HTTP_STATUS.CONFLICT
-        );
-      }
+      throw new AppError("Patient record not found.", HTTP_STATUS.NOT_FOUND);
     }
 
     // Build partial update object based on Prisma schema
     const updateData = {};
 
     if (data.firstName !== undefined) updateData.first_name = data.firstName;
-    if (data.lastName !== undefined) updateData.last_name = data.lastName || null;
-    if (data.email !== undefined) updateData.email = data.email ? data.email.toLowerCase() : null;
+    if (data.lastName !== undefined)
+      updateData.last_name = data.lastName || null;
+    if (data.email !== undefined)
+      updateData.email = data.email ? data.email.toLowerCase() : null;
     if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.dob !== undefined) updateData.date_of_birth = data.dob ? new Date(data.dob) : null;
+    if (data.dob !== undefined)
+      updateData.date_of_birth = data.dob ? new Date(data.dob) : null;
     if (data.gender !== undefined) updateData.gender = data.gender;
-    if (data.bloodGroup !== undefined) updateData.blood_group = data.bloodGroup || null;
+    if (data.bloodGroup !== undefined)
+      updateData.blood_group = data.bloodGroup || null;
     if (data.address !== undefined) updateData.address = data.address || null;
-    
+
     // Restored Clinical Fields
-    if (data.emergencyContact !== undefined) updateData.emergency_contact = data.emergencyContact || null;
-    if (data.allergies !== undefined) updateData.allergies = data.allergies || null;
-    if (data.medicalHistory !== undefined) updateData.medical_history = data.medicalHistory || null;
+    if (data.emergencyContact !== undefined)
+      updateData.emergency_contact = data.emergencyContact || null;
+    if (data.allergies !== undefined)
+      updateData.allergies = data.allergies || null;
+    if (data.medicalHistory !== undefined)
+      updateData.medical_history = data.medicalHistory || null;
 
     // Restored ABHA Normalization
     if (data.abhaId !== undefined) {
-      updateData.abha_id = data.abhaId ? data.abhaId.replace(/-/g, '') : null;
+      updateData.abha_id = data.abhaId ? data.abhaId.replace(/-/g, "") : null;
     }
     if (data.abhaAddress !== undefined) {
       updateData.abha_address = data.abhaAddress || null;
@@ -143,22 +120,18 @@ static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
     }
 
     // Update patient
-    await PatientRepository.update(
-      patientId,
-      tenantId,
-      updateData
-    );
+    await PatientRepository.update(patientId, tenantId, updateData);
 
     const updatedPatient = await PatientRepository.findByIdAndTenant(
       patientId,
-      tenantId
+      tenantId,
     );
 
     AuditService.logAction({
       tenantId,
       userId,
-      action: 'UPDATE_PATIENT',
-      entityType: 'PATIENT',
+      action: "UPDATE_PATIENT",
+      entityType: "PATIENT",
       entityId: patientId,
       oldValue: {
         firstName: patient.first_name,
@@ -173,10 +146,10 @@ static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
         allergies: patient.allergies,
         medicalHistory: patient.medical_history,
         abhaId: patient.abha_id,
-        abhaAddress: patient.abha_address
+        abhaAddress: patient.abha_address,
       },
       newValue: updateData,
-      ipAddress
+      ipAddress,
     });
 
     return updatedPatient;
@@ -188,14 +161,17 @@ static async updatePatient({ tenantId, userId, patientId, data, ipAddress }) {
     const take = Number(limit);
 
     const [total, patients] = await PatientRepository.findManyPaginated({
-      tenantId, search, skip, take
+      tenantId,
+      search,
+      skip,
+      take,
     });
 
     return {
       total,
       page: Number(page),
       pages: Math.ceil(total / take),
-      data: patients
+      data: patients,
     };
   }
 }

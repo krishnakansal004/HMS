@@ -1,21 +1,20 @@
-import { AttendanceService } from '../services/attendanceService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { AttendanceService } from "../services/attendanceService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class AttendanceController {
-  
   static async checkIn(req, res, next) {
     try {
       const attendance = await AttendanceService.checkIn({
         tenantId: req.currentTenantId,
         requestingUserId: req.userId,
         targetUserId: req.body.targetUserId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Successfully checked in.',
-        data: attendance
+        message: "Successfully checked in.",
+        data: attendance,
       });
     } catch (error) {
       next(error);
@@ -28,13 +27,13 @@ export class AttendanceController {
         tenantId: req.currentTenantId,
         requestingUserId: req.userId,
         targetUserId: req.body.targetUserId,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Successfully checked out.',
-        data: attendance
+        message: "Successfully checked out.",
+        data: attendance,
       });
     } catch (error) {
       next(error);
@@ -47,12 +46,12 @@ export class AttendanceController {
         tenantId: req.currentTenantId,
         userRole: req.userRole,
         requestingUserId: req.userId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

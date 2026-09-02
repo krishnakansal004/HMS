@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 // mounted in backend/src/app.js). See README.md for scope notes.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: { environment: 'jsdom' },
   server: {
     port: 5173,
     proxy: {

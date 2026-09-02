@@ -9,6 +9,7 @@ export class PrescriptionRepository {
         doctor_id: doctorId,
         patient_id: patientId,
         patient_name_snapshot: '', // Populated via service
+        diagnosis: diagnosis,
         approval_status: 'pending',
         // No `diagnosis` column exists on this table (schema only has
         // `notes`) — folded in here with a parseable prefix so the

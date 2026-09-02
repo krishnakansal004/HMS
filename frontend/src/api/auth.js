@@ -1,7 +1,6 @@
 import { api } from './client.js';
 
-// Maps 1:1 to backend/src/routes/auth.js (only 3 live endpoints — no
-// /refresh, no /csrf. See README "Known backend gaps".)
+// Maps 1:1 to backend/src/routes/auth.js.
 
 export const authApi = {
   /**
@@ -19,4 +18,12 @@ export const authApi = {
   login: (data) => api.post('/auth/login', data),
 
   logout: () => api.post('/auth/logout'),
+
+  /**
+   * @param {{token:string, hospitalSlug:string, newPassword:string}} data
+   * Completes account setup for a staff account provisioned without a
+   * password (direct doctor creation, or an approved doctor application) —
+   * token and hospitalSlug both come from the link in the setup email.
+   */
+  setupPassword: (data) => api.post('/auth/setup-password', data),
 };

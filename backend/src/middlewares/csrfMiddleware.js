@@ -25,13 +25,13 @@
 // check blocks that: the forged form can't set it, so the request never
 // reaches AuthController.login at all.
 
-const CSRF_HEADER = 'x-requested-with';
-const CSRF_HEADER_VALUE = 'xmlhttprequest'; // header values are compared lowercased
+const CSRF_HEADER = "x-requested-with";
+const CSRF_HEADER_VALUE = "xmlhttprequest"; // header values are compared lowercased
 
 export function requireCsrfHeader(req, res, next) {
   const value = req.headers[CSRF_HEADER];
   if (!value || value.toLowerCase() !== CSRF_HEADER_VALUE) {
-    const err = new Error('Missing or invalid request header.');
+    const err = new Error("Missing or invalid request header.");
     err.statusCode = 403;
     return next(err);
   }

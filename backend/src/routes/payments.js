@@ -1,25 +1,34 @@
-import express from 'express';
-import { PaymentController } from '../controllers/paymentController.js';
-import { initiatePaymentValidator } from '../validators/paymentValidator.js';
-import { protect, requireRoles } from '../middlewares/authMiddleware.js';
-import { requireTenant } from '../middlewares/tenantMiddleware.js';
+import express from "express";
+import { PaymentController } from "../controllers/paymentController.js";
+import { initiatePaymentValidator, webhookValidator } from "../validators/paymentValidator.js";
+import { protect, requireRoles } from "../middlewares/authMiddleware.js";
+import { requireTenant } from "../middlewares/tenantMiddleware.js";
 
 const router = express.Router();
 
+// ------------------------------------------------------------------
 // POST /api/payments/initiate
-// Who: Hospital Admin, Accountant, Cashier
-// Creates a Razorpay order for the outstanding balance of an invoice.
+// Purpose: Create an order ID with Razorpay before checkout.
+// Who: Patient paying their own bill, or front-desk staff.
+// ------------------------------------------------------------------
 router.post(
-    '/initiate',
-    protect,
-    requireTenant,
-    requireRoles('HOSPITAL_ADMIN', 'ACCOUNTANT', 'CASHIER'),
-    initiatePaymentValidator,
-    PaymentController.initiatePayment);
+  "/initiate",
+  protect,
+  requireTenant,
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "CASHIER", "ACCOUNTANT", "PATIENT"),
+  initiatePaymentValidator,
+  PaymentController.initiatePayment
+);
 
-// Public webhook endpoint for payment gateways (Razorpay/Stripe)
+// ------------------------------------------------------------------
+// POST /api/payments/webhook/verify
+// Purpose: Frontend callback confirming the transaction is settled.
+// Who: Public callback endpoint. Authenticated via HMAC signature.
+// ------------------------------------------------------------------
 router.post(
-    '/webhook/verify',
-    PaymentController.handleWebhook);
+  "/webhook/verify",
+  webhookValidator,
+  PaymentController.handleWebhook
+);
 
 export default router;

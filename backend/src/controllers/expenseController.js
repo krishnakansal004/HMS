@@ -1,21 +1,20 @@
-import { ExpenseService } from '../services/expenseService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { ExpenseService } from "../services/expenseService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class ExpenseController {
-  
   static async create(req, res, next) {
     try {
       const expense = await ExpenseService.createExpense({
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Expense recorded successfully',
-        data: expense
+        message: "Expense recorded successfully",
+        data: expense,
       });
     } catch (error) {
       next(error);
@@ -28,13 +27,13 @@ export class ExpenseController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         expenseId: req.params.id,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Expense removed successfully',
-        data: result
+        message: "Expense removed successfully",
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -45,12 +44,12 @@ export class ExpenseController {
     try {
       const result = await ExpenseService.getExpenses({
         tenantId: req.currentTenantId,
-        query: req.query
+        query: req.query,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        ...result
+        ...result,
       });
     } catch (error) {
       next(error);

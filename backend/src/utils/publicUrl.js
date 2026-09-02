@@ -9,19 +9,25 @@ export function getPublicFrontendBaseUrl() {
     process.env.COMPANY_PORTAL_URL,
     process.env.REACT_APP_FRONTEND_URL,
     process.env.CORS_ORIGIN
-  ]
+  ];
 
   for (const urlCandidate of candidates) {
     if (urlCandidate && typeof urlCandidate === 'string') {
-      const candidates = urlCandidate.split(',').map(s => s.trim()).filter(Boolean)
-      for (const c of candidates) {
-        const withProtocol = /^https?:\/\//i.test(c) ? c : `https://${c}`
+      const splitCandidates = urlCandidate.split(',').map(s => s.trim()).filter(Boolean);
+      for (const c of splitCandidates) {
+        if (c === '*' || c === 'http://*' || c === 'https://*') continue;
+
+        const withProtocol = /^https?:\/\//i.test(c) ? c : `https://${c}`;
         try {
-          const url = new URL(withProtocol)
+          const url = new URL(withProtocol);
+          const h = url.hostname.toLowerCase();
+          
+          // Double-check to catch encoded wildcards
+          if (h.includes('*') || h.includes('%2a')) continue;
+
           // Prioritize non-localhost URLs for public links
-          const h = url.hostname.toLowerCase()
           if (h !== 'localhost' && h !== '127.0.0.1' && h !== '0.0.0.0') {
-            return url.origin.replace(/\/$/, '')
+            return url.origin.replace(/\/$/, '');
           }
         } catch (e) { /* ignore */ }
       }
@@ -31,16 +37,15 @@ export function getPublicFrontendBaseUrl() {
   // If we have a localhost candidate in env, use it as last resort before hardcoded fallback
   for (const urlCandidate of candidates) {
     if (urlCandidate && typeof urlCandidate === 'string' && urlCandidate.includes('localhost')) {
-        return urlCandidate.trim().replace(/\/$/, '')
+        return urlCandidate.trim().replace(/\/$/, '');
     }
   }
 
   // Final fallbacks
   if (process.env.NODE_ENV === 'production') {
-    return 'https://hms-lovat-one.vercel.app'
+    return 'https://hms-lovat-one.vercel.app';
   }
-
-  return 'http://localhost:5174'
+  return 'http://localhost:5174';
 }
 
 /**
@@ -48,13 +53,13 @@ export function getPublicFrontendBaseUrl() {
  * Ensures no double slashes and correct base URL.
  */
 export function buildPublicFrontendUrl(path = '/') {
-  const base = getPublicFrontendBaseUrl()
-  const safePath = (path === undefined || path === null) ? '/' : String(path)
+  const base = getPublicFrontendBaseUrl();
+  const safePath = (path === undefined || path === null) ? '/' : String(path);
   
   // Handle empty or root path
-  if (safePath === '' || safePath === '/') return base
+  if (safePath === '' || safePath === '/') return base;
   
   // Ensure exactly one slash between base and path
-  const normalizedPath = safePath.startsWith('/') ? safePath : `/${safePath}`
-  return `${base}${normalizedPath}`
+  const normalizedPath = safePath.startsWith('/') ? safePath : `/${safePath}`;
+  return `${base}${normalizedPath}`;
 }

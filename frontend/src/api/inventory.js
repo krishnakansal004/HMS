@@ -1,9 +1,6 @@
 import { api } from './client.js';
 
 // Maps to backend/src/routes/inventory.js + inventoryValidator.js
-// Krishna's memory notes flag invoiceRepository.js / inventoryRepository.js
-// as having had critical bugs fixed recently — treat stock numbers here as
-// worth double-checking against the DB during QA, not just trusting the UI.
 
 export const inventoryApi = {
   /** @param {{search?:string, category?:string, lowStock?:boolean, page?:number, limit?:number}} query */

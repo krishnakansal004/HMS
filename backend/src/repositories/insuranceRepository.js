@@ -106,7 +106,7 @@ export class InsuranceRepository {
           orderBy: { created_at: 'desc' },
           include: {
             insurance_company: { select: { name: true, code: true } },
-            patient: { select: { first_name: true, last_name: true } } // REMOVED mrn
+            patient: { select: { first_name: true, last_name: true } }
           }
         })
       ]);

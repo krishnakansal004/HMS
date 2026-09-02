@@ -1,4 +1,4 @@
-import { EmergencyService } from '../services/emergencyService.js';
+import { EmergencyService } from "../services/emergencyService.js";
 
 export class EmergencyController {
   static async dispatchAmbulance(req, res, next) {
@@ -7,7 +7,7 @@ export class EmergencyController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(201).json({ success: true, data: dispatch });
     } catch (error) {
@@ -21,7 +21,7 @@ export class EmergencyController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(201).json({ success: true, data: surgery });
     } catch (error) {

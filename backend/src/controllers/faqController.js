@@ -1,5 +1,5 @@
-import { FaqService } from '../services/faqService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { FaqService } from "../services/faqService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class FaqController {
   static async create(req, res, next) {
@@ -7,8 +7,9 @@ export class FaqController {
       const faq = await FaqService.createFaq({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(HTTP_STATUS.CREATED).json({ success: true, data: faq });
     } catch (error) {
@@ -20,7 +21,7 @@ export class FaqController {
     try {
       const faqs = await FaqService.listFaqs({
         tenantId: req.currentTenantId,
-        category: req.query.category
+        category: req.query.category,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, data: faqs });
     } catch (error) {
@@ -34,7 +35,7 @@ export class FaqController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         faqId: req.params.id,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, data: result });
     } catch (error) {

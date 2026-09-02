@@ -1,21 +1,22 @@
-import { ClinicalSettingsService } from '../services/clinicalSettingsService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { ClinicalSettingsService } from "../services/clinicalSettingsService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class ClinicalSettingsController {
-  
   static async createTemplate(req, res, next) {
     try {
-      const template = await ClinicalSettingsService.createPrescriptionTemplate({
-        tenantId: req.currentTenantId,
-        userId: req.userId,
-        ...req.body,
-        ipAddress: req.ip
-      });
+      const template = await ClinicalSettingsService.createPrescriptionTemplate(
+        {
+          tenantId: req.currentTenantId,
+          userId: req.userId,
+          ...req.body,
+          ipAddress: req.ip,
+        },
+      );
 
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: 'Prescription template created successfully',
-        data: template
+        message: "Prescription template created successfully",
+        data: template,
       });
     } catch (error) {
       next(error);
@@ -25,12 +26,12 @@ export class ClinicalSettingsController {
   static async listTemplates(req, res, next) {
     try {
       const templates = await ClinicalSettingsService.listTemplates({
-        tenantId: req.currentTenantId
+        tenantId: req.currentTenantId,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: templates
+        data: templates,
       });
     } catch (error) {
       next(error);
@@ -43,13 +44,13 @@ export class ClinicalSettingsController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         templateId: req.params.id,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Template deleted successfully',
-        data: result
+        message: "Template deleted successfully",
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -62,13 +63,13 @@ export class ClinicalSettingsController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip
+        ipAddress: req.ip,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: 'Setting updated successfully',
-        data: setting
+        message: "Setting updated successfully",
+        data: setting,
       });
     } catch (error) {
       next(error);
@@ -78,12 +79,12 @@ export class ClinicalSettingsController {
   static async listSettings(req, res, next) {
     try {
       const settings = await ClinicalSettingsService.listSettings({
-        tenantId: req.currentTenantId
+        tenantId: req.currentTenantId,
       });
 
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        data: settings
+        data: settings,
       });
     } catch (error) {
       next(error);

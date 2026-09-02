@@ -1,31 +1,44 @@
-import { PaymentService } from '../services/paymentService.js';
-import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { PaymentService } from "../services/paymentService.js";
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 
-export class PaymentController{
+export class PaymentController {
+  static async initiatePayment(req, res, next) {
+    try {
+      const { invoiceId } = req.body;
 
-    static async initiatePayment(req, res, next) {
-        try {
-            const order = await PaymentService.initiatePayment({
-                tenantId: req.currentTenantId,
-                invoiceId: req.body.invoiceId
-            });
+      const order = await PaymentService.createPaymentOrder({
+        tenantId: req.currentTenantId, 
+        invoiceId,
+      });
 
-            res.status(HTTP_STATUS.CREATED).json({
-                success: true,
-                message: 'Payment order created successfully',
-                data: order
-            });
-        } catch (error) {
-            next(error);
-        }
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: order });
+    } catch (error) {
+      next(error);
     }
+  }
 
-    static async handleWebhook(req,res,next){
-        try {
+  // Processes the success callback from the frontend Razorpay checkout
+  static async handleWebhook(req, res, next) {
+    try {
+      const {
+        invoiceId,
+        gatewayPaymentId,
+        razorpayOrderId,
+        amountPaid,
+        signature,
+      } = req.body;
 
-        } catch (error) {
+      const payment = await PaymentService.verifyPaymentWebhook({
+        invoiceId,
+        gatewayPaymentId,
+        razorpayOrderId,
+        amountPaid,
+        signature,
+      });
 
-        }
+      res.status(HTTP_STATUS.OK).json({ success: true, data: payment });
+    } catch (error) {
+      next(error);
     }
-
+  }
 }
