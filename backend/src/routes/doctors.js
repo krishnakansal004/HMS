@@ -11,8 +11,8 @@ router.use(requireTenant);
 
 // GET /api/doctors
 router.get(
-  '/', 
-  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR', 'RECEPTIONIST', 'NURSE'), 
+  '/',
+  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR', 'RECEPTIONIST', 'NURSE', 'DOCTOR'),
   DoctorController.list
 );
 

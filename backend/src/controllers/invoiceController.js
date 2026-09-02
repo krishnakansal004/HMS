@@ -9,7 +9,15 @@ export class InvoiceController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         patientId: req.body.patientId,
-        items: req.body.items,
+        // Validator/request shape (entityType, entityId, description) differs
+        // from what InvoiceRepository.createInvoiceTransaction persists
+        // (itemName -> item_name_snapshot, medicineId -> medicine_id) — map here.
+        items: req.body.items.map(item => ({
+          itemName: item.description,
+          medicineId: item.entityId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        })),
         discount: req.body.discount,
         taxRate: req.body.taxRate,
         ipAddress: req.ip

@@ -8,6 +8,7 @@ export { availabilityApi, DAY_LABELS } from './availability.js';
 export { attendanceApi, ATTENDANCE_STATUSES } from './attendance.js';
 export { inventoryApi } from './inventory.js';
 export { invoicesApi, INVOICE_STATUSES, INVOICE_ITEM_TYPES, PAYMENT_METHODS } from './invoices.js';
+export { paymentsApi } from './payments.js';
 export { labApi, LAB_ORDER_STATUSES } from './lab.js';
 export { radiologyApi, RADIOLOGY_STATUSES, RADIOLOGY_URGENCY } from './radiology.js';
 export { insuranceApi, CLAIM_STATUSES } from './insurance.js';

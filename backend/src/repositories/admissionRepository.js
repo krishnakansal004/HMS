@@ -64,9 +64,10 @@ export class AdmissionRepository {
     });
   }
 
- static async findAdmissionsPaginated({ tenantId, status, skip, take }) {
+ static async findAdmissionsPaginated({ tenantId, status, admittingDoctorId, skip, take }) {
     const where = { tenant_id: tenantId };
     if (status) where.status = status;
+    if (admittingDoctorId) where.admitting_doctor_id = admittingDoctorId;
 
     // FIX: Converted to callback transaction
     return db.$transaction(async (tx) => {

@@ -12,19 +12,21 @@ import { ROLES } from "../utils/roles.js";
 import DoctorsList from "../pages/doctors/DoctorsList.jsx";
 import PatientDetails from "../pages/patients/PatientDetails.jsx";
 import WardsList from "../pages/wards/WardsList.jsx"; // <-- Phase 2 Import
+import AdmissionsList from "../pages/admissions/AdmissionsList.jsx";
+import PrescriptionsList from "../pages/prescriptions/PrescriptionsList.jsx";
+import InvoicesList from "../pages/invoices/InvoicesList.jsx";
 
 // Modules below have a full API layer (src/api/) but no screen yet —
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
-  ["admissions", "Admissions", "Phase 2"],
+  // Admissions removed from roadmap and wired below
   // Wards & Beds removed from roadmap and wired below
-  ["prescriptions", "Prescriptions", "Phase 4"],
+  // Prescriptions removed from roadmap and wired below
   ["lab", "Laboratory", "Phase 4"],
   ["radiology", "Radiology", "Phase 4"],
   ["inventory", "Pharmacy Inventory", "Phase 5"],
   ["purchases", "Purchases", "Phase 5"],
-  ["invoices", "Billing", "Phase 3"],
   ["insurance", "Insurance Claims", "Phase 3"],
   ["expenses", "Expenses", "Phase 5"],
   ["attendance", "Attendance", "Phase 6"],
@@ -83,6 +85,38 @@ export const router = createBrowserRouter([
         handle: { title: "Patient Profile" },
       },
       {
+        path: "admissions",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.DOCTOR,
+              ROLES.NURSE,
+              ROLES.RECEPTIONIST,
+            ]}
+          >
+            <AdmissionsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Admissions" },
+      },
+      {
+        path: "prescriptions",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.DOCTOR,
+              ROLES.PHARMACIST,
+              ROLES.NURSE,
+            ]}
+          >
+            <PrescriptionsList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Prescriptions" },
+      },
+      {
         path: "wards",
         element: (
           <ProtectedRoute
@@ -113,6 +147,23 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "Appointments" },
+      },
+      {
+        path: "invoices",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.ACCOUNTANT,
+              ROLES.CASHIER,
+              ROLES.RECEPTIONIST,
+              ROLES.DOCTOR,
+            ]}
+          >
+            <InvoicesList />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Billing" },
       },
       {
         path: "doctors",

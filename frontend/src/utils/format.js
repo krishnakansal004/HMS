@@ -28,6 +28,16 @@ export function fullName(entity, first = 'first_name', last = 'last_name') {
   return [entity[first], entity[last]].filter(Boolean).join(' ') || '—';
 }
 
+// Prescriptions have no dedicated `diagnosis` column — the backend folds it
+// into `notes` as "Diagnosis: <text>\n\n<instructions>". Split it back out
+// for display; falls back gracefully if the prefix isn't there.
+export function splitPrescriptionNotes(notes) {
+  if (!notes) return { diagnosis: '—', instructions: '' };
+  const match = notes.match(/^Diagnosis:\s*([^\n]*)\n?\n?([\s\S]*)$/);
+  if (!match) return { diagnosis: notes, instructions: '' };
+  return { diagnosis: match[1] || '—', instructions: match[2] || '' };
+}
+
 export function initials(name) {
   if (!name) return '?';
   return name

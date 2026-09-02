@@ -27,6 +27,7 @@ import plansRoutes from './routes/plans.js';
 import tenantsRoutes from './routes/tenants.js';
 import planRequestsRoutes from './routes/planRequests.js';
 import doctorRoutes from './routes/doctors.js';
+import paymentRoutes from './routes/payments.js';
 const app = express();
 
 // Security & Utility Middlewares
@@ -73,6 +74,7 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/plan-requests', planRequestsRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Catch-all 404 Route handler
 app.use((req, res, next) => {

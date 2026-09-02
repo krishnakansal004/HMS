@@ -7,6 +7,7 @@ export class AdmissionController {
       const admission = await AdmissionService.admitPatient({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
         ipAddress: req.ip
       });
@@ -21,6 +22,7 @@ export class AdmissionController {
       const admission = await AdmissionService.updateAdmission({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         admissionId: req.params.id,
         ...req.body,
         ipAddress: req.ip
@@ -35,6 +37,8 @@ export class AdmissionController {
     try {
       const result = await AdmissionService.getAdmissions({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query
       });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });

@@ -1,12 +1,25 @@
 import { PrescriptionRepository } from '../repositories/prescriptionRepository.js';
+import { DoctorRepository } from '../repositories/doctorRepository.js';
 import { AuditService } from './auditService.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
 import { db } from '../config/db.js';
 
 export class PrescriptionService {
-  
-  static async createPrescription({ tenantId, userId, doctorProfileId, patientId, appointmentId, diagnosis, instructions, items, ipAddress }) {
+
+  // The route only allows the DOCTOR role to create a prescription, but the
+  // doctorProfileId used to be taken straight from the request body — any
+  // doctor could attribute a prescription to any other doctor's profile
+  // just by sending a different id. Deriving it from the caller's own
+  // account here removes that trust boundary entirely; the client can no
+  // longer influence whose profile a prescription lands under.
+  static async createPrescription({ tenantId, userId, patientId, appointmentId, diagnosis, instructions, items, ipAddress }) {
+    const doctorProfile = await DoctorRepository.findProfileByUserId(tenantId, userId);
+    if (!doctorProfile) {
+      throw new AppError('No doctor profile is associated with this account.', HTTP_STATUS.FORBIDDEN);
+    }
+    const doctorProfileId = doctorProfile.doctor_profile_id;
+
     // Verify Patient exists in this tenant
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId }
@@ -45,11 +58,23 @@ export class PrescriptionService {
     return prescription;
   }
 
-  static async getPrescriptionById({ tenantId, prescriptionId }) {
+  static async getPrescriptionById({ tenantId, userId, userRole, prescriptionId }) {
     const prescription = await PrescriptionRepository.findByIdAndTenant(prescriptionId, tenantId);
     if (!prescription) {
       throw new AppError('Prescription not found.', HTTP_STATUS.NOT_FOUND);
     }
+
+    // A doctor may only open prescriptions they themselves wrote. Reported
+    // as 404 rather than 403 so a doctor probing other prescription ids
+    // can't use the response to tell "exists but not yours" apart from
+    // "doesn't exist".
+    if (userRole === 'DOCTOR') {
+      const doctorProfile = await DoctorRepository.findProfileByUserId(tenantId, userId);
+      if (!doctorProfile || prescription.doctor_id !== doctorProfile.doctor_profile_id) {
+        throw new AppError('Prescription not found.', HTTP_STATUS.NOT_FOUND);
+      }
+    }
+
     return prescription;
   }
 
@@ -80,10 +105,23 @@ export class PrescriptionService {
     return { prescription_id: prescriptionId, approval_status: status };
   }
 
-  static async listPrescriptions({ tenantId, query }) {
-    const { patientId, doctorId, page = 1, limit = 50 } = query;
+  static async listPrescriptions({ tenantId, userId, userRole, query }) {
+    const { patientId, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
+
+    // Doctors only ever see their own prescriptions — the doctorId query
+    // param is honored for other roles (admin/pharmacist/nurse) but is
+    // ignored, not just defaulted, for a DOCTOR caller so one doctor can't
+    // page through another's list by passing a different id.
+    let doctorId = query.doctorId;
+    if (userRole === 'DOCTOR') {
+      const doctorProfile = await DoctorRepository.findProfileByUserId(tenantId, userId);
+      if (!doctorProfile) {
+        throw new AppError('No doctor profile is associated with this account.', HTTP_STATUS.FORBIDDEN);
+      }
+      doctorId = doctorProfile.doctor_profile_id;
+    }
 
     const [total, prescriptions] = await PrescriptionRepository.findManyPaginated({
       tenantId, patientId, doctorId, skip, take

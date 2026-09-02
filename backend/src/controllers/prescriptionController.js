@@ -5,10 +5,11 @@ export class PrescriptionController {
   
   static async create(req, res, next) {
     try {
+      const { doctorProfileId, ...rest } = req.body;
       const prescription = await PrescriptionService.createPrescription({
         tenantId: req.currentTenantId,
         userId: req.userId,
-        ...req.body,
+        ...rest,
         ipAddress: req.ip
       });
 
@@ -26,6 +27,8 @@ export class PrescriptionController {
     try {
       const prescription = await PrescriptionService.getPrescriptionById({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         prescriptionId: req.params.id
       });
 
@@ -62,6 +65,8 @@ export class PrescriptionController {
     try {
       const result = await PrescriptionService.listPrescriptions({
         tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
         query: req.query
       });
 

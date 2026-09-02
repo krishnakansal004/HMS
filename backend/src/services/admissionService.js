@@ -1,11 +1,27 @@
 import { AdmissionRepository } from '../repositories/admissionRepository.js';
+import { DoctorRepository } from '../repositories/doctorRepository.js';
 import { AuditService } from './auditService.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
 import { db } from '../config/db.js';
 
 export class AdmissionService {
-  static async admitPatient({ tenantId, userId, patientId, bedId, admittingDoctorId, diagnosis, ipAddress }) {
+  static async admitPatient({ tenantId, userId, userRole, patientId, bedId, admittingDoctorId, diagnosis, ipAddress }) {
+    // A doctor admitting a patient is always attributed to themselves —
+    // admittingDoctorId from the body is only honored for staff roles
+    // (admin/receptionist) who are assigning a patient to some other
+    // doctor. Otherwise a doctor could attribute the admission (and later,
+    // visibility of it) to any doctor profile in the tenant just by
+    // sending a different id.
+    let resolvedDoctorId = admittingDoctorId || null;
+    if (userRole === 'DOCTOR') {
+      const doctorProfile = await DoctorRepository.findProfileByUserId(tenantId, userId);
+      if (!doctorProfile) {
+        throw new AppError('No doctor profile is associated with this account.', HTTP_STATUS.FORBIDDEN);
+      }
+      resolvedDoctorId = doctorProfile.doctor_profile_id;
+    }
+
     // this used to do the bed lock (db.bed.update) and the
     // admission record creation (AdmissionRepository.createAdmission) as
     // two separate, un-transactioned writes. If the second failed after
@@ -37,7 +53,7 @@ export class AdmissionService {
       return AdmissionRepository.createAdmission(tenantId, {
         patient_id: patientId,
         bed_id: bedId || null,
-        admitting_doctor_id: admittingDoctorId || null,
+        admitting_doctor_id: resolvedDoctorId,
         diagnosis: diagnosis || null,
         admission_date: new Date(),
         status: 'admitted'
@@ -57,7 +73,20 @@ export class AdmissionService {
     return admission;
   }
 
-  static async updateAdmission({ tenantId, userId, admissionId, status, dischargeDate, dischargeNotes, ipAddress }) {
+  static async updateAdmission({ tenantId, userId, userRole, admissionId, status, dischargeDate, dischargeNotes, ipAddress }) {
+    // Same "not found" masking as prescriptions: a doctor updating a
+    // colleague's admission (e.g. discharging their patient) shouldn't be
+    // distinguishable from the record not existing at all.
+    if (userRole === 'DOCTOR') {
+      const [doctorProfile, existing] = await Promise.all([
+        DoctorRepository.findProfileByUserId(tenantId, userId),
+        AdmissionRepository.findAdmissionById(tenantId, admissionId)
+      ]);
+      if (!existing || !doctorProfile || existing.admitting_doctor_id !== doctorProfile.doctor_profile_id) {
+        throw new AppError('Admission record not found.', HTTP_STATUS.NOT_FOUND);
+      }
+    }
+
     try {
       const admission = await AdmissionRepository.updateAdmissionTransaction({
         tenantId,
@@ -86,13 +115,22 @@ export class AdmissionService {
     }
   }
 
-  static async getAdmissions({ tenantId, query }) {
+  static async getAdmissions({ tenantId, userId, userRole, query }) {
     const { status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
+    let admittingDoctorId;
+    if (userRole === 'DOCTOR') {
+      const doctorProfile = await DoctorRepository.findProfileByUserId(tenantId, userId);
+      if (!doctorProfile) {
+        throw new AppError('No doctor profile is associated with this account.', HTTP_STATUS.FORBIDDEN);
+      }
+      admittingDoctorId = doctorProfile.doctor_profile_id;
+    }
+
     const [total, admissions] = await AdmissionRepository.findAdmissionsPaginated({
-      tenantId, status, skip, take
+      tenantId, status, admittingDoctorId, skip, take
     });
 
     return {
