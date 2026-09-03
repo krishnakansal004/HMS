@@ -15,6 +15,7 @@ const handleValidationErrors = (req, res, next) => {
 
 export const createPrescriptionValidator = [
   body('patientId').isUUID().withMessage('Valid Patient ID is required'),
+  body('doctorProfileId').isUUID().withMessage('Valid Doctor Profile ID is required'),
   body('appointmentId').optional().isUUID().withMessage('Appointment ID must be a UUID'),
   body('diagnosis').trim().notEmpty().withMessage('Diagnosis is required').escape(),
   body('instructions').optional().trim().escape(),

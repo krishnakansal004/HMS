@@ -71,22 +71,16 @@ async function seedTestData() {
       actualDoctorUserId = newDocUser.user_id;
     }
 
-    const existingDoctorProfile = await prisma.doctor_profile.findFirst({ where: { user_id: actualDoctorUserId } });
-    if (existingDoctorProfile) {
-      await prisma.doctor_profile.update({
-        where: { doctor_profile_id: existingDoctorProfile.doctor_profile_id },
-        data: { tenant_id: tenantId, specialization: 'General Medicine' }
-      });
-    } else {
-      await prisma.doctor_profile.create({
-        data: {
-          doctor_profile_id: doctorProfileId,
-          user_id: actualDoctorUserId,
-          tenant_id: tenantId,
-          specialization: 'General Medicine'
-        }
-      });
-    }
+    await prisma.doctor_profile.upsert({
+      where: { user_id: actualDoctorUserId },
+      update: { tenant_id: tenantId, specialization: 'General Medicine' },
+      create: {
+        doctor_profile_id: doctorProfileId,
+        user_id: actualDoctorUserId,
+        tenant_id: tenantId,
+        specialization: 'General Medicine'
+      }
+    });
 
     console.log('🎉 Test database seeded successfully with Admin and Doctor profiles!');
   } catch (error) {

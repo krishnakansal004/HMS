@@ -2,18 +2,16 @@ import { db } from '../config/db.js';
 
 export class PrescriptionRepository {
   
-  static async create({ tenantId, doctorId, patientId, diagnosis, instructions, items }) {
+  static async create({ tenantId, doctorId, patientId, appointmentId, diagnosis, instructions, items }) {
     return db.prescription.create({
       data: {
         tenant_id: tenantId,
         doctor_id: doctorId,
         patient_id: patientId,
+        appointment_id: appointmentId || null,
         patient_name_snapshot: '', // Populated via service
         approval_status: 'pending',
-        // No `diagnosis` column exists on this table (schema only has
-        // `notes`) — folded in here with a parseable prefix so the
-        // frontend can split it back out for display.
-        notes: instructions ? `Diagnosis: ${diagnosis}\n\n${instructions}` : `Diagnosis: ${diagnosis}`,
+        notes: instructions,
         medicines: items.map(i => ({
           name: i.medicineName,
           dosage: i.dosage,

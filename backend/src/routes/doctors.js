@@ -1,7 +1,7 @@
-import express from "express";
-import { DoctorController } from "../controllers/doctorController.js";
-import { protect, requireRoles } from "../middlewares/authMiddleware.js";
-import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import express from 'express';
+import { DoctorController } from '../controllers/doctorController.js';
+import { protect, requireRoles } from '../middlewares/authMiddleware.js';
+import { requireTenant } from '../middlewares/tenantMiddleware.js';
 
 const router = express.Router();
 
@@ -11,37 +11,30 @@ router.use(requireTenant);
 
 // GET /api/doctors
 router.get(
-  "/",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE", "PATIENT", "DOCTOR", "LAB_TECHNICIAN", "RADIOLOGY_TECHNICIAN", "PHARMACIST"),
-  DoctorController.list,
+  '/', 
+  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR', 'RECEPTIONIST', 'NURSE'), 
+  DoctorController.list
 );
 
 // POST /api/doctors
 router.post(
-  "/",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR"),
-  DoctorController.create,
+  '/', 
+  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR'), 
+  DoctorController.create
 );
 
 // PUT /api/doctors/:id
 router.put(
-  "/:id",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR"),
-  DoctorController.update,
+  '/:id', 
+  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR'), 
+  DoctorController.update
 );
 
 // DELETE /api/doctors/:id
 router.delete(
-  "/:id",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR"),
-  DoctorController.remove,
-);
-
-// GET /api/doctors/:id
-router.get(
-  "/:id",
-  requireRoles("HOSPITAL_ADMIN", "DIRECTOR", "RECEPTIONIST", "NURSE", "PATIENT", "DOCTOR", "LAB_TECHNICIAN", "RADIOLOGY_TECHNICIAN", "PHARMACIST"),
-  DoctorController.getById,
+  '/:id', 
+  requireRoles('HOSPITAL_ADMIN', 'DIRECTOR'), 
+  DoctorController.remove
 );
 
 export default router;

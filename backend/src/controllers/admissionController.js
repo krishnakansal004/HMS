@@ -1,5 +1,5 @@
-import { AdmissionService } from "../services/admissionService.js";
-import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { AdmissionService } from '../services/admissionService.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class AdmissionController {
   static async admit(req, res, next) {
@@ -8,15 +8,9 @@ export class AdmissionController {
         tenantId: req.currentTenantId,
         userId: req.userId,
         ...req.body,
-        ipAddress: req.ip,
+        ipAddress: req.ip
       });
-      res
-        .status(HTTP_STATUS.CREATED)
-        .json({
-          success: true,
-          message: "Patient admitted successfully",
-          data: admission,
-        });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Patient admitted successfully', data: admission });
     } catch (error) {
       next(error);
     }
@@ -29,15 +23,9 @@ export class AdmissionController {
         userId: req.userId,
         admissionId: req.params.id,
         ...req.body,
-        ipAddress: req.ip,
+        ipAddress: req.ip
       });
-      res
-        .status(HTTP_STATUS.OK)
-        .json({
-          success: true,
-          message: "Admission status updated successfully",
-          data: admission,
-        });
+      res.status(HTTP_STATUS.OK).json({ success: true, message: 'Admission status updated successfully', data: admission });
     } catch (error) {
       next(error);
     }
@@ -47,9 +35,7 @@ export class AdmissionController {
     try {
       const result = await AdmissionService.getAdmissions({
         tenantId: req.currentTenantId,
-        userId: req.userId,
-        userRole: req.userRole,
-        query: req.query,
+        query: req.query
       });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });
     } catch (error) {

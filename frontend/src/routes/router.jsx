@@ -12,17 +12,15 @@ import { ROLES } from "../utils/roles.js";
 import DoctorsList from "../pages/doctors/DoctorsList.jsx";
 import PatientDetails from "../pages/patients/PatientDetails.jsx";
 import WardsList from "../pages/wards/WardsList.jsx"; // <-- Phase 2 Import
-import AdmissionsList from "../pages/admissions/AdmissionsList.jsx";
-import PrescriptionsList from "../pages/prescriptions/PrescriptionsList.jsx";
 import InvoicesList from "../pages/invoices/InvoicesList.jsx";
 
 // Modules below have a full API layer (src/api/) but no screen yet —
 // see the phased build plan. Wiring the route now keeps nav links from
 // dead-ending on a blank screen as each phase lands.
 const roadmap = [
-  // Admissions removed from roadmap and wired below
+  ["admissions", "Admissions", "Phase 2"],
   // Wards & Beds removed from roadmap and wired below
-  // Prescriptions removed from roadmap and wired below
+  ["prescriptions", "Prescriptions", "Phase 4"],
   ["lab", "Laboratory", "Phase 4"],
   ["radiology", "Radiology", "Phase 4"],
   ["inventory", "Pharmacy Inventory", "Phase 5"],
@@ -83,38 +81,6 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "Patient Profile" },
-      },
-      {
-        path: "admissions",
-        element: (
-          <ProtectedRoute
-            roles={[
-              ROLES.HOSPITAL_ADMIN,
-              ROLES.DOCTOR,
-              ROLES.NURSE,
-              ROLES.RECEPTIONIST,
-            ]}
-          >
-            <AdmissionsList />
-          </ProtectedRoute>
-        ),
-        handle: { title: "Admissions" },
-      },
-      {
-        path: "prescriptions",
-        element: (
-          <ProtectedRoute
-            roles={[
-              ROLES.HOSPITAL_ADMIN,
-              ROLES.DOCTOR,
-              ROLES.PHARMACIST,
-              ROLES.NURSE,
-            ]}
-          >
-            <PrescriptionsList />
-          </ProtectedRoute>
-        ),
-        handle: { title: "Prescriptions" },
       },
       {
         path: "wards",

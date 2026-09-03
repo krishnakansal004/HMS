@@ -13,12 +13,6 @@ export class DoctorRepository {
     });
   }
 
-  static async findProfileByUserId(tenantId, userId) {
-    return db.doctor_profile.findFirst({
-      where: { user_id: userId, tenant_id: tenantId }
-    });
-  }
-
   static async createTransaction(data) {
     return db.$transaction(async (tx) => {
       const user = await tx.users.create({
