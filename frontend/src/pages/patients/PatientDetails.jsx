@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, User, Activity, AlertCircle, HeartPulse, 
-  CalendarClock, BedDouble, FileStack, FlaskConical, Scan, Receipt, History, Plus,Clock
+  CalendarClock, BedDouble, FileStack, FlaskConical, Scan, Receipt, History, Plus,Clock, Mail
 } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { patientsApi } from '../../api/patients.js';
@@ -29,11 +29,14 @@ export default function PatientDetails() {
   const user = useAuthStore((s) => s.user);
   const isDoctor = user?.role === ROLES.DOCTOR;
 
+  const canInvite = user?.role === ROLES.HOSPITAL_ADMIN || user?.role === ROLES.RECEPTIONIST;
+  const [inviting, setInviting] = useState(false);
+ 
   const [activeTab, setActiveTab] = useState('overview');
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
 
   // 1. Fetch Core Patient Profile
-  const { data: response, loading, error } = useAsync(() => patientsApi.getById(id), [id]);
+  const { data: response, loading, error, refetch: refetchPatient } = useAsync(() => patientsApi.getById(id), [id]);
   const patient = response?.data;
 
   // 2. Fetch Unified Timeline Data
@@ -78,36 +81,38 @@ export default function PatientDetails() {
   if (error) return <ErrorState message={error} />;
   if (!patient) return <ErrorState message="Patient not found" />;
 
+  async function handleInvite() {
+    setInviting(true);
+    try {
+      await patientsApi.invite(patient.patient_id);
+      toast.success("Invitation sent! The patient will receive an email shortly.");
+      refetchPatient(); // Reload to hide the invite button
+    } catch (err) {
+      toast.error(err.message || "Failed to send invitation.");
+    } finally {
+      setInviting(false);
+    }
+  }
   // Check active admission status from the timeline data
   const activeAdmission = timelineData?.admissions?.find(a => a.status === 'admitted');
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header & Actions */}
       <div className="flex items-start justify-between gap-4 flex-wrap bg-[var(--color-surface)] p-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-sm">
-        <div className="flex items-center gap-4">
-          <Link to="/patients" className="p-2 rounded-full bg-[var(--color-paper)] hover:bg-[var(--color-border)] text-[var(--color-ink-soft)] transition-colors">
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
-                {fullName(patient)}
-              </h2>
-              {activeAdmission ? (
-                <StatusPill status="admitted" label={`Admitted - Bed ${activeAdmission.bed?.bed_number || 'TBD'}`} />
-              ) : (
-                <StatusPill status="discharged" label="Outpatient" tone="neutral" />
-              )}
-            </div>
-            <p className="text-sm text-[var(--color-ink-soft)] mt-1 font-mono-data">
-              ID: {patient.patient_id.toUpperCase().split('-')[0]} • {patient.gender} • {patient.date_of_birth ? `${new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()} Yrs` : 'Age Unknown'}
-            </p>
-          </div>
-        </div>
-        
-        {/* Doctor-Specific Actions */}
         <div className="flex gap-2">
+          {canInvite && !patient.user_id && (
+            <Button 
+              variant="secondary" 
+              icon={Mail} 
+              loading={inviting} 
+              onClick={handleInvite}
+              disabled={!patient.email}
+              title={!patient.email ? "Patient must have an email address to be invited" : ""}
+            >
+              Invite to Portal
+            </Button>
+          )}
+          
           {isDoctor && (
             <>
               <Button onClick={() => setPrescriptionOpen(true)} icon={FileStack}>Prescribe</Button>

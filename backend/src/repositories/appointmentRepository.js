@@ -15,41 +15,67 @@ export class AppointmentRepository {
     type,
     notes,
   }) {
-    const start = slotStart || startTime;
-    const end = slotEnd || endTime;
+    const start = new Date(slotStart || startTime);
+    const end = new Date(slotEnd || endTime);
 
-    // Explicitly fetch the doctor and user relation.
-    // Fail fast with a clear error if the doctor profile doesn't exist.
-    const doctorProfile = await db.doctor_profile.findUnique({
-      where: { doctor_profile_id: doctorId },
-      include: {
-        users: {
-          select: { name: true },
+    return db.$transaction(async (tx) => {
+      // Serialize bookings per doctor within tenant to eliminate concurrency race conditions
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(concat(${tenantId}::text, ${doctorId}::text)))`;
+
+      // Check overlap under lock to guarantee atomic conflict detection
+      const overlap = await tx.appointment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          doctor_id: doctorId,
+          deleted_at: null,
+          status: { notIn: ["cancelled", "rejected"] },
+          AND: [
+            { slot_start: { lt: end } },
+            { slot_end: { gt: start } },
+          ],
         },
-      },
-    });
+      });
 
-    if (!doctorProfile || !doctorProfile.users?.name) {
-      throw new AppError(
-        "Valid doctor profile and associated user details are required for appointment creation.",
-        HTTP_STATUS.BAD_REQUEST,
-      );
-    }
+      if (overlap) {
+        throw new AppError(
+          "The doctor is already booked for this time slot.",
+          HTTP_STATUS.CONFLICT,
+        );
+      }
 
-    const doctorName = doctorProfile.users.name;
+      // Explicitly fetch the doctor and user relation.
+      // Fail fast with a clear error if the doctor profile doesn't exist.
+      const doctorProfile = await tx.doctor_profile.findFirst({
+        where: { doctor_profile_id: doctorId, tenant_id: tenantId, deleted_at: null },
+        include: {
+          users: {
+            select: { name: true },
+          },
+        },
+      });
 
-    return db.appointment.create({
-      data: {
-        tenant_id: tenantId,
-        patient_id: patientId,
-        doctor_id: doctorId,
-        slot_start: new Date(start),
-        slot_end: new Date(end),
-        status: status ? status.toLowerCase() : "scheduled",
-        type: type ? type.toLowerCase() : "walk_in",
-        notes: notes || null,
-        doctor_name_snapshot: doctorName,
-      },
+      if (!doctorProfile || !doctorProfile.users?.name) {
+        throw new AppError(
+          "Valid doctor profile and associated user details are required for appointment creation.",
+          HTTP_STATUS.BAD_REQUEST,
+        );
+      }
+
+      const doctorName = doctorProfile.users.name;
+
+      return tx.appointment.create({
+        data: {
+          tenant_id: tenantId,
+          patient_id: patientId,
+          doctor_id: doctorId,
+          slot_start: start,
+          slot_end: end,
+          status: status ? status.toLowerCase() : "scheduled",
+          type: type ? type.toLowerCase() : "walk_in",
+          notes: notes || null,
+          doctor_name_snapshot: doctorName,
+        },
+      });
     });
   }
 
@@ -58,6 +84,7 @@ export class AppointmentRepository {
       where: {
         appointment_id: appointmentId,
         tenant_id: tenantId,
+        deleted_at: null,
       },
       include: {
         patient: {
@@ -78,7 +105,7 @@ export class AppointmentRepository {
     skip,
     take,
   }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (doctorId) where.doctor_id = doctorId;
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
@@ -103,26 +130,32 @@ export class AppointmentRepository {
   }
 
   static async updateStatus(tenantId, appointmentId, status, reason) {
-    return db.appointment.update({
-      where: { appointment_id: appointmentId },
+    await db.appointment.updateMany({
+      where: { appointment_id: appointmentId, tenant_id: tenantId, deleted_at: null },
       data: {
         status: status.toLowerCase(),
         reason: reason || null,
         updated_at: new Date(),
       },
     });
+
+    return db.appointment.findFirst({
+      where: { appointment_id: appointmentId, tenant_id: tenantId },
+    });
   }
 
-  static async checkOverlap(doctorId, startTime, endTime) {
-    return db.appointment.findFirst({
-      where: {
-        doctor_id: doctorId,
-        status: { not: "cancelled" },
-        AND: [
-          { slot_start: { lt: new Date(endTime) } },
-          { slot_end: { gt: new Date(startTime) } },
-        ],
-      },
-    });
+  static async checkOverlap(doctorId, startTime, endTime, tenantId = null) {
+    const where = {
+      doctor_id: doctorId,
+      deleted_at: null,
+      status: { notIn: ["cancelled", "rejected"] },
+      AND: [
+        { slot_start: { lt: new Date(endTime) } },
+        { slot_end: { gt: new Date(startTime) } },
+      ],
+    };
+    if (tenantId) where.tenant_id = tenantId;
+
+    return db.appointment.findFirst({ where });
   }
 }

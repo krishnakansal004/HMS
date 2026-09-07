@@ -89,3 +89,8 @@ export const listPatientsValidator = [
   query('limit').optional().isInt({ min: 1, max: 100 }),
   handleValidationErrors
 ];
+
+export const invitePatientValidator = [
+  param('id').isUUID().withMessage('Valid Patient ID required'),
+  handleValidationErrors
+];

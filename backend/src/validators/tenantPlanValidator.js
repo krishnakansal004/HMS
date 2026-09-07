@@ -49,3 +49,15 @@ export const reviewPlanRequestValidator = [
   body('status').isIn(['approved', 'rejected']).withMessage('Status must be approved or rejected'),
   handleValidationErrors
 ];
+
+export const updateTenantStatusValidator = [
+  param('id').isUUID().withMessage('Valid Tenant ID required'),
+  body('status').isIn(['active', 'suspended', 'cancelled']).withMessage('Status must be active, suspended, or cancelled'),
+  handleValidationErrors
+];
+
+export const updateTenantPlanValidator = [
+  param('id').isUUID().withMessage('Valid Tenant ID required'),
+  body('planId').isUUID().withMessage('Valid Plan ID required'),
+  handleValidationErrors
+];

@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import fs from 'fs'
 import { promises as fsp } from 'fs'
 import path from 'path'
@@ -7,6 +8,30 @@ import dns from 'dns'
 dns.setDefaultResultOrder('ipv4first')
 
 let smsClient = null
+
+const twilioInit = import('twilio').then(twilioMod => {
+  const twilioFactory = twilioMod.default || twilioMod
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const apiKeySid = process.env.TWILIO_API_KEY_SID
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET
+
+  if (accountSid?.startsWith('AC') && authToken) {
+    smsClient = twilioFactory(accountSid, authToken)
+    return smsClient
+  }
+
+  if (accountSid?.startsWith('AC') && apiKeySid?.startsWith('SK') && apiKeySecret) {
+    smsClient = twilioFactory(apiKeySid, apiKeySecret, { accountSid })
+    return smsClient
+  }
+
+  console.warn('[notifyDirect] Twilio credentials are incomplete or invalid; SMS/WhatsApp disabled')
+  return null
+}).catch(error => {
+  console.warn('[notifyDirect] Twilio unavailable; SMS/WhatsApp disabled:', error?.message || String(error))
+  return null
+})
 
 // Nodemailer transporter (created per-send to allow env changes without restart)
 function createTransporter() {
@@ -24,21 +49,9 @@ function createTransporter() {
     port: smtpPort,
     secure: smtpPort === 465,
     auth: { user: smtpUser, pass: String(smtpPass).replace(/\s+/g, '') },
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: process.env.ALLOW_INSECURE_TLS === 'true' ? false : true },
     family: 4 // Force IPv4 to prevent ENETUNREACH on some hosts
   })
-}
-
-// Initialize Twilio for SMS/WhatsApp
-try {
-  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-    import('twilio').then(twilioMod => {
-      const twilioFactory = twilioMod.default || twilioMod
-      smsClient = twilioFactory(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-    }).catch(e => console.warn('[notifyDirect] twilio not available; SMS/WhatsApp disabled'))
-  }
-} catch (e) {
-  console.warn('[notifyDirect] twilio init failed; disabled', e?.message || String(e))
 }
 
 function normalizePhone(to) {
@@ -130,7 +143,7 @@ export async function sendEmail(to, subject, html, extra = {}) {
   }
 }
 
-// ─── SendGrid sender ────────────────────────────────────────────────
+// SendGrid sender
 import sgMail from '@sendgrid/mail'
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
@@ -197,13 +210,14 @@ async function sendViaSendGrid(to, subject, html, extra = {}) {
 
 export async function sendSMS(to, body) {
   if (!to) return
-  if (!smsClient || !process.env.TWILIO_FROM) {
+  const client = smsClient || await twilioInit
+  if (!client || !process.env.TWILIO_FROM) {
     console.log('[notifyDirect] sms (noop):', { to, reason: !smsClient ? 'no twilio client' : 'TWILIO_FROM missing' })
     return
   }
   try {
     const toNum = normalizePhone(to)
-    await smsClient.messages.create({ from: process.env.TWILIO_FROM, to: toNum, body })
+    await client.messages.create({ from: process.env.TWILIO_FROM, to: toNum, body })
   } catch (err) {
     console.error('[notifyDirect] sms error:', err?.code || '', err?.message || err)
     throw err
@@ -212,14 +226,15 @@ export async function sendSMS(to, body) {
 
 export async function sendWhatsApp(to, body) {
   if (!to) return
-  if (!smsClient || !process.env.TWILIO_WHATSAPP_FROM) {
+  const client = smsClient || await twilioInit
+  if (!client || !process.env.TWILIO_WHATSAPP_FROM) {
     console.log('[notifyDirect] whatsapp (noop):', { to, reason: !smsClient ? 'no twilio client' : 'TWILIO_WHATSAPP_FROM missing' })
     return
   }
   const norm = normalizePhone(to)
   const toAddr = norm.startsWith('whatsapp:') ? norm : `whatsapp:${norm}`
   try {
-    await smsClient.messages.create({ from: process.env.TWILIO_WHATSAPP_FROM, to: toAddr, body })
+    await client.messages.create({ from: process.env.TWILIO_WHATSAPP_FROM, to: toAddr, body })
   } catch (err) {
     console.error('[notifyDirect] whatsapp error:', err?.code || '', err?.message || err)
     throw err
@@ -228,14 +243,15 @@ export async function sendWhatsApp(to, body) {
 
 export async function sendWhatsAppTemplate(to, contentSid, variables = {}) {
   if (!to || !contentSid) return
-  if (!smsClient || !process.env.TWILIO_WHATSAPP_FROM) {
+  const client = smsClient || await twilioInit
+  if (!client || !process.env.TWILIO_WHATSAPP_FROM) {
     console.log('[notifyDirect] whatsapp template (noop):', { to, reason: !smsClient ? 'no twilio client' : 'TWILIO_WHATSAPP_FROM missing' })
     return
   }
   const norm = normalizePhone(to)
   const toAddr = norm.startsWith('whatsapp:') ? norm : `whatsapp:${norm}`
   try {
-    await smsClient.messages.create({
+    await client.messages.create({
       from: process.env.TWILIO_WHATSAPP_FROM,
       to: toAddr,
       contentSid,

@@ -5,6 +5,7 @@ import {
   updatePatientValidator,
   getPatientValidator,
   listPatientsValidator,
+  invitePatientValidator
 } from "../validators/patientValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
@@ -21,6 +22,15 @@ router.post(
   requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"),
   registerPatientValidator,
   PatientController.register,
+);
+
+// POST /api/patients/:id/invite
+// Who: Hospital Admin, Receptionist
+router.post(
+  "/:id/invite",
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST"),
+  invitePatientValidator,
+  PatientController.invite,
 );
 
 // GET /api/patients

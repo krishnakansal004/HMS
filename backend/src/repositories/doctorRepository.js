@@ -1,4 +1,6 @@
 import { db } from '../config/db.js';
+import { AppError } from '../middlewares/errorHandler.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
 
 export class DoctorRepository {
   static async findUserByEmail(tenantId, email) {
@@ -84,10 +86,9 @@ export class DoctorRepository {
       if (updateData.email) userUpdate.email = updateData.email;
 
       if (Object.keys(userUpdate).length > 0) {
-
-        await tx.users.update({
-          where: { user_id: doctorId },
-          data: userUpdate
+        await tx.users.updateMany({
+          where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null },
+          data: { ...userUpdate, updated_at: new Date() }
         });
       }
 
@@ -100,15 +101,14 @@ export class DoctorRepository {
       if (updateData.active !== undefined) profileUpdate.active = updateData.active;
 
       if (Object.keys(profileUpdate).length > 0) {
-
-        await tx.doctor_profile.update({
-          where: { user_id: doctorId },
-          data: profileUpdate
+        await tx.doctor_profile.updateMany({
+          where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null },
+          data: { ...profileUpdate, updated_at: new Date() }
         });
       }
 
-      return tx.users.findUnique({
-        where: { user_id: doctorId },
+      return tx.users.findFirst({
+        where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null },
         include: { doctor_profile: true }
       });
     });
@@ -122,17 +122,69 @@ export class DoctorRepository {
   }
   
   static async softDelete(tenantId, doctorId) {
-
+    const now = new Date();
     return db.doctor_profile.updateMany({
-      where: { user_id: doctorId, tenant_id: tenantId },
-      data: { active: false }
+      where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null },
+      data: { active: false, updated_at: now }
     });
   }
 
   static async hardDelete(tenantId, doctorId) {
+    return db.$transaction(async (tx) => {
+      // Find the profile to get the doctor_profile_id
+      const profile = await tx.doctor_profile.findFirst({
+        where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null }
+      });
 
-    return db.users.deleteMany({
-      where: { user_id: doctorId, tenant_id: tenantId }
+      if (profile) {
+        // Block deletion if active appointments exist
+        const activeAppointments = await tx.appointment.count({
+          where: {
+            doctor_id: profile.doctor_profile_id,
+            tenant_id: tenantId,
+            deleted_at: null,
+            status: { in: ['confirmed', 'scheduled', 'in_progress'] }
+          }
+        });
+
+        if (activeAppointments > 0) {
+          throw new AppError(
+            'Cannot delete doctor with active appointments. Please reassign or cancel them first.',
+            HTTP_STATUS.CONFLICT
+          );
+        }
+
+        // Block deletion if active patient admissions exist
+        const activeAdmissions = await tx.admission.count({
+          where: {
+            admitting_doctor_id: profile.doctor_profile_id,
+            tenant_id: tenantId,
+            deleted_at: null,
+            status: 'admitted'
+          }
+        });
+
+        if (activeAdmissions > 0) {
+          throw new AppError(
+            'Cannot delete doctor with active patient admissions. Please reassign patients first.',
+            HTTP_STATUS.CONFLICT
+          );
+        }
+
+        const now = new Date();
+        // Strict soft-delete on doctor_profile to protect clinical history and avoid FK violations
+        await tx.doctor_profile.updateMany({
+          where: { doctor_profile_id: profile.doctor_profile_id, tenant_id: tenantId, deleted_at: null },
+          data: { active: false, deleted_at: now, updated_at: now }
+        });
+      }
+
+      const now = new Date();
+      // Strict soft-delete on base user record
+      return tx.users.updateMany({
+        where: { user_id: doctorId, tenant_id: tenantId, deleted_at: null },
+        data: { deleted_at: now, updated_at: now }
+      });
     });
   }
 }

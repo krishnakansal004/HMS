@@ -27,27 +27,41 @@ export class AdmissionService {
     const admission = await db.$transaction(async (tx) => {
       // Verify patient exists
       const patient = await tx.patient.findFirst({
-        where: { patient_id: patientId, tenant_id: tenantId },
+        where: { patient_id: patientId, tenant_id: tenantId, deleted_at: null },
       });
       if (!patient)
         throw new AppError("Patient not found.", HTTP_STATUS.NOT_FOUND);
 
-      // If bed is specified, check if it's free, then lock it
+      // If bed is specified, atomically verify availability and lock it
       if (bedId) {
-        const bed = await tx.bed.findFirst({
-          where: { bed_id: bedId, tenant_id: tenantId },
+        const bedExists = await tx.bed.findFirst({
+          where: { bed_id: bedId, tenant_id: tenantId, deleted_at: null },
+          select: { bed_id: true },
         });
-        if (!bed) throw new AppError("Bed not found.", HTTP_STATUS.NOT_FOUND);
-        if (bed.is_occupied)
+        if (!bedExists) {
+          throw new AppError("Bed not found.", HTTP_STATUS.NOT_FOUND);
+        }
+
+        const lockResult = await tx.bed.updateMany({
+          where: {
+            bed_id: bedId,
+            tenant_id: tenantId,
+            is_occupied: false,
+            deleted_at: null,
+          },
+          data: {
+            is_occupied: true,
+            patient_id: patientId,
+            updated_at: new Date(),
+          },
+        });
+
+        if (lockResult.count === 0) {
           throw new AppError(
             "Selected bed is already occupied.",
             HTTP_STATUS.CONFLICT,
           );
-
-        await tx.bed.update({
-          where: { bed_id: bedId },
-          data: { is_occupied: true, patient_id: patientId },
-        });
+        }
       }
 
       // Create the admission record

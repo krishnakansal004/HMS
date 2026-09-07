@@ -13,13 +13,12 @@ export class WardBedRepository {
 
   static async findWards(tenantId) {
     return db.ward.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, deleted_at: null },
       include: {
         // NOTE: no `status` here — bed has no such column, only
-        // `is_occupied` (boolean). This used to select a `status` field
-        // that doesn't exist and would have crashed with "Unknown field
-        // `status`" the first time this ran.
+        // `is_occupied` (boolean).
         bed: {
+          where: { deleted_at: null },
           select: { bed_id: true, bed_number: true, is_occupied: true, price_per_day: true }
         }
       },
@@ -29,8 +28,12 @@ export class WardBedRepository {
 
   static async findWardById(tenantId, wardId) {
     return db.ward.findFirst({
-      where: { ward_id: wardId, tenant_id: tenantId },
-      include: { bed: true }
+      where: { ward_id: wardId, tenant_id: tenantId, deleted_at: null },
+      include: { 
+        bed: {
+          where: { deleted_at: null }
+        } 
+      }
     });
   }
 
@@ -38,16 +41,16 @@ export class WardBedRepository {
     return db.$transaction(async (tx) => {
       // Verify ward capacity limits
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${wardId}::text))`;
-      const ward = await tx.ward.findUnique({
-        where: { ward_id: wardId }
+      const ward = await tx.ward.findFirst({
+        where: { ward_id: wardId, tenant_id: tenantId, deleted_at: null }
       });
 
-      if (!ward || ward.tenant_id !== tenantId) {
+      if (!ward) {
         throw new Error('WARD_NOT_FOUND');
       }
 
       const currentBedsCount = await tx.bed.count({
-        where: { ward_id: wardId }
+        where: { ward_id: wardId, tenant_id: tenantId, deleted_at: null }
       });
 
       if (currentBedsCount >= ward.capacity) {
@@ -72,7 +75,7 @@ export class WardBedRepository {
   static async updateBedOccupancyTransaction({ tenantId, bedId, patientId, isOccupied }) {
     return db.$transaction(async (tx) => {
       const bed = await tx.bed.findFirst({
-        where: { bed_id: bedId, tenant_id: tenantId }
+        where: { bed_id: bedId, tenant_id: tenantId, deleted_at: null }
       });
 
       if (!bed) throw new Error('BED_NOT_FOUND');
@@ -90,7 +93,7 @@ export class WardBedRepository {
 
       // Recalculate ward current occupancy count
       const occupiedCount = await tx.bed.count({
-        where: { ward_id: bed.ward_id, is_occupied: true }
+        where: { ward_id: bed.ward_id, tenant_id: tenantId, is_occupied: true, deleted_at: null }
       });
 
       await tx.ward.update({

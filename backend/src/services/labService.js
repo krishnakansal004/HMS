@@ -112,8 +112,7 @@ export class LabService {
     }
 
     // If moving to completed, we can automatically push a billing item if an invoiceId is supplied
-    const shouldBill =
-      sampleStatus === "completed" && order.billing_status !== "billed";
+    const shouldBill = sampleStatus === "completed" && !!invoiceId;
     let billingItem = null;
 
     if (shouldBill) {

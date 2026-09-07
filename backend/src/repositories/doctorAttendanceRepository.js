@@ -5,7 +5,7 @@ export class DoctorAttendanceRepository {
   // doctor_attendance.doctor_id is FK'd to doctor_profile.doctor_profile_id
   static async resolveDoctorProfileId(tenantId, userId) {
     const profile = await db.doctor_profile.findFirst({
-      where: { user_id: userId, tenant_id: tenantId }
+      where: { user_id: userId, tenant_id: tenantId, deleted_at: null }
     });
     return profile?.doctor_profile_id || null;
   }

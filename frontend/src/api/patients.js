@@ -23,4 +23,6 @@ export const patientsApi = {
    *   bloodGroup?:string,emergencyContact?:string,allergies?:string,medicalHistory?:string}} data
    */
   update: (id, data) => api.put(`/patients/${id}`, data),
+
+  invite: (id) => api.post(`/patients/${id}/invite`),
 };

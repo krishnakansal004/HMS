@@ -15,14 +15,16 @@ export class PatientRepository {
   }
 
   static async findByIdAndTenant(patientId, tenantId) {
-    // IDOR Protection: Always requires matching tenant_id
+    // IDOR Protection: Always requires matching tenant_id and deleted_at: null
     return db.patient.findFirst({
       where: { 
         patient_id: patientId, 
-        tenant_id: tenantId 
+        tenant_id: tenantId,
+        deleted_at: null
       },
       include: {
         appointment: {
+          where: { deleted_at: null },
           orderBy: { slot_start: 'desc' },
           take: 5,
           include: { 
@@ -32,10 +34,12 @@ export class PatientRepository {
           }
         },
         prescription: {
+          where: { deleted_at: null },
           orderBy: { created_at: 'desc' },
           take: 5
         },
         invoice: {
+          where: { deleted_at: null },
           orderBy: { created_at: 'desc' },
           take: 5
         }
@@ -49,10 +53,11 @@ export class PatientRepository {
     if (phone) conditions.push({ phone });
     if (conditions.length === 0) return null;
 
-    // Scoped strictly to the tenant
+    // Scoped strictly to the tenant and non-deleted records
     return db.patient.findFirst({
       where: {
         tenant_id: tenantId,
+        deleted_at: null,
         OR: conditions
       }
     });
@@ -63,7 +68,8 @@ export class PatientRepository {
     const result = await db.patient.updateMany({
       where: { 
         patient_id: patientId, 
-        tenant_id: tenantId 
+        tenant_id: tenantId,
+        deleted_at: null
       },
       data: { ...data, updated_at: new Date() }
     });
@@ -76,7 +82,7 @@ export class PatientRepository {
   }
 
   static async findManyPaginated({ tenantId, search, skip, take }) {
-    const where = { tenant_id: tenantId }; // Mandatory tenant boundary
+    const where = { tenant_id: tenantId, deleted_at: null };
     
     if (search) {
       where.OR = [

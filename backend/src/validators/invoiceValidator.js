@@ -38,7 +38,7 @@ export const recordPaymentValidator = [
 
 export const listInvoicesValidator = [
   query('patientId').optional().isUUID(),
- query('status').optional().isIn(['draft', 'pending', 'partial', 'paid', 'cancelled', 'refunded']),
+  query('status').optional().isIn(['draft', 'pending', 'partial', 'paid', 'cancelled', 'refunded']),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   handleValidationErrors

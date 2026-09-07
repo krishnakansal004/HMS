@@ -13,13 +13,13 @@ export class InsuranceRepository {
 
   static async findCompanyById(tenantId, companyId) {
     return db.insurance_company.findFirst({
-      where: { company_id: companyId, tenant_id: tenantId }
+      where: { company_id: companyId, tenant_id: tenantId, deleted_at: null }
     });
   }
 
   static async findCompanies(tenantId) {
     return db.insurance_company.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, deleted_at: null },
       orderBy: { name: 'asc' }
     });
   }
@@ -39,7 +39,7 @@ export class InsuranceRepository {
 
   static async findClaimById(tenantId, claimId) {
     return db.insurance_claim.findFirst({
-      where: { claim_id: claimId, tenant_id: tenantId },
+      where: { claim_id: claimId, tenant_id: tenantId, deleted_at: null },
       include: {
         insurance_company: true,
         invoice: true,
@@ -92,7 +92,7 @@ export class InsuranceRepository {
   }
 
   static async findClaimsPaginated({ tenantId, patientId, status, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 

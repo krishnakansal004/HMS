@@ -122,4 +122,40 @@ export class TenantPlanController {
       next(error);
     }
   }
+
+  static async updateStatus(req, res, next) {
+    try {
+      const tenant = await TenantPlanService.updateTenantStatus({
+        userId: req.userId,
+        tenantId: req.params.id,
+        status: req.body.status,
+        ipAddress: req.ip,
+      });
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: `Hospital access marked as ${req.body.status}`,
+        data: tenant,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePlan(req, res, next) {
+    try {
+      const tenant = await TenantPlanService.updateTenantPlan({
+        userId: req.userId,
+        tenantId: req.params.id,
+        planId: req.body.planId,
+        ipAddress: req.ip,
+      });
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Tenant plan updated successfully",
+        data: tenant,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

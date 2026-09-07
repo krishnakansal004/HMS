@@ -25,14 +25,16 @@ export class DoctorManagementRepository {
 
 
   static async checkPendingApplication(tenantId, email) {
-    return db.doctor_application.findFirst({
-      where: { 
-        tenant_id: tenantId, 
-        email: email.toLowerCase(), 
-        status: 'PENDING' 
-      },
-      select: { application_id: true } // Only fetch the ID 
-    });
+    return tenantStorage.run({ tenantId }, () =>
+      db.doctor_application.findFirst({
+        where: { 
+          tenant_id: tenantId, 
+          email: email.toLowerCase(), 
+          status: 'PENDING' 
+        },
+        select: { application_id: true } // Only fetch the ID 
+      })
+    );
   }
 
   static async findApplicationByIdAndTenant(applicationId, tenantId) {
@@ -74,7 +76,7 @@ export class DoctorManagementRepository {
 
       // Mark the application as approved
       const updatedApp = await tx.doctor_application.update({
-        where: { application_id: applicationId, tenant_id: tenantId },
+        where: { application_id: applicationId },
         data: {
           status: 'APPROVED',
           reviewed_by: reviewerId,
@@ -103,7 +105,7 @@ export class DoctorManagementRepository {
 
   static async rejectApplication(tenantId, reviewerId, applicationId) {
     return db.doctor_application.update({
-      where: { application_id: applicationId, tenant_id: tenantId },
+      where: { application_id: applicationId },
       data: {
         status: 'REJECTED',
         reviewed_by: reviewerId,

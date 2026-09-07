@@ -16,7 +16,7 @@ export class ClinicalSettingsRepository {
 
   static async findTemplates(tenantId) {
     return db.prescription_template.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, deleted_at: null },
       orderBy: { created_at: "desc" },
       include: {
         users: { select: { name: true } },
@@ -26,13 +26,13 @@ export class ClinicalSettingsRepository {
 
   static async findTemplateById(tenantId, templateId) {
     return db.prescription_template.findFirst({
-      where: { template_id: templateId, tenant_id: tenantId },
+      where: { template_id: templateId, tenant_id: tenantId, deleted_at: null },
     });
   }
 
   static async deleteTemplate(tenantId, templateId) {
     return db.prescription_template.updateMany({
-      where: { template_id: templateId, tenant_id: tenantId },
+      where: { template_id: templateId, tenant_id: tenantId, deleted_at: null },
       data: { deleted_at: new Date(), updated_at: new Date() },
     });
   }

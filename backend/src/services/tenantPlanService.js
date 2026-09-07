@@ -46,6 +46,56 @@ export class TenantPlanService {
     return TenantPlanRepository.findActivePlans();
   }
 
+  static async updateTenantStatus({ userId, tenantId, status, ipAddress }) {
+    const validStatuses = ["active", "suspended", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      throw new AppError("Invalid tenant status.", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    if (!tenant) throw new AppError("Tenant not found.", HTTP_STATUS.NOT_FOUND);
+
+    const updatedTenant = await TenantPlanRepository.updateTenantStatus(tenantId, status);
+
+    AuditService.logAction({
+      tenantId, 
+      userId,
+      action: `UPDATE_TENANT_STATUS_${status.toUpperCase()}`,
+      entityType: "TENANT",
+      entityId: tenantId,
+      oldValue: { status: tenant.status },
+      newValue: { status },
+      ipAddress,
+    });
+
+    return updatedTenant;
+  }
+
+  static async updateTenantPlan({ userId, tenantId, planId, ipAddress }) {
+    const plan = await TenantPlanRepository.findPlanById(planId);
+    if (!plan || plan.status !== "active") {
+      throw new AppError("Selected plan is invalid or inactive.", HTTP_STATUS.BAD_REQUEST);
+    }
+    
+    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    if (!tenant) throw new AppError("Tenant not found.", HTTP_STATUS.NOT_FOUND);
+
+    const updatedTenant = await TenantPlanRepository.updateTenantPlan(tenantId, planId);
+
+    AuditService.logAction({
+      tenantId,
+      userId,
+      action: "UPDATE_TENANT_PLAN",
+      entityType: "TENANT",
+      entityId: tenantId,
+      oldValue: { planId: tenant.plan_id },
+      newValue: { planId },
+      ipAddress,
+    });
+
+    return updatedTenant;
+  }
+
   static async provisionHospitalTenant({
     name,
     slug,

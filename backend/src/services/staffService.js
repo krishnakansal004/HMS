@@ -51,7 +51,6 @@ export class StaffService {
 
     // Generate the Setup Token (just like Doctor onboarding)
     const { plainToken, tokenHash, expiresAt } = generateSetupToken();
-    console.log("USE THIS PLAIN TOKEN IN POSTMAN:", plainToken);
     // Insert User (RLS applies via tenantStorage in middleware)
     const staff = await db.users.create({
       data: {

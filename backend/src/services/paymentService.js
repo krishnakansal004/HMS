@@ -16,8 +16,6 @@ export class PaymentService {
     if (!invoice) throw new AppError("Invoice not found.", HTTP_STATUS.NOT_FOUND);
     if (invoice.status === "paid") throw new AppError("Invoice is already paid.", HTTP_STATUS.BAD_REQUEST);
 
-    // SECURITY FIX: Backend calculates exact pending amount, never trust the frontend
-    // SECURITY FIX: Backend calculates exact pending amount in minor currency (Paise)
     const pendingAmountPaise = Number(invoice.total) - Number(invoice.amount_paid);
     
     if (pendingAmountPaise <= 0) throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
@@ -28,7 +26,7 @@ export class PaymentService {
     });
 
     const options = {
-      amount: pendingAmountPaise, // <-- Removed the * 100 logic here
+      amount: pendingAmountPaise, 
       currency: "INR",
       receipt: invoiceId.slice(0, 40), 
     };
@@ -69,25 +67,56 @@ export class PaymentService {
     if (!invoice) throw new AppError("Invoice not found for webhook.", HTTP_STATUS.NOT_FOUND);
     if (invoice.status === "paid") return { success: true, message: "Already marked as paid" }; // Idempotency check
 
+    // Convert incoming amountPaid to minor currency (paise)
+    const remainingPaise = Number(invoice.total) - Number(invoice.amount_paid);
+    let amountInPaise = Math.round(Number(amountPaid) * 100);
+    if (
+      Math.round(Number(amountPaid)) === remainingPaise ||
+      (Number(amountPaid) > remainingPaise && Math.round(Number(amountPaid)) <= Number(invoice.total))
+    ) {
+      amountInPaise = Math.round(Number(amountPaid));
+    }
+
     return tenantStorage.run({ tenantId: invoice.tenant_id }, async () => {
       return db.$transaction(async (tx) => {
+        // Lock invoice row to prevent concurrent webhook/payment race conditions
+        const [lockedInvoice] = await tx.$queryRaw`
+          SELECT invoice_id, total, amount_paid, status, paid
+          FROM invoice
+          WHERE invoice_id = ${invoiceId}::uuid
+            AND tenant_id = ${invoice.tenant_id}::uuid
+            AND deleted_at IS NULL
+          FOR UPDATE
+        `;
+
+        const targetInvoice = lockedInvoice || invoice;
+        if (targetInvoice.status === "paid") {
+          return { success: true, message: "Already marked as paid" };
+        }
+
         const payment = await tx.payment.create({
           data: {
             tenant_id: invoice.tenant_id,
             invoice_id: invoiceId,
-            amount: Number(amountPaid), // Assumes frontend sends this in Rupees
+            amount: amountInPaise,
             method: "ONLINE_GATEWAY",
             transaction_id: gatewayPaymentId,
             status: "success",
           },
         });
 
-        const newAmountPaid = Number(invoice.amount_paid) + Number(amountPaid);
-        const newStatus = newAmountPaid >= Number(invoice.total) ? "paid" : "partial";
+        const newAmountPaid = Number(targetInvoice.amount_paid) + amountInPaise;
+        const isFullyPaid = newAmountPaid >= Number(targetInvoice.total);
+        const newStatus = isFullyPaid ? "paid" : "partial";
 
         await tx.invoice.update({
           where: { invoice_id: invoiceId },
-          data: { amount_paid: newAmountPaid, status: newStatus },
+          data: {
+            amount_paid: newAmountPaid,
+            paid: isFullyPaid,
+            status: newStatus,
+            updated_at: new Date(),
+          },
         });
 
         return payment;

@@ -181,4 +181,18 @@ export class TenantPlanRepository {
     }
     return tenant;
   }
+
+  static async updateTenantStatus(tenantId, status) {
+    return await db.tenant.update({
+      where: { tenant_id: tenantId },
+      data: { status, updated_at: new Date() }
+    });
+  }
+
+  static async updateTenantPlan(tenantId, planId) {
+    return await db.tenant.update({
+      where: { tenant_id: tenantId },
+      data: { plan_id: planId, updated_at: new Date() }
+    });
+  }
 }

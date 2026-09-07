@@ -1,9 +1,8 @@
 import express from "express";
 import { TenantPlanController } from "../controllers/tenantPlanController.js";
-import { provisionTenantValidator } from "../validators/tenantPlanValidator.js";
+import { provisionTenantValidator, updateTenantStatusValidator, updateTenantPlanValidator } from "../validators/tenantPlanValidator.js";
 import { protect, requireRoles } from '../middlewares/authMiddleware.js';
 import { tenantProvisionLimiter } from "../middlewares/rateLimiters.js";
-
 const router = express.Router();
 
 // POST /api/tenants/provision (Public onboarding endpoint for new hospitals)
@@ -28,5 +27,21 @@ router.get(
   protect,
   requireRoles('SYSTEM_OWNER', 'DIRECTOR'),
   TenantPlanController.getTenant
+);
+
+router.patch(
+  '/:id/status', 
+  protect, 
+  requireRoles('SYSTEM_OWNER', 'DIRECTOR'), 
+  updateTenantStatusValidator,
+  TenantPlanController.updateStatus
+);
+
+router.patch(
+  '/:id/plan', 
+  protect, 
+  requireRoles('SYSTEM_OWNER', 'DIRECTOR'), 
+  updateTenantPlanValidator,
+  TenantPlanController.updatePlan
 );
 export default router;

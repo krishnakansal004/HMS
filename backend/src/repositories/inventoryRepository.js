@@ -11,13 +11,13 @@ export class InventoryRepository {
 
   static async findMedicineById(medicineId, tenantId) {
     return db.medicine.findFirst({
-      where: { medicine_id: medicineId, tenant_id: tenantId },
+      where: { medicine_id: medicineId, tenant_id: tenantId, deleted_at: null },
       include: { supplier: true }
     });
   }
 
   static async findManyPaginated({ tenantId, search, lowStockOnly, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -68,6 +68,7 @@ export class InventoryRepository {
           where: {
             medicine_id: medicineId,
             tenant_id: tenantId,
+            deleted_at: null,
             quantity: { gte: absQuantity }
           },
           data: {
@@ -80,7 +81,7 @@ export class InventoryRepository {
         }
       } else {
         updateResult = await tx.medicine.updateMany({
-          where: { medicine_id: medicineId, tenant_id: tenantId },
+          where: { medicine_id: medicineId, tenant_id: tenantId, deleted_at: null },
           data: {
             quantity: { increment: absQuantity }
           }
@@ -104,7 +105,7 @@ export class InventoryRepository {
       });
 
       const updatedMedicine = await tx.medicine.findFirst({
-        where: { medicine_id: medicineId }
+        where: { medicine_id: medicineId, tenant_id: tenantId, deleted_at: null }
       });
 
       return { medicine: updatedMedicine, movement };

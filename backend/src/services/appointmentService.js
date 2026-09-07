@@ -46,6 +46,7 @@ export class AppointmentService {
       doctorId,
       start,
       end,
+      tenantId,
     );
     if (overlap)
       throw new AppError(

@@ -26,7 +26,7 @@ export class AdmissionRepository {
 
   static async findAdmissionById(tenantId, admissionId) {
     return db.admission.findFirst({
-      where: { admission_id: admissionId, tenant_id: tenantId },
+      where: { admission_id: admissionId, tenant_id: tenantId, deleted_at: null },
       include: {
         patient: true,
         bed: true,
@@ -43,7 +43,7 @@ export class AdmissionRepository {
   }) {
     return db.$transaction(async (tx) => {
       const admission = await tx.admission.findFirst({
-        where: { admission_id: admissionId, tenant_id: tenantId },
+        where: { admission_id: admissionId, tenant_id: tenantId, deleted_at: null },
       });
 
       if (!admission) throw new Error("ADMISSION_NOT_FOUND");
@@ -75,7 +75,7 @@ export class AdmissionRepository {
   }
 
   static async findAdmissionsPaginated({ tenantId, status, skip, take, patientId }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 

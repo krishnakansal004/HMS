@@ -30,6 +30,8 @@ const STATUS_TONE_MAP = {
   received: 'success',
   // attendance
   PRESENT: 'success', LEAVE: 'warning', HALF_DAY: 'accent',
+  // tenants & plans
+  active: 'success', suspended: 'warning', cancelled: 'danger',
 };
 
 export default function StatusPill({ status, tone, label }) {

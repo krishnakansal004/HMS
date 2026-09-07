@@ -16,7 +16,7 @@ function maskPhone(phone = "+919876543210") {
 
 export function simulateAbhaOtp(abhaId) {
   return {
-    message: "OTP sent successfully to registered Aadhaar mobile number",
+    message: "OTP sent successfully to registered mobile number",
     txnId: generateTxnId(),
     maskedPhone: maskPhone(),
   };
@@ -43,19 +43,19 @@ export function confirmAbhaOtp(abhaId, otp, txnId) {
   };
 }
 
-export async function listAbdmConsents(dbClient, user, tenant) {
-  const where = { tenant_id: tenant?.tenant_id || user?.tenantId };
+export async function listAbdmConsents(reqDb, user, tenantId) {
+  const where = { tenant_id: tenantId };
   if (user?.role === "PATIENT") {
-    const patient = await db.patient.findFirst({ where: { user_id: user.id } });
+    const patient = await db.patient.findFirst({ where: { user_id: user.id, tenant_id: tenantId } });
     if (!patient) return [];
     where.patient_id = patient.patient_id;
   }
-  return db.abdm_consent.findMany({ where, orderBy: { created_at: 'desc' } });
+  return db.abdm_consent.findMany({ where, orderBy: { created_at: "desc" } });
 }
 
-export async function createAbdmConsent(dbClient, tenantId, userId, payload) {
+export async function createAbdmConsent(reqDb, tenantId, userId, payload) {
   const { patientId, purpose, dataTypes, expiry } = payload;
-  const patient = await db.patient.findUnique({ where: { patient_id: patientId } });
+  const patient = await db.patient.findFirst({ where: { patient_id: patientId, tenant_id: tenantId } });
   
   if (!patient) {
     const err = new Error("Patient not found");
@@ -66,8 +66,8 @@ export async function createAbdmConsent(dbClient, tenantId, userId, payload) {
   return db.abdm_consent.create({
     data: {
       tenant_id: tenantId,
-      consent_ref: generateConsentId(),
       patient_id: patientId,
+      consent_ref: generateConsentId(),
       purpose: purpose || "Clinical Consult",
       data_types: Array.isArray(dataTypes) && dataTypes.length ? dataTypes : DEFAULT_DATA_TYPES,
       expiry: expiry ? new Date(expiry) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -77,35 +77,36 @@ export async function createAbdmConsent(dbClient, tenantId, userId, payload) {
   });
 }
 
-export async function updateAbdmConsentStatus(dbClient, consentId, status) {
-  const consent = await db.abdm_consent.findUnique({ where: { consent_id: consentId } });
-  if (!consent) {
+export async function updateAbdmConsentStatus(reqDb, consentId, status) {
+  const existing = await db.abdm_consent.findUnique({ where: { consent_id: consentId } });
+  if (!existing) {
     const err = new Error("Consent log not found");
     err.status = 404;
     throw err;
   }
+  
   return db.abdm_consent.update({
     where: { consent_id: consentId },
     data: {
-      status,
-      granted_at: status === "GRANTED" ? new Date() : undefined,
+      status: status,
+      granted_at: status === "GRANTED" ? new Date() : existing.granted_at,
       updated_at: new Date()
     }
   });
 }
 
-export async function syncAbdmHealthRecord(dbClient, patientId, recordType, recordId) {
+export async function syncAbdmHealthRecord(reqDb, patientId, recordType, recordId) {
   const patient = await db.patient.findUnique({ where: { patient_id: patientId } });
   if (!patient) {
     const err = new Error("Patient not found");
     err.status = 404;
     throw err;
   }
-  const bundleId = "FHIR-BND-" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+
   return {
     success: true,
     message: "Health record successfully compiled into FHIR bundle and synced with NDHM Health Information Provider (HIP) gateway.",
-    bundleId,
+    bundleId: "FHIR-BND-" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100),
     timestamp: new Date(),
   };
 }

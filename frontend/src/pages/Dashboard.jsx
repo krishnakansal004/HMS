@@ -610,3 +610,54 @@ function RoadmapNote() {
     </Card>
   );
 }
+
+// import { useAuthStore } from '../store/authStore.js';
+// import { ROLES } from '../utils/roles.js';
+
+// import PatientDashboard from './dashboard/PatientDashboard.jsx';
+// import FrontDeskDashboard from './dashboard/FrontDeskDashboard.jsx';
+// import ClinicalDashboard from './dashboard/ClinicalDashboard.jsx';
+// import FinanceDashboard from './dashboard/FinanceDashboard.jsx';
+// import PharmacyDashboard from './dashboard/PharmacyDashboard.jsx';
+// import DiagnosticsDashboard from './dashboard/DiagnosticsDashboard.jsx';
+// import ExecutiveDashboard from './dashboard/ExecutiveDashboard.jsx';
+
+// import LegacyStaffDashboard from './dashboard/LegacyStaffDashboard.jsx';
+
+// export default function Dashboard() {
+//   const user = useAuthStore((s) => s.user);
+
+//   switch (user?.role) {
+//     case ROLES.PATIENT:
+//       return <PatientDashboard user={user} />;
+      
+//     case ROLES.HOSPITAL_ADMIN:
+//     case ROLES.RECEPTIONIST:
+//     case ROLES.HR: // Map HR to Front Desk for now as it handles Attendance/Admissions
+//       return <FrontDeskDashboard user={user} />;
+      
+//     case ROLES.DOCTOR:
+//     case ROLES.NURSE:
+//       return <ClinicalDashboard user={user} />;
+      
+//     case ROLES.ACCOUNTANT:
+//     case ROLES.CASHIER:
+//       return <FinanceDashboard user={user} />;
+      
+//     case ROLES.PHARMACIST:
+//     case ROLES.STORE_MANAGER:
+//       return <PharmacyDashboard user={user} />;
+      
+//     case ROLES.LAB_TECHNICIAN:
+//     case ROLES.RADIOLOGY_TECHNICIAN:
+//       return <DiagnosticsDashboard user={user} />;
+      
+//     case ROLES.DIRECTOR:
+//     case ROLES.SYSTEM_OWNER:
+//       return <ExecutiveDashboard user={user} />;
+      
+//     default:
+//       // Failsafe for unforeseen roles
+//       return <LegacyStaffDashboard user={user} />;
+//   }
+// }

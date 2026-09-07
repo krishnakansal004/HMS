@@ -10,7 +10,7 @@
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
     "seed:doctors": "node src/utils/seed.js doctors",
     "seed:demo": "node src/utils/seed.js demo",
-    "twilio:test:wa": "node src/utils/whatsapp_test.js",
+    "twilio:verify": "node src/utils/twilio_verify.js",
     "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
@@ -50,7 +50,7 @@
     "prisma": "^7.9.1",
     "razorpay": "^2.8.3",
     "streamifier": "^0.1.1",
-    "twilio": "^5.10.5",
+    "twilio": "^5.13.1",
     "winston": "^3.19.0",
     "ws": "^8.21.3"
   },

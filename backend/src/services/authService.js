@@ -26,7 +26,9 @@ export class AuthService {
     }
 
     // Prevent Duplicate Emails within the system
-    const existingUser = await UserRepository.findUserByEmail(email);
+    const existingUser = await tenantStorage.run({ tenantId: tenant.tenant_id }, () =>
+      UserRepository.findUserByEmail(email.toLowerCase())
+    );
     if (existingUser) {
       const err = new Error("Email is already registered.");
       err.statusCode = 409;
@@ -189,8 +191,21 @@ export class AuthService {
       throw err;
     }
 
-    const user = await UserRepository.findUserById(decoded.sub);
+    const runInTenantContext = (fn) =>
+      decoded.tenantId
+        ? tenantStorage.run({ tenantId: decoded.tenantId }, fn)
+        : fn();
+
+    const user = await runInTenantContext(() =>
+      UserRepository.findUserById(decoded.sub),
+    );
     if (!user || user.deleted_at) {
+      const err = new Error("Session expired. Please log in again.");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (decoded.tenantId && user.tenant_id !== decoded.tenantId) {
       const err = new Error("Session expired. Please log in again.");
       err.statusCode = 401;
       throw err;

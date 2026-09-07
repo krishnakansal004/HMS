@@ -16,7 +16,7 @@ export class RadiologyRepository {
 
   static async findOrderById(tenantId, orderId) {
     return db.radiology_order.findFirst({
-      where: { radiology_order_id: orderId, tenant_id: tenantId },
+      where: { radiology_order_id: orderId, tenant_id: tenantId, deleted_at: null },
       include: {
         patient: {
           select: {
@@ -56,7 +56,7 @@ export class RadiologyRepository {
           scan_metadata: scanMetadata
             ? JSON.parse(JSON.stringify(scanMetadata))
             : undefined,
-          billing_status: actuallyBill ? "billed" : undefined,
+          billing_status: (shouldBill && invoiceId) ? 'billed' : undefined,
           updated_at: new Date(),
         },
       });
@@ -83,7 +83,7 @@ export class RadiologyRepository {
         
         items.forEach((i) => {
           const lineTotal = Number(i.unit_price_snapshot) * i.quantity;
-          const lineGst = Math.floor((lineTotal * Number(i.gst_rate_snapshot)) / 100);
+          const lineGst = Math.round((lineTotal * Number(i.gst_rate_snapshot)) / 100);
           subtotal += lineTotal;
           gstTotal += lineGst;
         });
@@ -112,7 +112,7 @@ export class RadiologyRepository {
     skip,
     take,
   }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
 

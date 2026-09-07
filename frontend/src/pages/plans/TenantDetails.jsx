@@ -1,4 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2, Layers, CalendarClock, Activity } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { tenantsApi } from '../../api/plans.js';
@@ -7,14 +8,36 @@ import Button from '../../components/ui/Button.jsx';
 import StatusPill from '../../components/ui/StatusPill.jsx';
 import { Spinner, ErrorState } from '../../components/ui/Table.jsx';
 import { formatDate } from '../../utils/format.js';
+import { toast } from '../../components/ui/Toast.jsx';
+import ChangePlanModal from './ChangePlanModal.jsx';
 
 export default function TenantDetails() {
   const { id } = useParams();
-  const { data: response, loading, error } = useAsync(() => tenantsApi.getById(id), [id]);
+  const navigate = useNavigate();
   
+  // FIX: 'refetch' is safely destructured from useAsync right here
+  const { data: response, loading, error, refetch } = useAsync(() => tenantsApi.getById(id), [id]);
+  
+  const [processing, setProcessing] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+
   const tenant = response?.data;
   const plan = tenant?.plan;
   const limits = plan?.limits ? (typeof plan.limits === 'string' ? JSON.parse(plan.limits) : plan.limits) : {};
+
+  async function handleStatusChange(newStatus) {
+    if (!window.confirm(`Are you sure you want to mark this hospital as ${newStatus}?`)) return;
+    setProcessing(true);
+    try {
+      await tenantsApi.updateStatus(tenant.tenant_id, newStatus);
+      toast.success(`Hospital access marked as ${newStatus}.`);
+      refetch(); // This reloads the page data after success
+    } catch (err) {
+      toast.error(err.message || `Failed to change access status.`);
+    } finally {
+      setProcessing(false);
+    }
+  }
 
   if (loading) return <Spinner label="Loading tenant details..." />;
   if (error) return <ErrorState message={error} />;
@@ -24,9 +47,9 @@ export default function TenantDetails() {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link to="/plans" className="p-2 rounded-full hover:bg-[var(--color-paper)] text-[var(--color-ink-soft)] transition-colors">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-[var(--color-paper)] text-[var(--color-ink-soft)] transition-colors">
           <ArrowLeft size={20} />
-        </Link>
+        </button>
         <div>
           <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)] flex items-center gap-3">
             {tenant.name}
@@ -38,9 +61,23 @@ export default function TenantDetails() {
         </div>
         <div className="ml-auto flex gap-2">
           {tenant.status === 'active' ? (
-            <Button variant="danger" icon={Activity}>Suspend Access</Button>
+            <Button 
+              variant="danger" 
+              icon={Activity} 
+              onClick={() => handleStatusChange('suspended')}
+              loading={processing}
+            >
+              Suspend Access
+            </Button>
           ) : (
-            <Button icon={Activity}>Restore Access</Button>
+            <Button 
+              variant="primary" 
+              icon={Activity} 
+              onClick={() => handleStatusChange('active')}
+              loading={processing}
+            >
+              Restore Access
+            </Button>
           )}
         </div>
       </div>
@@ -71,7 +108,7 @@ export default function TenantDetails() {
                     {plan?.name || 'Unassigned'}
                   </p>
                 </div>
-                <Button variant="secondary" size="sm">Change Plan</Button>
+                <Button variant="secondary" size="sm" onClick={() => setPlanModalOpen(true)}>Change Plan</Button>
               </div>
               
               <div>
@@ -93,13 +130,21 @@ export default function TenantDetails() {
           <Card className="flex-1 min-h-[250px]">
             <CardHeader title="Billing History" action={<CalendarClock size={18} className="text-[var(--color-ink-faint)]" />} />
             <CardBody className="flex flex-col items-center justify-center text-center h-full py-10">
-               <p className="text-sm text-[var(--color-ink-soft)] max-w-sm">
-                 Invoices and payment receipts for this hospital's subscription will appear here.
-               </p>
+              <p className="text-sm text-[var(--color-ink-soft)] max-w-sm">
+                Invoices and payment receipts for this hospital's subscription will appear here.
+              </p>
             </CardBody>
           </Card>
         </div>
       </div>
+      
+      {/* Change Plan Modal Mounted Here */}
+      <ChangePlanModal 
+        open={planModalOpen} 
+        onClose={() => setPlanModalOpen(false)} 
+        tenant={tenant} 
+        onSaved={refetch} 
+      />
     </div>
   );
 }

@@ -31,7 +31,7 @@ export class PrescriptionRepository {
 
   static async findByIdAndTenant(prescriptionId, tenantId) {
     return db.prescription.findFirst({
-      where: { prescription_id: prescriptionId, tenant_id: tenantId },
+      where: { prescription_id: prescriptionId, tenant_id: tenantId, deleted_at: null },
       include: {
         patient: { select: { first_name: true, last_name: true, email: true, phone: true } },
         doctor_profile: { include: { users: { select: { name: true, email: true } } } }
@@ -41,13 +41,13 @@ export class PrescriptionRepository {
 
   static async updateApprovalStatus(prescriptionId, tenantId, status) {
     return db.prescription.updateMany({
-      where: { prescription_id: prescriptionId, tenant_id: tenantId },
+      where: { prescription_id: prescriptionId, tenant_id: tenantId, deleted_at: null },
       data: { approval_status: status, updated_at: new Date() }
     });
   }
 
   static async findManyPaginated({ tenantId, patientId, doctorId, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (patientId) where.patient_id = patientId;
     if (doctorId) where.doctor_id = doctorId;
 

@@ -26,8 +26,8 @@ export class InvoiceRepository {
           status,
           invoice_item: {
             create: items.map(item => ({
-              medicine_id: item.medicineId ?? null,
-              item_name_snapshot: item.itemName || item.description,
+              medicine_id: (item.entityType === 'MEDICINE' ? item.entityId : item.medicineId) || null,
+              item_name_snapshot: item.description || item.itemName || 'Medical Service',
               quantity: item.quantity,
               unit_price_snapshot: item.unitPrice,
               gst_rate_snapshot: item.gstRate ?? 0
@@ -46,47 +46,58 @@ export class InvoiceRepository {
 
   static async findByIdAndTenant(invoiceId, tenantId) {
     return db.invoice.findFirst({
-      where: { invoice_id: invoiceId, tenant_id: tenantId },
+      where: { invoice_id: invoiceId, tenant_id: tenantId, deleted_at: null },
       include: { invoice_item: true, payment: true }
     });
   }
 
   static async recordPaymentTransaction({ tenantId, invoiceId, amount, method, transactionId }) {
     return db.$transaction(async (tx) => {
+      // Lock invoice row strictly using SELECT ... FOR UPDATE to serialize concurrent payments
+      const [lockedInvoice] = await tx.$queryRaw`
+        SELECT invoice_id, total, amount_paid, status, paid
+        FROM invoice
+        WHERE invoice_id = ${invoiceId}::uuid
+          AND tenant_id = ${tenantId}::uuid
+          AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+
+      if (!lockedInvoice) throw new Error('INVOICE_NOT_FOUND');
+
+      const currentTotal = Number(lockedInvoice.total);
+      const currentPaid = Number(lockedInvoice.amount_paid);
+      const paymentAmount = Number(amount);
+      const remainingBalance = currentTotal - currentPaid;
+
+      if (paymentAmount > remainingBalance) {
+        throw new Error('PAYMENT_EXCEEDS_BALANCE');
+      }
+
       // Create the payment record
       const payment = await tx.payment.create({
         data: {
           tenant_id: tenantId,
           invoice_id: invoiceId,
-          amount,
+          amount: paymentAmount,
           method,
           transaction_id: transactionId,
           status: 'success'
         }
       });
 
-      // Fetch current invoice totals
-      const invoice = await tx.invoice.findFirst({
-        where: { invoice_id: invoiceId, tenant_id: tenantId },
-        select: { invoice_id: true, total: true, amount_paid: true }
-      });
-
-      if (!invoice) throw new Error('INVOICE_NOT_FOUND');
-
-      const newAmountPaid = Number(invoice.amount_paid) + Number(amount);
-      let newStatus = 'partial';
-
-      if (newAmountPaid >= Number(invoice.total)) {
-        newStatus = 'paid';
-      }
+      const newAmountPaid = currentPaid + paymentAmount;
+      const isFullyPaid = newAmountPaid >= currentTotal;
+      const newStatus = isFullyPaid ? 'paid' : 'partial';
 
       // Update invoice running total + status
       const updatedInvoice = await tx.invoice.update({
         where: { invoice_id: invoiceId },
         data: {
           amount_paid: newAmountPaid,
-          paid: newStatus === 'paid',
-          status: newStatus
+          paid: isFullyPaid,
+          status: newStatus,
+          updated_at: new Date()
         },
         include: { invoice_item: true, payment: true }
       });
@@ -96,7 +107,7 @@ export class InvoiceRepository {
   }
 
   static async findManyPaginated({ tenantId, patientId, status, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
 
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;

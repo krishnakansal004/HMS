@@ -13,7 +13,7 @@ export class LabRepository {
 
   static async findTestById(tenantId, testId) {
     return db.lab_test.findFirst({
-      where: { test_id: testId, tenant_id: tenantId }
+      where: { test_id: testId, tenant_id: tenantId, deleted_at: null }
     });
   }
 
@@ -32,7 +32,7 @@ export class LabRepository {
 
   static async findOrderById(tenantId, orderId) {
     return db.lab_order.findFirst({
-      where: { lab_order_id: orderId, tenant_id: tenantId },
+      where: { lab_order_id: orderId, tenant_id: tenantId, deleted_at: null },
       include: {
         patient: { select: { first_name: true, last_name: true, email: true, phone: true } },
         lab_test: true
@@ -78,7 +78,7 @@ export class LabRepository {
         
         items.forEach((i) => {
           const lineTotal = Number(i.unit_price_snapshot) * i.quantity;
-          const lineGst = Math.floor((lineTotal * Number(i.gst_rate_snapshot)) / 100);
+          const lineGst = Math.round((lineTotal * Number(i.gst_rate_snapshot)) / 100);
           subtotal += lineTotal;
           gstTotal += lineGst;
         });
@@ -101,7 +101,7 @@ export class LabRepository {
   }
 
   static async findOrdersPaginated({ tenantId, patientId, status, skip, take }) {
-    const where = { tenant_id: tenantId };
+    const where = { tenant_id: tenantId, deleted_at: null };
     if (patientId) where.patient_id = patientId;
     if (status) where.sample_status = status;
 
@@ -125,7 +125,7 @@ export class LabRepository {
 
   static async getCatalog(tenantId) {
     return db.lab_test.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, deleted_at: null },
       orderBy: { name: 'asc' }
     });
   }

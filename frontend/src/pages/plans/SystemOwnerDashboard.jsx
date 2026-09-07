@@ -171,7 +171,7 @@ export default function SystemOwnerDashboard() {
       <CreatePlanModal 
         open={planModalOpen} 
         onClose={() => setPlanModalOpen(false)} 
-        onClick={plansQuery.refrefetch} 
+        onClick={plansQuery.refetch} 
       />
     </div>
   );

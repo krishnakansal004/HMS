@@ -23,7 +23,7 @@ export class InvoiceService {
       }
       
       const lineTotal = item.quantity * item.unitPrice;
-      const lineGst = Math.floor((lineTotal * (item.gstRate || 0)) / 100);
+      const lineGst = Math.round((lineTotal * (item.gstRate || 0)) / 100);
       
       subtotal += lineTotal;
       gstTotal += lineGst;

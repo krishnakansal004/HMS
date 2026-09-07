@@ -74,4 +74,18 @@ export class PatientController {
       next(error);
     }
   }
+
+  static async invite(req, res, next) {
+    try {
+      const result = await PatientService.inviteToPortal({
+        tenantId: req.currentTenantId,
+        userId: req.userId,
+        patientId: req.params.id,
+        ipAddress: req.ip,
+      });
+      res.status(HTTP_STATUS.OK).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

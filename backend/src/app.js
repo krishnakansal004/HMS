@@ -34,6 +34,13 @@ import paymentRoutes from './routes/payments.js';
 import analyticsRoutes from './routes/analytics.js';
 import staffRoutes from './routes/staff.js';
 import hrmsRoutes from './routes/hrms.js';
+import customizationRequestsRoutes from './routes/customizationRequests.js';
+import doctorAttendanceRoutes from './routes/doctorAttendance.js';
+import documentsRoutes from './routes/documents.js';
+import faqsRoutes from './routes/faqs.js';
+import planReceiptsRoutes from './routes/planReceipts.js';
+import prescriptionTemplatesRoutes from './routes/prescriptionTemplates.js';
+import queriesRoutes from './routes/queries.js';
 
 const app = express();
 
@@ -81,6 +88,13 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/hrms', hrmsRoutes);
+app.use('/api/customization-requests', customizationRequestsRoutes);
+app.use('/api/doctor-attendance', doctorAttendanceRoutes);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/faqs', faqsRoutes);
+app.use('/api/plan-receipts', planReceiptsRoutes);
+app.use('/api/prescription-templates', prescriptionTemplatesRoutes);
+app.use('/api/queries', queriesRoutes);
 // Catch-all 404 Route handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });
