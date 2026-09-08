@@ -1,18 +1,29 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Construction, History, FlaskConical, Scan, Receipt, CalendarClock, BedDouble, FileStack } from 'lucide-react';
+import { ArrowUpRight, History, FlaskConical, Scan, FileStack, Construction } from 'lucide-react';
 import Card, { CardBody } from '../../components/ui/Card.jsx';
 import { Spinner, ErrorState } from '../../components/ui/Table.jsx';
 
+export const TODAY = new Date().toISOString().slice(0, 10);
+
+export function formatTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
 export function StatCard({ icon: Icon, label, state, value, suffix, to }) {
+  const Wrapper = to ? Link : 'div';
+  const wrapperProps = to ? { to } : {};
   return (
     <Card>
       <CardBody>
         {state.loading ? (
-          <Spinner label={`Loading...`} />
+          <Spinner label="Loading..." />
         ) : state.error ? (
           <ErrorState message={state.error} onRetry={state.refetch} />
         ) : (
-          <Link to={to} className="flex items-center justify-between group">
+          <Wrapper {...wrapperProps} className="flex items-center justify-between group">
             <div>
               <p className="text-xs font-medium text-[var(--color-ink-soft)] uppercase tracking-wide">{label}</p>
               <p className="font-display text-3xl font-semibold text-[var(--color-ink)] mt-1">
@@ -24,9 +35,9 @@ export function StatCard({ icon: Icon, label, state, value, suffix, to }) {
               <div className="h-10 w-10 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center">
                 <Icon size={18} />
               </div>
-              <ArrowUpRight size={14} className="text-[var(--color-ink-faint)] group-hover:text-[var(--color-primary)] transition-colors" />
+              {to && <ArrowUpRight size={14} className="text-[var(--color-ink-faint)] group-hover:text-[var(--color-primary)] transition-colors" />}
             </div>
-          </Link>
+          </Wrapper>
         )}
       </CardBody>
     </Card>
@@ -63,6 +74,19 @@ export function AttentionRow({ icon: Icon, tone, label, state, to, value, render
   );
 }
 
+export function TimelineIcon({ type }) {
+  const ICONS = {
+    Prescription: <FileStack size={14} />,
+    Lab: <FlaskConical size={14} />,
+    Radiology: <Scan size={14} />,
+  };
+  return (
+    <div className="h-8 w-8 rounded-full border shadow-sm flex items-center justify-center bg-white text-[var(--color-ink-soft)] border-[var(--color-border-strong)] z-10">
+      {ICONS[type] || <History size={14} />}
+    </div>
+  );
+}
+
 export function RoadmapNote() {
   return (
     <Card>
@@ -71,26 +95,14 @@ export function RoadmapNote() {
           <Construction size={16} />
         </div>
         <div>
-          <p className="font-medium text-sm text-[var(--color-ink)]">More dashboard widgets are coming with later phases</p>
+          <p className="font-medium text-sm text-[var(--color-ink)]">A few things are still on the roadmap</p>
           <p className="text-xs text-[var(--color-ink-soft)] mt-1 max-w-2xl">
-            A 7-day admissions/discharge trend, a live activity feed, and a full multi-department
-            staff roster all need backend work that isn't live yet. They'll be added here as each phase ships.
+            A 7-day admissions/discharge trend, a live activity feed, prescription/expense dashboard
+            widgets, and an exposed audit-log endpoint aren't wired up yet. Everything else on this
+            page reflects real, live backend data for your role.
           </p>
         </div>
       </CardBody>
     </Card>
-  );
-}
-
-export function TimelineIcon({ type }) {
-  const ICONS = {
-    Prescription: <FileStack size={14}/>,
-    Lab: <FlaskConical size={14}/>,
-    Radiology: <Scan size={14}/>
-  };
-  return (
-    <div className="h-8 w-8 rounded-full border shadow-sm flex items-center justify-center bg-white text-[var(--color-ink-soft)] border-[var(--color-border-strong)] z-10">
-      {ICONS[type] || <History size={14}/>}
-    </div>
   );
 }

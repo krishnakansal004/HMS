@@ -17,15 +17,28 @@ export class AppointmentService {
     ipAddress,
   }) {
     let targetPatientId = patientId;
+    let targetDoctorId = doctorId;
 
     // PATIENT SECURITY: Override any frontend payload with their actual ID
     if (userRole === "PATIENT") {
       const ownPatientRecord = await db.patient.findFirst({
-        where: { user_id: userId, tenant_id: tenantId },
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
       });
       if (!ownPatientRecord)
         throw new AppError("Patient profile not found.", HTTP_STATUS.NOT_FOUND);
       targetPatientId = ownPatientRecord.patient_id;
+    }
+
+    // DOCTOR SECURITY: Override any frontend payload with their own doctor_profile_id
+    if (userRole === "DOCTOR") {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+        select: { doctor_profile_id: true },
+      });
+      if (!doctorProfile) {
+        throw new AppError("Doctor profile not found.", HTTP_STATUS.NOT_FOUND);
+      }
+      targetDoctorId = doctorProfile.doctor_profile_id;
     }
 
     const start = new Date(startTime);
@@ -43,7 +56,7 @@ export class AppointmentService {
       );
 
     const overlap = await AppointmentRepository.checkOverlap(
-      doctorId,
+      targetDoctorId,
       start,
       end,
       tenantId,
@@ -56,7 +69,7 @@ export class AppointmentService {
 
     const appointment = await AppointmentRepository.create({
       tenantId,
-      doctorId,
+      doctorId: targetDoctorId,
       patientId: targetPatientId,
       date: start,
       startTime: start,
@@ -87,13 +100,25 @@ export class AppointmentService {
     // PATIENT ISOLATION ENFORCEMENT
     if (userRole === "PATIENT") {
       const ownPatientRecord = await db.patient.findFirst({
-        where: { user_id: userId, tenant_id: tenantId },
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
         select: { patient_id: true },
       });
       if (!ownPatientRecord) {
         return { total: 0, page: Number(page), pages: 0, data: [] };
       }
       patientId = ownPatientRecord.patient_id; // Safe reassignment
+    }
+
+    // DOCTOR ISOLATION ENFORCEMENT: A doctor may ONLY view their own appointments
+    if (userRole === "DOCTOR") {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+        select: { doctor_profile_id: true },
+      });
+      if (!doctorProfile) {
+        return { total: 0, page: Number(page), pages: 0, data: [] };
+      }
+      doctorId = doctorProfile.doctor_profile_id; // Strictly enforce doctor's own profile ID
     }
 
     const [total, appointments] = await AppointmentRepository.findManyPaginated(
@@ -144,7 +169,7 @@ export class AppointmentService {
     }
     if (userRole === "DOCTOR") {
       const doctorProfile = await db.doctor_profile.findFirst({
-        where: { user_id: userId, tenant_id: tenantId },
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
       });
       if (!doctorProfile || appointment.doctor_id !== doctorProfile.doctor_profile_id) {
         throw new AppError(

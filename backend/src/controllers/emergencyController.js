@@ -1,5 +1,5 @@
 import { EmergencyService } from "../services/emergencyService.js";
-
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 export class EmergencyController {
   static async dispatchAmbulance(req, res, next) {
     try {
@@ -9,7 +9,7 @@ export class EmergencyController {
         ...req.body,
         ipAddress: req.ip,
       });
-      res.status(201).json({ success: true, data: dispatch });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: dispatch });
     } catch (error) {
       next(error);
     }
@@ -23,7 +23,7 @@ export class EmergencyController {
         ...req.body,
         ipAddress: req.ip,
       });
-      res.status(201).json({ success: true, data: surgery });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: surgery });
     } catch (error) {
       next(error);
     }

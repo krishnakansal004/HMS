@@ -48,4 +48,10 @@ router.get(
   InvoiceController.list,
 );
 
+router.get(
+  "/summary",
+  requireRoles("HOSPITAL_ADMIN", "ACCOUNTANT", "CASHIER"),
+  InvoiceController.getSummary
+);
+
 export default router;

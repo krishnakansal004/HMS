@@ -16,7 +16,7 @@ import {
   Settings as SettingsIcon,
   Building2,
   Stethoscope,
-  UserPlus
+  UserPlus,
 } from 'lucide-react';
 import { ROLES } from './roles.js';
 
@@ -158,7 +158,14 @@ export const NAV_ITEMS = [
   to: '/hrms',
   icon: Users, 
   roles: [ROLES.HOSPITAL_ADMIN, ROLES.HR, ROLES.DIRECTOR],
-}
+},
+{ 
+  key: 'doctor-attendance', 
+  label: 'Doctor Attendance', 
+  icon: CalendarClock, 
+  to: '/doctor-attendance', 
+  roles: ['HOSPITAL_ADMIN', 'HR', 'DIRECTOR', 'DOCTOR'] 
+},
 ];
 
 export function navForRole(role) {

@@ -35,13 +35,7 @@ router.patch(
 // Who: Hospital Admins, Doctors, Radiology Techs, Receptionists
 router.get(
   "/orders",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "DOCTOR",
-    "RADIOLOGY_TECHNICIAN",
-    "RECEPTIONIST",
-    "PATIENT"
-  ),
+  requireRoles( "HOSPITAL_ADMIN", "DOCTOR", "RADIOLOGY_TECHNICIAN", "RECEPTIONIST", "PATIENT"),
   listRadiologyOrdersValidator,
   RadiologyController.list,
 );

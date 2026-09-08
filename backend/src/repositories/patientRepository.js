@@ -81,7 +81,7 @@ export class PatientRepository {
     return this.findByIdAndTenant(patientId, tenantId);
   }
 
-  static async findManyPaginated({ tenantId, search, skip, take }) {
+  static async findManyPaginated({ tenantId, search, skip, take, doctorProfileId }) {
     const where = { tenant_id: tenantId, deleted_at: null };
     
     if (search) {
@@ -91,6 +91,14 @@ export class PatientRepository {
         { email: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } }
       ];
+    }
+
+    if (doctorProfileId) {
+      where.appointment = {
+        some: { 
+          doctor_id: doctorProfileId,
+        }
+      };
     }
 
     return db.$transaction(async (tx) => {

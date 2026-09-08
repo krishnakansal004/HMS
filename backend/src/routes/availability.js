@@ -17,14 +17,7 @@ router.use(requireTenant);
 // Who: Admins, Doctors, Receptionists, Nurses, Patients
 router.get(
   "/:doctorId",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "DIRECTOR",
-    "DOCTOR",
-    "RECEPTIONIST",
-    "NURSE",
-    "PATIENT",
-  ),
+  requireRoles( "HOSPITAL_ADMIN", "DIRECTOR", "DOCTOR", "RECEPTIONIST", "NURSE", "PATIENT",),
   getAvailabilityValidator,
   AvailabilityController.get,
 );

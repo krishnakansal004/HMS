@@ -102,6 +102,7 @@ export class AppointmentRepository {
     doctorId,
     patientId,
     status,
+    date,
     skip,
     take,
   }) {
@@ -109,6 +110,19 @@ export class AppointmentRepository {
     if (doctorId) where.doctor_id = doctorId;
     if (patientId) where.patient_id = patientId;
     if (status) where.status = status;
+
+    if (date) {
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) {
+        const dateStr = d.toISOString().slice(0, 10);
+        const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+        const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+        where.slot_start = {
+          gte: startOfDay,
+          lte: endOfDay,
+        };
+      }
+    }
 
     const [total, rows] = await db.$transaction(async (tx) => {
       const count = await tx.appointment.count({ where });

@@ -19,6 +19,9 @@ export const invoicesApi = {
 
   /** @param {{patientId?:string, status?:'DRAFT'|'PENDING'|'PARTIAL'|'PAID'|'CANCELLED', page?:number, limit?:number}} query */
   list: (query) => api.get('/invoices', query),
+
+  /** Outstanding dues total + today's collected total, for billing-role dashboards. */
+  getSummary: () => api.get('/invoices/summary'),
 };
 
 export const paymentsApi = {

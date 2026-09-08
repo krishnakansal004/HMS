@@ -121,11 +121,21 @@ export class PrescriptionService {
     // ZERO-TRUST ISOLATION: Overwrite patientId query param
     if (userRole === 'PATIENT') {
       const ownPatientRecord = await db.patient.findFirst({
-        where: { user_id: userId, tenant_id: tenantId },
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
         select: { patient_id: true }
       });
       if (!ownPatientRecord) return { total: 0, page: Number(page), pages: 0, data: [] };
       patientId = ownPatientRecord.patient_id; // Secure reassignment
+    }
+
+    // Overwrite doctorId query param for doctors
+    if (userRole === 'DOCTOR') {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+        select: { doctor_profile_id: true }
+      });
+      if (!doctorProfile) return { total: 0, page: Number(page), pages: 0, data: [] };
+      doctorId = doctorProfile.doctor_profile_id; // Secure reassignment
     }
 
     const [total, prescriptions] = await PrescriptionRepository.findManyPaginated({

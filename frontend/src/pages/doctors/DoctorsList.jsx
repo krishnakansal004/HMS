@@ -1,31 +1,19 @@
-import { useState } from "react";
-import { Plus, UserRound, Pencil, Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAsync } from "../../hooks/useAsync.js";
-import { doctorsApi } from "../../api/doctors.js";
-import Card from "../../components/ui/Card.jsx";
-import Button from "../../components/ui/Button.jsx";
-import {
-  Table,
-  Thead,
-  Th,
-  Tr,
-  Td,
-  Spinner,
-  EmptyState,
-  ErrorState,
-} from "../../components/ui/Table.jsx";
-import DoctorForm from "./DoctorForm.jsx";
-import { initials } from "../../utils/format.js";
+import { useState } from 'react';
+import { Plus, UserRound, Pencil } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAsync } from '../../hooks/useAsync.js';
+import { doctorsApi } from '../../api/doctors.js';
+import Card from '../../components/ui/Card.jsx';
+import Button from '../../components/ui/Button.jsx';
+import { Table, Thead, Th, Tr, Td, Spinner, EmptyState, ErrorState } from '../../components/ui/Table.jsx';
+import DoctorForm from './DoctorForm.jsx';
+import { initials } from '../../utils/format.js';
 
 export default function DoctorsList() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
-  const { data, loading, error, refetch } = useAsync(
-    () => doctorsApi.list(),
-    [],
-  );
-
+  const { data, loading, error, refetch } = useAsync(() => doctorsApi.list(), []);
+  
   const doctors = data?.data || [];
 
   function openCreate() {
@@ -38,38 +26,14 @@ export default function DoctorsList() {
     setFormOpen(true);
   }
 
-  async function handleDelete(doc) {
-    if (!window.confirm(`Are you sure you want to remove Dr. ${doc.name}?`))
-      return;
-
-    try {
-      // By default, this performs a safe "Soft Delete" (active: false)
-      await doctorsApi.delete(doc.user_id);
-
-      // If you specifically want to attempt a HARD delete to wipe them entirely, use:
-      // await doctorsApi.delete(doc.user_id, true);
-
-      toast.success(`Dr. ${doc.name} removed successfully.`);
-      refetch();
-    } catch (err) {
-      toast.error(err.message || "Failed to remove doctor.");
-    }
-  }
-
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">
-            Medical Staff
-          </h2>
-          <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">
-            Manage doctors and consultants
-          </p>
+          <h2 className="font-display text-xl font-semibold text-[var(--color-ink)]">Medical Staff</h2>
+          <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage doctors and consultants</p>
         </div>
-        <Button icon={Plus} onClick={openCreate}>
-          Register Doctor
-        </Button>
+        <Button icon={Plus} onClick={openCreate}>Register Doctor</Button>
       </div>
 
       <Card>
@@ -81,11 +45,7 @@ export default function DoctorsList() {
           <EmptyState
             icon={UserRound}
             title="No doctors registered yet"
-            action={
-              <Button size="sm" icon={Plus} onClick={openCreate}>
-                Register Doctor
-              </Button>
-            }
+            action={<Button size="sm" icon={Plus} onClick={openCreate}>Register Doctor</Button>}
           />
         ) : (
           <Table>
@@ -107,47 +67,27 @@ export default function DoctorsList() {
                           {initials(doc.name)}
                         </span>
                         <div>
-                          <Link
-                            to={`/doctors/${doc.user_id}`}
-                            className="font-medium hover:text-[var(--color-primary)] hover:underline"
-                          >
-                            {profile.designation || "Dr."} {doc.name}
+                          <Link to={`/doctors/${doc.user_id}`} className="font-medium hover:text-[var(--color-primary)] hover:underline">
+                            {profile.designation || 'Dr.'} {doc.name}
                           </Link>
                           <p className="text-xs text-[var(--color-ink-faint)] font-mono-data">
-                            {profile.active ? "Active" : "Inactive"}
+                            {profile.active ? 'Active' : 'Inactive'}
                           </p>
                         </div>
                       </div>
                     </Td>
                     <Td>
                       <p className="font-medium">{profile.department_label}</p>
-                      <p className="text-xs text-[var(--color-ink-faint)]">
-                        {profile.specialization}
-                      </p>
+                      <p className="text-xs text-[var(--color-ink-faint)]">{profile.specialization}</p>
                     </Td>
                     <Td>
                       <p>{doc.email}</p>
-                      <p className="text-xs text-[var(--color-ink-faint)]">
-                        {doc.phone || "N/A"}
-                      </p>
+                      <p className="text-xs text-[var(--color-ink-faint)]">{doc.phone || 'N/A'}</p>
                     </Td>
                     <Td>₹{profile.consultation_fee}</Td>
-                    <Td className="text-right flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        icon={Pencil}
-                        onClick={() => openEdit(doc)}
-                      >
+                    <Td className="text-right">
+                      <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(doc)}>
                         Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        icon={Trash2}
-                        onClick={() => handleDelete(doc)}
-                      >
-                        Delete
                       </Button>
                     </Td>
                   </Tr>
@@ -157,12 +97,7 @@ export default function DoctorsList() {
           </Table>
         )}
       </Card>
-      <DoctorForm
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        onSaved={refetch}
-        doctor={editingDoc}
-      />
+      <DoctorForm open={formOpen} onClose={() => setFormOpen(false)} onSaved={refetch} doctor={editingDoc} />
     </div>
   );
 }

@@ -28,13 +28,7 @@ router.post(
 // Who: Doctors can view available stock, Admins/Pharmacists can view all
 router.get(
   "/medicines",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "PHARMACIST",
-    "STORE_MANAGER",
-    "DOCTOR",
-    "NURSE",
-  ),
+  requireRoles( "HOSPITAL_ADMIN", "PHARMACIST", "STORE_MANAGER", "DOCTOR", "NURSE",),
   listMedicinesValidator,
   InventoryController.list,
 );

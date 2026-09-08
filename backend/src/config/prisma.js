@@ -1,14 +1,13 @@
 import { PrismaClient } from '@prisma/client';
+import { AppError } from '../middlewares/errorHandler.js';
+import { HTTP_STATUS } from '../constants/httpStatus.js';
 
-// Prevent multiple instances of Prisma Client in development (hot-reloading)
-const globalForPrisma = global;
+const rawPrisma = new PrismaClient();
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-export default prisma;
+// Only export this wrapper, NEVER the raw client
+export const executeAsSystemOwner = async (userRole, operation) => {
+  if (userRole !== 'SYSTEM_OWNER') {
+    throw new AppError('Forbidden: System Owner privilege required.', HTTP_STATUS.FORBIDDEN);
+  }
+  return operation(rawPrisma);
+};

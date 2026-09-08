@@ -159,15 +159,31 @@ export class PatientService {
   }
 
   static async listPatients({ tenantId, query }) {
-    const { search, page = 1, limit = 50 } = query;
+    const { search, page = 1, limit = 50, doctorId } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
+    let doctorProfileId = null;
+
+    if (doctorId) {
+      // Translate the users.user_id into the clinical doctor_profile_id
+      const profile = await db.doctor_profile.findFirst({
+        where: { user_id: doctorId, tenant_id: tenantId }
+      });
+      
+      if (profile) {
+        doctorProfileId = profile.doctor_profile_id;
+      } else {
+        // If the doctor has no clinical profile, they have no patients yet
+        return { total: 0, page: Number(page), pages: 0, data: [] };
+      }
+    }
     const [total, patients] = await PatientRepository.findManyPaginated({
       tenantId,
       search,
       skip,
       take,
+      doctorProfileId 
     });
 
     return {

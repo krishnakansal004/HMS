@@ -17,14 +17,7 @@ router.use(requireTenant);
 // Who: Any hospital staff member marking their own attendance, or HR marking for someone else.
 router.post(
   "/check-in",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "HR",
-    "DOCTOR",
-    "NURSE",
-    "RECEPTIONIST",
-    "PHARMACIST",
-    "LAB_TECHNICIAN",
+  requireRoles( "HOSPITAL_ADMIN", "HR", "DOCTOR", "NURSE", "RECEPTIONIST", "PHARMACIST", "LAB_TECHNICIAN",
   ),
   checkInOutValidator,
   AttendanceController.checkIn,
@@ -34,15 +27,7 @@ router.post(
 // Who: Any hospital staff member ending their shift.
 router.post(
   "/check-out",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "HR",
-    "DOCTOR",
-    "NURSE",
-    "RECEPTIONIST",
-    "PHARMACIST",
-    "LAB_TECHNICIAN",
-  ),
+  requireRoles( "HOSPITAL_ADMIN", "HR", "DOCTOR", "NURSE", "RECEPTIONIST", "PHARMACIST", "LAB_TECHNICIAN",),
   checkInOutValidator,
   AttendanceController.checkOut,
 );
@@ -51,15 +36,7 @@ router.post(
 // Who: Everyone can view. Service layer handles scoping (Staff see own, HR sees all).
 router.get(
   "/",
-  requireRoles(
-    "HOSPITAL_ADMIN",
-    "HR",
-    "DOCTOR",
-    "NURSE",
-    "RECEPTIONIST",
-    "PHARMACIST",
-    "LAB_TECHNICIAN",
-  ),
+  requireRoles("HOSPITAL_ADMIN","HR", "DOCTOR", "NURSE", "RECEPTIONIST", "PHARMACIST", "LAB_TECHNICIAN",),
   listAttendanceValidator,
   AttendanceController.list,
 );

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, Receipt, History, Video, CheckCircle2, Mic, Clock } from 'lucide-react';
+import {
+  CalendarClock, Receipt, History, CreditCard, Video, CheckCircle2, Clock, Mic,
+} from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { appointmentsApi } from '../../api/appointments.js';
+import { invoicesApi, paymentsApi } from '../../api/invoices.js';
 import { prescriptionsApi } from '../../api/prescriptions.js';
 import { labApi } from '../../api/lab.js';
 import { radiologyApi } from '../../api/radiology.js';
-import { invoicesApi, paymentsApi } from '../../api/invoices.js';
 import Card, { CardHeader, CardBody } from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 import StatusPill from '../../components/ui/StatusPill.jsx';
@@ -14,27 +16,28 @@ import { Spinner, ErrorState, EmptyState } from '../../components/ui/Table.jsx';
 import { formatPaise, formatDate } from '../../utils/format.js';
 import { loadRazorpay } from '../../utils/loadRazorpay.js';
 import { toast } from '../../components/ui/Toast.jsx';
-import { TimelineIcon } from './DashboardWidgets.jsx';
+import { TimelineIcon } from './shared.jsx';
 
 export default function PatientDashboard({ user }) {
   const navigate = useNavigate();
-  
-  const { data: apptsData, loading: apptsLoading, error: apptsError } = useAsync(() => appointmentsApi.list({ limit: 10 }), [], 'pat_appts');
+
+  const { data: apptsData, loading: apptsLoading } = useAsync(() => appointmentsApi.list({ limit: 10 }), [], 'pat_appts');
   const { data: invoicesData, loading: invLoading, error: invError, refetch: refetchInvs } = useAsync(() => invoicesApi.list({ status: 'pending', limit: 10 }), [], 'pat_invs');
-  
+
   const { data: timelineData, loading: timelineLoading, error: timelineError } = useAsync(async () => {
     const results = await Promise.allSettled([
       prescriptionsApi.list({ limit: 10 }),
       labApi.listOrders({ limit: 10 }),
-      radiologyApi.listOrders({ limit: 10 })
+      radiologyApi.listOrders({ limit: 10 }),
     ]);
-    const safeData = (res) => res.status === 'fulfilled' && res.value ? res.value.data : [];
+    const safeData = (res) => (res.status === 'fulfilled' && res.value ? res.value.data : []);
     return { prescriptions: safeData(results[0]), labs: safeData(results[1]), radiologies: safeData(results[2]) };
   }, [], 'pat_timeline');
 
   const appts = apptsData?.data || [];
   const pendingInvoices = invoicesData?.data || invoicesData?.invoices || [];
-  const upcomingAppt = appts.find(a => ['scheduled', 'confirmed'].includes(a.status) && new Date(a.slot_start) >= new Date());
+  const upcomingAppt = appts.find((a) => ['scheduled', 'confirmed'].includes(a.status) && new Date(a.slot_start) >= new Date());
+
   const [payingId, setPayingId] = useState(null);
 
   async function handleOnlinePayment(invoiceId) {
@@ -42,8 +45,9 @@ export default function PatientDashboard({ user }) {
     try {
       const isLoaded = await loadRazorpay();
       if (!isLoaded) throw new Error('Failed to load payment gateway. Check your connection.');
-      const { data } = await paymentsApi.initiate({ invoiceId });
-      
+
+      const { data } = await paymentsApi.initiate(invoiceId);
+
       const options = {
         key: data.keyId,
         amount: data.amount,
@@ -58,6 +62,7 @@ export default function PatientDashboard({ user }) {
           refetchInvs();
         },
       };
+
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (res) => toast.error(`Payment Failed: ${res.error.description}`));
       rzp.open();
@@ -71,9 +76,9 @@ export default function PatientDashboard({ user }) {
   const timeline = useMemo(() => {
     if (!timelineData) return [];
     const items = [];
-    timelineData.prescriptions.forEach(p => items.push({ id: `rx-${p.prescription_id}`, type: 'Prescription', date: p.created_at, title: `Prescription Issued`, subtitle: `Dr. ${p.doctor_profile?.users?.name || 'Unknown'}`, status: p.approval_status }));
-    timelineData.labs.forEach(l => items.push({ id: `lab-${l.lab_order_id}`, type: 'Lab', date: l.created_at, title: l.test_name_snapshot, subtitle: `Code: ${l.test_code_snapshot}`, status: l.sample_status }));
-    timelineData.radiologies.forEach(r => items.push({ id: `rad-${r.radiology_order_id}`, type: 'Radiology', date: r.created_at, title: r.study_type, subtitle: r.modality, status: r.status }));
+    timelineData.prescriptions.forEach((p) => items.push({ id: `rx-${p.prescription_id}`, type: 'Prescription', date: p.created_at, title: 'Prescription Issued', subtitle: `Dr. ${p.doctor_profile?.users?.name || 'Unknown'}`, status: p.approval_status }));
+    timelineData.labs.forEach((l) => items.push({ id: `lab-${l.lab_order_id}`, type: 'Lab', date: l.created_at, title: l.test_name_snapshot, subtitle: `Code: ${l.test_code_snapshot}`, status: l.sample_status }));
+    timelineData.radiologies.forEach((r) => items.push({ id: `rad-${r.radiology_order_id}`, type: 'Radiology', date: r.created_at, title: r.study_type, subtitle: r.modality, status: r.status }));
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [timelineData]);
 
@@ -94,7 +99,6 @@ export default function PatientDashboard({ user }) {
               <div>
                 <p className="font-display text-xl font-bold text-[var(--color-ink)]">{formatDate(upcomingAppt.slot_start)}</p>
                 <p className="text-sm font-medium text-[var(--color-ink-soft)] mt-1">{new Date(upcomingAppt.slot_start).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
-                
                 <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-[var(--color-ink)]">Dr. {upcomingAppt.doctor_name_snapshot}</p>
@@ -108,33 +112,31 @@ export default function PatientDashboard({ user }) {
             ) : (
               <EmptyState title="No upcoming appointments" description="Need to see a doctor? Book a visit." action={<Button size="sm" onClick={() => navigate('/appointments')}>Book Appointment</Button>} />
             )}
-
             <div className="mt-5 p-4 border border-dashed border-[var(--color-border-strong)] rounded-[var(--radius-md)] bg-[var(--color-paper)]">
-               <div className="flex items-start gap-3">
-                 <div className="h-8 w-8 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
-                   <Mic size={16} />
-                 </div>
-                 <div>
-                   <p className="text-sm font-medium text-[var(--color-ink)]">Voice Symptoms Upload</p>
-                   <p className="text-xs text-[var(--color-ink-soft)] mt-1">Record your symptoms before your visit to help doctors prepare.</p>
-                   <Button size="sm" variant="secondary" className="mt-2" disabled>Record Audio (Coming Soon)</Button>
-                 </div>
-               </div>
+              <div className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+                  <Mic size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-ink)]">Voice Symptoms Upload</p>
+                  <p className="text-xs text-[var(--color-ink-soft)] mt-1">Record your symptoms before your visit to help doctors prepare.</p>
+                  <Button size="sm" variant="secondary" className="mt-2" disabled>Record Audio (Coming Soon)</Button>
+                </div>
+              </div>
             </div>
           </CardBody>
         </Card>
 
-        <Card className={pendingInvoices.length > 0 ? "border-l-4 border-l-[var(--color-danger)]" : ""}>
+        <Card className={pendingInvoices.length > 0 ? 'border-l-4 border-l-[var(--color-danger)]' : ''}>
           <CardBody>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold text-[var(--color-ink-soft)] uppercase tracking-wider flex items-center gap-2">
                 <Receipt size={16} /> Pending Bills
               </h3>
             </div>
-            
             {invLoading ? <Spinner size={16} label="Checking bills..." /> : invError ? <ErrorState message="Could not load bills" /> : pendingInvoices.length > 0 ? (
               <div className="flex flex-col gap-3">
-                {pendingInvoices.slice(0, 3).map(inv => {
+                {pendingInvoices.slice(0, 3).map((inv) => {
                   const remaining = Number(inv.total) - Number(inv.amount_paid);
                   return (
                     <div key={inv.invoice_id} className="flex items-center justify-between p-3 bg-[var(--color-danger-soft)]/30 border border-[var(--color-danger)]/20 rounded-[var(--radius-sm)]">
@@ -142,7 +144,7 @@ export default function PatientDashboard({ user }) {
                         <p className="font-mono-data font-bold text-[var(--color-ink)]">{formatPaise(remaining)}</p>
                         <p className="text-xs text-[var(--color-ink-soft)]">Invoice #{inv.invoice_number}</p>
                       </div>
-                      <Button size="sm" variant="danger" onClick={() => handleOnlinePayment(inv.invoice_id)} loading={payingId === inv.invoice_id} disabled={payingId !== null && payingId !== inv.invoice_id}>
+                      <Button size="sm" variant="danger" icon={CreditCard} onClick={() => handleOnlinePayment(inv.invoice_id)} loading={payingId === inv.invoice_id} disabled={payingId !== null && payingId !== inv.invoice_id}>
                         Pay Now
                       </Button>
                     </div>

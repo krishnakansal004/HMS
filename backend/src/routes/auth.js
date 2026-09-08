@@ -38,7 +38,10 @@ router.post(
 
 // Endpoint: POST /api/auth/logout
 // Roles: Authenticated Users
-router.post("/logout", requireCsrfHeader, AuthController.logout);
+router.post(
+  "/logout", 
+  requireCsrfHeader, 
+  AuthController.logout);
 
 router.post(
   "/setup-password",
@@ -53,6 +56,9 @@ router.post(
 // signed cookie is the gate, and rate-limiting it would undermine the
 // silent-renewal UX it exists for. requireCsrfHeader still applies since
 // it's cookie-gated like login/logout.
-router.post("/refresh", requireCsrfHeader, AuthController.refresh);
+router.post(
+  "/refresh", 
+  requireCsrfHeader, 
+  AuthController.refresh);
 
 export default router;

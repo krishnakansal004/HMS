@@ -162,4 +162,33 @@ export class InvoiceService {
 
     return { total, page: Number(page), pages: Math.ceil(total / take), data: invoices };
   }
+
+  static async getSummary(tenantId) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    return db.$transaction(async (tx) => {
+      const outstanding = await tx.invoice.aggregate({
+        where: { tenant_id: tenantId, status: { in: ['pending', 'partial'] }, deleted_at: null },
+        _sum: { total: true, amount_paid: true },
+        _count: { invoice_id: true }
+      });
+
+      const todayPayments = await tx.payment.aggregate({
+        where: { tenant_id: tenantId, status: 'success', created_at: { gte: today }, deleted_at: null },
+        _sum: { amount: true },
+        _count: { payment_id: true }
+      });
+
+      const total = Number(outstanding._sum.total || 0);
+      const paid = Number(outstanding._sum.amount_paid || 0);
+
+      return {
+        outstandingTotal: total - paid,
+        outstandingInvoiceCount: outstanding._count.invoice_id || 0,
+        todayCollectedTotal: Number(todayPayments._sum.amount || 0),
+        todayCollectedCount: todayPayments._count.payment_id || 0
+      };
+    });
+  }
 }

@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(protect);
 router.use(requireTenant);
 
-// --- PRESCRIPTION TEMPLATES ---
+// PRESCRIPTION TEMPLATES 
 
 // GET /api/settings/templates
 // Who: Hospital Admin, Doctor
@@ -41,7 +41,7 @@ router.delete(
   ClinicalSettingsController.removeTemplate,
 );
 
-// --- HOSPITAL CONFIGURATION SETTINGS ---
+// HOSPITAL CONFIGURATION SETTINGS
 
 // GET /api/settings
 // Who: Hospital Admin, Accountant, Receptionist

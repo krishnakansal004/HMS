@@ -1,10 +1,10 @@
 import { DoctorManagementService } from "../services/doctorManagementService.js";
-
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 export class DoctorManagementController {
   static async submitApplication(req, res, next) {
     try {
       const app = await DoctorManagementService.submitApplication(req.body);
-      res.status(201).json({ success: true, data: app });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: app });
     } catch (error) {
       next(error);
     }
@@ -19,7 +19,7 @@ export class DoctorManagementController {
         status: req.body.status,
         ipAddress: req.ip,
       });
-      res.status(200).json({ success: true, data: app });
+      res.status(HTTP_STATUS.OK).json({ success: true, data: app });
     } catch (error) {
       next(error);
     }
@@ -31,7 +31,7 @@ export class DoctorManagementController {
         tenantId: req.currentTenantId,
         query: req.query,
       });
-      res.status(200).json({ success: true, ...result });
+      res.status(HTTP_STATUS.OK).json({ success: true, ...result });
     } catch (error) {
       next(error);
     }

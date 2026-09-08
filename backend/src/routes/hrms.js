@@ -19,7 +19,10 @@ router.use(requireTenant);
 // controller, not here -- targetUserId is silently ignored for anyone
 // else, not rejected, since sending it is harmless for a normal staff
 // member applying for themselves).
-router.post("/leaves", applyLeaveValidator, HrmsController.applyLeave);
+router.post(
+  "/leaves", 
+  applyLeaveValidator, 
+  HrmsController.applyLeave);
 
 router.patch(
   "/leaves/:id/review",
@@ -40,6 +43,12 @@ router.get(
   requireRoles("HOSPITAL_ADMIN", "HR", "DIRECTOR"),
   listStaffValidator,
   HrmsController.listStaff,
+);
+
+router.get(
+  "/leaves",
+  requireRoles("HOSPITAL_ADMIN", "HR", "DIRECTOR"),
+  HrmsController.listLeaves
 );
 
 export default router;

@@ -3,7 +3,7 @@ import { api } from './client.js';
 // Maps to backend/src/routes/inventory.js + inventoryValidator.js
 
 export const inventoryApi = {
-  /** @param {{search?:string, category?:string, lowStock?:boolean, page?:number, limit?:number}} query */
+  /** @param {{search?:string, category?:string, lowStock?:boolean, expiringWithinDays?:number, page?:number, limit?:number}} query */
   list: (query) => api.get('/inventory/medicines', query),
 
   /**

@@ -1,5 +1,5 @@
 import { HrmsService } from "../services/hrmsService.js";
-
+import { HTTP_STATUS } from "../constants/httpStatus.js";
 export class HrmsController {
   static async createShift(req, res, next) {
     try {
@@ -12,7 +12,7 @@ export class HrmsController {
         endTime,
         ipAddress: req.ip,
       });
-      res.status(201).json({ success: true, data: shift });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: shift });
     } catch (error) {
       next(error);
     }
@@ -36,7 +36,7 @@ export class HrmsController {
         reason,
         ipAddress: req.ip,
       });
-      res.status(201).json({ success: true, data: leave });
+      res.status(HTTP_STATUS.CREATED).json({ success: true, data: leave });
     } catch (error) {
       next(error);
     }
@@ -52,7 +52,7 @@ export class HrmsController {
         status,
         ipAddress: req.ip,
       });
-      res.status(200).json({ success: true, data: leave });
+      res.status(HTTP_STATUS.OK).json({ success: true, data: leave });
     } catch (error) {
       next(error);
     }
@@ -65,7 +65,26 @@ export class HrmsController {
         query: req.query,
       });
       const { page = 1, limit = 50 } = req.query;
-      res.status(200).json({
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listLeaves(req, res, next) {
+    try {
+      const [total, data] = await HrmsService.listLeaves({
+        tenantId: req.currentTenantId,
+        query: req.query,
+      });
+      const { page = 1, limit = 50 } = req.query;
+      res.status(HTTP_STATUS.OK).json({
         success: true,
         total,
         page: Number(page),

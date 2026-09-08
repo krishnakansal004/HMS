@@ -126,4 +126,31 @@ export class HrmsService {
       return [total, staff];
     });
   }
+
+  static async listLeaves({ tenantId, query }) {
+    const { status, onLeaveToday, page = 1, limit = 50 } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+    const where = { tenant_id: tenantId };
+    
+    if (status) where.status = status;
+    if (String(onLeaveToday) === "true") {
+      const today = new Date();
+      where.start_date = { lte: today };
+      where.end_date = { gte: today };
+      where.status = "APPROVED";
+    }
+
+    return db.$transaction(async (tx) => {
+      const total = await tx.leave.count({ where });
+      const data = await tx.leave.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { created_at: "desc" },
+        include: { applicant: { select: { name: true } } },
+      });
+      return [total, data];
+    });
+  }
 }

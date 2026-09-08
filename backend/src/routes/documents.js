@@ -12,8 +12,17 @@ const router = express.Router();
 
 router.use(protect);
 router.use(requireTenant);
-router.post("/", registerDocumentValidator, DocumentController.register);
-router.get("/", listForEntityValidator, DocumentController.listForEntity);
+
+router.post(
+  "/", 
+  registerDocumentValidator, 
+  DocumentController.register);
+
+router.get(
+  "/", 
+  listForEntityValidator, 
+  DocumentController.listForEntity);
+  
 router.delete(
   "/:id",
   requireRoles("HOSPITAL_ADMIN", "DOCTOR"),

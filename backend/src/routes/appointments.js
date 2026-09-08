@@ -25,7 +25,10 @@ router.post(
 
 // GET /api/appointments
 // Who: Doctors, Receptionist, Admin (Patients can query their own via patientId filter enforced at service layer later)
-router.get("/", listAppointmentsValidator, AppointmentController.list);
+router.get(
+  "/", 
+  listAppointmentsValidator, 
+  AppointmentController.list);
 
 // PATCH /api/appointments/:id/status
 // Who: Doctor (Completing/In-Progress), Receptionist (Check-in, Cancellation)

@@ -3,9 +3,11 @@ import { Stethoscope } from 'lucide-react';
 import { navForRole } from '../../utils/navConfig.js';
 import { ROLE_LABELS } from '../../utils/roles.js';
 import classNames from '../../utils/cn.js';
+import { useMemo } from 'react';
 
 export default function Sidebar({ role, hospitalName, open, onClose }) {
-  const items = navForRole(role);
+
+  const navItems = useMemo(() => navForRole(role), [role]);
 
   return (
     <>
@@ -34,7 +36,7 @@ export default function Sidebar({ role, hospitalName, open, onClose }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
-          {items.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.key}
               to={item.to}

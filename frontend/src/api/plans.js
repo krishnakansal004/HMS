@@ -18,8 +18,6 @@ export const tenantsApi = {
   provision: (data) => api.post('/tenants/provision', data),
   list: (query) => api.get('/tenants', query),
   getById: (id) => api.get(`/tenants/${id}`),
-  updateStatus: (id, status) => api.patch(`/tenants/${id}/status`, { status }),
-  updatePlan: (id, planId) => api.patch(`/tenants/${id}/plan`, { planId }),
 };
 
 export const planRequestsApi = {

@@ -12,4 +12,13 @@ export class AnalyticsController {
       next(error);
     }
   }
+
+  static async getPlatformStats(req, res, next) {
+    try {
+      const stats = await AnalyticsService.getPlatformStats();
+      res.status(HTTP_STATUS.OK).json({ success: true, data: stats });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
