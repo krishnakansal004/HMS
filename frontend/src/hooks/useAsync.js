@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Global memory cache to prevent spamming the DB during rapid tab switching
 const globalCache = new Map();
+const inFlightRequests = new Map();
+
+export function clearAsyncCache() {
+  globalCache.clear();
+  inFlightRequests.clear();
+}
 
 /**
  * Minimal data-fetching hook upgraded with SWR-style caching.
@@ -36,8 +42,14 @@ export function useAsync(fn, deps = [], cacheKey = null, ttl = 60000) {
     }
 
     setState((s) => ({ ...s, loading: true, error: null }));
-    
-    fnRef.current()
+
+    let request = !force && cacheKey ? inFlightRequests.get(cacheKey) : null;
+    if (!request) {
+      request = fnRef.current();
+      if (cacheKey && !force) inFlightRequests.set(cacheKey, request);
+    }
+
+    request
       .then((data) => {
         if (!cancelled) {
           if (cacheKey) globalCache.set(cacheKey, { data, timestamp: Date.now() });
@@ -46,6 +58,11 @@ export function useAsync(fn, deps = [], cacheKey = null, ttl = 60000) {
       })
       .catch((err) => {
         if (!cancelled) setState({ data: null, loading: false, error: err.message || 'Something went wrong' });
+      })
+      .finally(() => {
+        if (cacheKey && inFlightRequests.get(cacheKey) === request) {
+          inFlightRequests.delete(cacheKey);
+        }
       });
 
     return () => { cancelled = true; };

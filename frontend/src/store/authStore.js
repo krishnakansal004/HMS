@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { authApi } from '../api/auth.js';
 import { setAccessToken, setSessionHandlers, refreshSession } from '../api/client.js';
 import { toast } from '../components/ui/Toast.jsx';
+import { clearAsyncCache } from '../hooks/useAsync.js';
 
 // Session is memory-only by design (no token in localStorage/sessionStorage).
 // That used to mean a hard page refresh always logged the user out. Now that
@@ -19,6 +20,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await authApi.login({ email, password, hospitalSlug });
       setAccessToken(res.data.accessToken);
+      clearAsyncCache();
       set({ user: res.data.user, status: 'ready', error: null });
       return res.data.user;
     } catch (err) {
@@ -45,6 +47,7 @@ export const useAuthStore = create((set, get) => ({
       // Clear client state regardless of network outcome.
     }
     setAccessToken(null);
+    clearAsyncCache();
     set({ user: null, status: 'idle', error: null });
   },
 
@@ -60,6 +63,7 @@ export const useAuthStore = create((set, get) => ({
    * an error worth surfacing — resolves either way.
    */
   async bootstrap() {
+    clearAsyncCache();
     try {
       const user = await refreshSession();
       set({ user, bootstrapped: true });
@@ -83,6 +87,7 @@ setSessionHandlers({
     if (useAuthStore.getState().user) {
       toast.info('Your session expired. Please log in again.');
     }
+    clearAsyncCache();
     useAuthStore.setState({ user: null });
   },
   onRefreshed: (user) => useAuthStore.setState({ user }),

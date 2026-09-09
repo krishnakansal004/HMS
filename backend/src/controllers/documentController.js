@@ -34,6 +34,7 @@ export class DocumentController {
       await DocumentService.deleteDocument({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         documentId: req.params.id,
         ipAddress: req.ip,
       });

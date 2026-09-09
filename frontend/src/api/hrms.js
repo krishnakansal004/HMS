@@ -5,6 +5,7 @@ import { api } from './client.js';
 
 export const hrmsApi = {
   listStaff: (query) => api.get('/hrms/staff', query),
+  inviteStaff: (data) => api.post('/staff/invite', data),
   applyLeave: (data) => api.post('/hrms/leaves', data),
   reviewLeave: (id, status) => api.patch(`/hrms/leaves/${id}/review`, { status }),
   createShift: (data) => api.post('/hrms/shifts', data),

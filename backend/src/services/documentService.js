@@ -61,7 +61,7 @@ export class DocumentService {
     return DocumentRepository.findByEntity({ tenantId, entityType, entityId });
   }
 
-  static async deleteDocument({ tenantId, userId, documentId, ipAddress }) {
+  static async deleteDocument({ tenantId, userId, userRole, documentId, ipAddress }) {
     const existing = await DocumentRepository.findByIdAndTenant(
       documentId,
       tenantId,

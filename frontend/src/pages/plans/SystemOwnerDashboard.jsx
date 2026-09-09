@@ -19,7 +19,7 @@ export default function SystemOwnerDashboard() {
   const [planModalOpen, setPlanModalOpen] = useState(false);
 
   // Fetch Live Data from Backend API
-  const plansQuery = useAsync(() => plansApi.list(), [], 'sys_plans');
+  const plansQuery = useAsync(() => plansApi.list(), [], 'plans_list');
   const tenantsQuery = useAsync(() => tenantsApi.list({ limit: 50 }), [], 'sys_tenants');
 
   const plans = plansQuery.data?.data || [];

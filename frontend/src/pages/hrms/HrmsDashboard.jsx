@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Calendar, FileText, Plus } from 'lucide-react';
+import { Users, Calendar, FileText, Plus, UserPlus } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { hrmsApi } from '../../api/hrms.js';
 import Card, { CardHeader, CardBody } from '../../components/ui/Card.jsx';
@@ -10,12 +10,17 @@ import { formatDate, initials } from '../../utils/format.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import ShiftFormModal from './ShiftFormModal.jsx';
 import LeaveFormModal from './LeaveFormModal.jsx';
+import InviteStaffModal from './InviteStaffModal.jsx';
+import { useAuthStore } from '../../store/authStore.js';
 
 export default function HrmsDashboard() {
   const [activeTab, setActiveTab] = useState('staff');
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const user = useAuthStore((state) => state.user);
+  const canInviteStaff = ['HOSPITAL_ADMIN', 'DIRECTOR'].includes(user?.role);
 
   // Fetch staff directory
   const staffQuery = useAsync(() => hrmsApi.listStaff({ limit: 50 }), [], 'hrms_staff');
@@ -42,6 +47,9 @@ export default function HrmsDashboard() {
           <p className="text-sm text-[var(--color-ink-soft)] mt-0.5">Manage staff directories, shifts, and leave approvals</p>
         </div>
         <div className="flex gap-2">
+          {canInviteStaff && (
+            <Button icon={UserPlus} onClick={() => setInviteModalOpen(true)}>Invite Staff</Button>
+          )}
           <Button variant="secondary" icon={Calendar} onClick={() => setShiftModalOpen(true)}>Create Shift</Button>
           <Button icon={Plus} onClick={() => setLeaveModalOpen(true)}>Request Leave</Button>
         </div>
@@ -108,6 +116,7 @@ export default function HrmsDashboard() {
       {/* Modals */}
       <ShiftFormModal open={shiftModalOpen} onClose={() => setShiftModalOpen(false)} onSaved={staffQuery.refetch} />
       <LeaveFormModal open={leaveModalOpen} onClose={() => setLeaveModalOpen(false)} onSaved={staffQuery.refetch} />
+      <InviteStaffModal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} onSaved={staffQuery.refetch} />
     </div>
   );
 }
