@@ -33,7 +33,7 @@ export const orderLabValidator = [
 
 export const updateLabResultsValidator = [
   param('id').isUUID().withMessage('Valid Lab Order ID is required'),
-  body('sampleStatus').isIn(['pending', 'collected', 'processing', 'completed', 'cancelled']).withMessage('Invalid status'),
+  body('sampleStatus').isIn(['pending', 'collected', 'in_lab', 'completed', 'cancelled']).withMessage('Invalid status'),
   body('technicianNotes').optional().isString().trim(),
   body('results').optional().isObject().withMessage('Results must be a structured JSON object'),
   body('invoiceId').optional().isUUID().withMessage('Invoice ID must be a valid UUID to post charges'),

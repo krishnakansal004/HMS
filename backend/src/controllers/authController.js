@@ -77,14 +77,17 @@ export class AuthController {
 
   static async logout(req, res, next) {
     try {
-      // Clear the refresh token cookie
+      const token = req.cookies?.refreshToken;
+      if (token) {
+        await AuthService.logout(token);
+      }
+      
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: env.nodeEnv === "production",
         sameSite: env.nodeEnv === "production" ? "strict" : "lax",
         path: "/",
       });
-
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: "Logged out successfully",

@@ -7,6 +7,7 @@ import {
 } from "../validators/customizationRequestValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { publicFormLimiter } from "../middlewares/rateLimiters.js";
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ const router = express.Router();
 // plan" form.
 router.post(
   "/",
+  publicFormLimiter,
   submitCustomizationRequestValidator,
   CustomizationRequestController.submit,
 );

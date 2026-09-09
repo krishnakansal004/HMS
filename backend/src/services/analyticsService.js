@@ -1,5 +1,5 @@
 import { db } from "../config/db.js";
-
+import { queryAcrossTenants } from "../config/systemOwnerRawClient.js";
 export class AnalyticsService {
   static async getDirectorDashboardStats(tenantId) {
     const today = new Date();
@@ -17,7 +17,7 @@ export class AnalyticsService {
         tx.patient.count({ where: { tenant_id: tenantId, deleted_at: null } }),
         tx.admission.count({
           where: { tenant_id: tenantId, status: "admitted" },
-        }), // Fixed lowercase to match DB CHECK constraint
+        }),
         tx.appointment.count({
           where: { tenant_id: tenantId, slot_start: { gte: today } },
         }),
@@ -47,11 +47,11 @@ export class AnalyticsService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    return db.$transaction(async (tx) => {
-      const tenants = await tx.tenant.groupBy({
-        by: ['status'],
-        _count: { tenant_id: true }
-      });
+    return queryAcrossTenants('SYSTEM_OWNER', async (tx) => {
+    const tenants = await tx.tenant.groupBy({
+      by: ['status'],
+      _count: { tenant_id: true }
+    });
       
       let totalTenants = 0, activeTenants = 0, suspendedTenants = 0;
       tenants.forEach(t => {
@@ -60,11 +60,11 @@ export class AnalyticsService {
         if (t.status === 'suspended') suspendedTenants = t._count.tenant_id;
       });
 
-      const pendingRequests = await tx.plan_request.count({ where: { status: 'pending' } });
-      const revenue = await tx.plan_receipt.aggregate({
-        where: { paid_at: { gte: thirtyDaysAgo } },
-        _sum: { total: true }
-      });
+     const pendingRequests = await tx.plan_request.count({ where: { status: 'pending' } });
+     const revenue = await tx.plan_receipt.aggregate({
+      where: { paid_at: { gte: thirtyDaysAgo } },
+      _sum: { total: true }
+    });
 
       const plans = await tx.plan.findMany({
         select: { plan_id: true, name: true, _count: { select: { tenant: true } } }
@@ -76,11 +76,11 @@ export class AnalyticsService {
       }));
 
       return {
-        totalTenants, activeTenants, suspendedTenants,
-        pendingPlanRequests: pendingRequests,
-        platformRevenueLast30d: Number(revenue._sum.total || 0),
-        planDistribution
-      };
+      totalTenants, activeTenants, suspendedTenants,
+      pendingPlanRequests: pendingRequests,
+      platformRevenueLast30d: Number(revenue._sum.total || 0),
+      planDistribution
+    };
     });
   }
 }

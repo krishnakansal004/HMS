@@ -1,0 +1,122 @@
+-- Migration: 0063
+-- Purpose: Globalizes Insurance Companies, isolates SaaS Billing, and fixes Global Attribution.
+
+-- ==============================================================================
+-- 1. INSURANCE: GLOBAL MASTER CATALOG & TENANT CONTRACTS
+-- ==============================================================================
+-- Remove tenant isolation from insurance_company
+ALTER TABLE insurance_company DROP CONSTRAINT IF EXISTS fk_insurance_company_tenant;
+ALTER TABLE insurance_company DROP CONSTRAINT IF EXISTS uq_insurance_company_tenant_code;
+DROP INDEX IF EXISTS idx_insurance_company_tenant;
+DROP INDEX IF EXISTS idx_insurance_company_tenant_active;
+ALTER TABLE insurance_company DROP COLUMN tenant_id;
+ALTER TABLE insurance_company ADD CONSTRAINT uq_insurance_company_code UNIQUE (code);
+
+-- Create the tenant-specific commercial agreement
+CREATE TABLE tenant_insurance_contract (
+    contract_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id          UUID NOT NULL,
+    company_id         UUID NOT NULL,
+    corporate_discount NUMERIC(5,2) NOT NULL DEFAULT 0,
+    status             VARCHAR(50) NOT NULL DEFAULT 'active',
+    created_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    deleted_at         TIMESTAMPTZ,
+    CONSTRAINT fk_tic_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE CASCADE,
+    CONSTRAINT fk_tic_company FOREIGN KEY (company_id) REFERENCES insurance_company(company_id) ON DELETE CASCADE,
+    CONSTRAINT uq_tic_tenant_company UNIQUE (tenant_id, company_id),
+    CONSTRAINT chk_tic_discount CHECK (corporate_discount >= 0),
+    CONSTRAINT chk_tic_status CHECK (status IN ('active', 'inactive', 'suspended'))
+);
+
+CREATE INDEX idx_tic_tenant ON tenant_insurance_contract(tenant_id);
+ALTER TABLE tenant_insurance_contract ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_insurance_contract FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_tic ON tenant_insurance_contract
+  USING (tenant_id = (current_setting('app.current_tenant_id', true))::uuid);
+CREATE TRIGGER trg_tic_updated_at BEFORE UPDATE ON tenant_insurance_contract FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ==============================================================================
+-- 2. BILLING: SAAS SUBSCRIPTION VS CLINICAL INVOICE AIR-GAP
+-- ==============================================================================
+-- Detach SaaS plans from patient invoices
+ALTER TABLE invoice DROP CONSTRAINT IF EXISTS fk_invoice_plan;
+DROP INDEX IF EXISTS idx_invoice_plan;
+ALTER TABLE invoice DROP COLUMN plan_id;
+
+-- Create dedicated SaaS B2B Billing tables
+CREATE TABLE subscription_invoice (
+    subscription_invoice_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number          INT NOT NULL,
+    tenant_id               UUID NOT NULL,
+    plan_id                 UUID NOT NULL,
+    subtotal                NUMERIC(10,2) NOT NULL,
+    gst_total               NUMERIC(10,2) NOT NULL,
+    total                   NUMERIC(10,2) NOT NULL,
+    amount_paid             NUMERIC(10,2) NOT NULL DEFAULT 0,
+    status                  VARCHAR(50) NOT NULL DEFAULT 'pending',
+    paid                    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMPTZ,
+    CONSTRAINT uq_sub_inv_tenant_num UNIQUE (tenant_id, invoice_number),
+    CONSTRAINT fk_sub_inv_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sub_inv_plan FOREIGN KEY (plan_id) REFERENCES plan(plan_id) ON DELETE RESTRICT,
+    CONSTRAINT chk_sub_inv_amounts CHECK (subtotal >= 0 AND gst_total >= 0 AND total >= 0 AND amount_paid >= 0),
+    CONSTRAINT chk_sub_inv_status CHECK (status IN ('pending', 'paid', 'cancelled'))
+);
+
+CREATE TABLE subscription_payment (
+    subscription_payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_invoice_id UUID NOT NULL,
+    tenant_id               UUID NOT NULL,
+    amount                  NUMERIC(10,2) NOT NULL CHECK (amount > 0),
+    method                  VARCHAR(50) NOT NULL,
+    transaction_id          VARCHAR(255),
+    status                  VARCHAR(50) NOT NULL DEFAULT 'success' CHECK (status IN ('success', 'failed', 'refunded')),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at              TIMESTAMPTZ,
+    CONSTRAINT fk_sub_pay_inv FOREIGN KEY (subscription_invoice_id) REFERENCES subscription_invoice(subscription_invoice_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sub_pay_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_sub_inv_tenant ON subscription_invoice(tenant_id);
+CREATE INDEX idx_sub_pay_tenant ON subscription_payment(tenant_id);
+
+-- Enforce SaaS Table Isolation
+ALTER TABLE subscription_invoice ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_invoice FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_sub_inv ON subscription_invoice USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+CREATE TRIGGER trg_sub_inv_updated_at BEFORE UPDATE ON subscription_invoice FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ALTER TABLE subscription_payment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_payment FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_sub_pay ON subscription_payment USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+CREATE TRIGGER trg_sub_pay_updated_at BEFORE UPDATE ON subscription_payment FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Rewire plan_receipts from clinical invoices to subscription invoices
+ALTER TABLE plan_receipt DROP CONSTRAINT IF EXISTS fk_plan_receipt_invoice;
+DROP INDEX IF EXISTS idx_plan_receipt_invoice;
+ALTER TABLE plan_receipt ADD COLUMN subscription_invoice_id UUID;
+-- Note: Assuming fresh DB for this migration so we don't need a data-migration step here.
+ALTER TABLE plan_receipt ADD CONSTRAINT fk_plan_receipt_sub_inv FOREIGN KEY (subscription_invoice_id) REFERENCES subscription_invoice(subscription_invoice_id) ON DELETE RESTRICT;
+ALTER TABLE plan_receipt DROP COLUMN invoice_id;
+
+-- ==============================================================================
+-- 3. GLOBAL ATTRIBUTION: COMPOSITE FOREIGN KEYS
+-- ==============================================================================
+-- FAQ
+ALTER TABLE faq ADD COLUMN author_tenant_id UUID;
+ALTER TABLE faq DROP CONSTRAINT IF EXISTS fk_faq_creator;
+ALTER TABLE faq ADD CONSTRAINT fk_faq_creator FOREIGN KEY (author_tenant_id, created_by) REFERENCES users(tenant_id, user_id) ON DELETE SET NULL;
+
+-- Chat Model
+ALTER TABLE chat_model ADD COLUMN author_tenant_id UUID;
+ALTER TABLE chat_model DROP CONSTRAINT IF EXISTS fk_chat_model_creator;
+ALTER TABLE chat_model ADD CONSTRAINT fk_chat_model_creator FOREIGN KEY (author_tenant_id, created_by) REFERENCES users(tenant_id, user_id) ON DELETE SET NULL;
+
+-- Customization Request
+ALTER TABLE customization_request ADD COLUMN author_tenant_id UUID;
+ALTER TABLE customization_request DROP CONSTRAINT IF EXISTS fk_customization_request_creator;
+ALTER TABLE customization_request ADD CONSTRAINT fk_customization_request_creator FOREIGN KEY (author_tenant_id, created_by) REFERENCES users(tenant_id, user_id) ON DELETE SET NULL;

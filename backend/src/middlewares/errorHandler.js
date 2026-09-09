@@ -17,54 +17,40 @@ function mapPrismaError(err) {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case "P2002": {
-        // Unique constraint violation. err.meta.target is usually an array
-        // of column names (or the @@map'd constraint name) involved.
         const target = Array.isArray(err.meta?.target)
           ? err.meta.target.join(", ")
           : err.meta?.target || "field";
-        return new AppError(
-          `A record with this ${target} already exists.`,
-          HTTP_STATUS.CONFLICT,
-        );
+        return new AppError(`A record with this ${target} already exists.`, HTTP_STATUS.CONFLICT);
       }
       case "P2025":
-        // Record required for the operation (update/delete/connect) was not found.
-        return new AppError(
-          "The requested record was not found.",
-          HTTP_STATUS.NOT_FOUND,
-        );
+        return new AppError("The requested record was not found.", HTTP_STATUS.NOT_FOUND);
       case "P2003": {
-        // Foreign key constraint violation.
         const field = err.meta?.field_name || "related record";
-        return new AppError(
-          `Invalid reference: ${field} does not exist.`,
-          HTTP_STATUS.BAD_REQUEST,
-        );
+        return new AppError(`Invalid reference: ${field} does not exist.`, HTTP_STATUS.BAD_REQUEST);
       }
       case "P2000":
-        // Value too long for the column type.
-        return new AppError(
-          "One or more values are too long for their field.",
-          HTTP_STATUS.BAD_REQUEST,
-        );
+        return new AppError("One or more values are too long for their field.", HTTP_STATUS.BAD_REQUEST);
+      case "P2014":
+        return new AppError("This change would violate a strict database relation.", HTTP_STATUS.BAD_REQUEST);
       default:
-        return null;
+        // Catch-all for any other Prisma query error (prevents leaking schema details)
+        return new AppError("A database operation failed.", HTTP_STATUS.BAD_REQUEST);
     }
   }
   const instance = err instanceof Prisma.PrismaClientValidationError
 
-  if (instance) {
-    // Malformed query (unknown field, wrong type, etc.) — this is a
-    // programming bug, not user input, so keep it a 500 but at least make
-    // sure it's logged loudly and doesn't leak the raw Prisma message to
-    // the client in production.
-    console.log(err instanceof Prisma.PrismaClientValidationError)
-    return new AppError(
-      "A database query error occurred.",
-      HTTP_STATUS.INTERNAL_SERVER_ERROR,
-    );
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    return new AppError("The request could not be processed due to a data conflict.", HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
-
+  
+  if (
+    err instanceof Prisma.PrismaClientInitializationError || 
+    err instanceof Prisma.PrismaClientRustPanicError || 
+    err instanceof Prisma.PrismaClientUnknownRequestError
+  ) {
+    return new AppError("A critical database error occurred.", HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+  
   return null;
 }
 

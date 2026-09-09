@@ -17,6 +17,7 @@ import {
   Building2,
   Stethoscope,
   UserPlus,
+  Settings
 } from 'lucide-react';
 import { ROLES } from './roles.js';
 

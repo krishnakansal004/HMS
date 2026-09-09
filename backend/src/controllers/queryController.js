@@ -45,4 +45,16 @@ export class QueryController {
       next(error);
     }
   }
+
+  static async listUnassigned(req, res, next) {
+    try {
+      const result = await QueryService.listUnassignedLeads({
+        userRole: req.userRole,
+        query: req.query,
+      });
+      res.status(HTTP_STATUS.OK).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

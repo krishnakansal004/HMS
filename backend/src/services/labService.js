@@ -100,7 +100,7 @@ export class LabService {
     const validStatuses = [
       "pending",
       "collected",
-      "processing",
+      "in_lab",
       "completed",
       "cancelled",
     ];

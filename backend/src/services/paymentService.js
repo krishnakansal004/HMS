@@ -10,42 +10,69 @@ export class PaymentService {
     // Fetch invoice and patient details for UI prefill
     const invoice = await db.invoice.findFirst({
       where: { invoice_id: invoiceId, tenant_id: tenantId },
-      include: { patient: { select: { first_name: true, last_name: true, email: true, phone: true } } }
+      include: {
+        patient: {
+          select: {
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
     });
-    
-    if (!invoice) throw new AppError("Invoice not found.", HTTP_STATUS.NOT_FOUND);
-    if (invoice.status === "paid") throw new AppError("Invoice is already paid.", HTTP_STATUS.BAD_REQUEST);
 
-    const pendingAmountPaise = Number(invoice.total) - Number(invoice.amount_paid);
-    
-    if (pendingAmountPaise <= 0) throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
+    if (!invoice)
+      throw new AppError("Invoice not found.", HTTP_STATUS.NOT_FOUND);
+    if (invoice.status === "paid")
+      throw new AppError("Invoice is already paid.", HTTP_STATUS.BAD_REQUEST);
+
+    const pendingAmountPaise =
+      Number(invoice.total) - Number(invoice.amount_paid);
+
+    if (pendingAmountPaise <= 0)
+      throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
 
     const rzp = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_SECRET,
     });
 
+    const currencySetting = await db.setting.findFirst({
+      where: { tenant_id: tenantId, key: "CURRENCY" },
+    });
+
+    const currency = currencySetting?.value || "INR";
     const options = {
-      amount: pendingAmountPaise, 
+      amount: pendingAmountPaise,
       currency: "INR",
-      receipt: invoiceId.slice(0, 40), 
+      receipt: invoiceId.slice(0, 40),
     };
-    
+
     const order = await rzp.orders.create(options);
-    
+    await db.invoice.update({
+      where: { invoice_id: invoiceId },
+      data: { razorpay_order_id: order.id },
+    });
     return {
       ...order,
       patient: {
-        name: `${invoice.patient.first_name} ${invoice.patient.last_name || ''}`.trim(),
-        email: invoice.patient.email || '',
-        contact: invoice.patient.phone || ''
-      }
+        name: `${invoice.patient.first_name} ${invoice.patient.last_name || ""}`.trim(),
+        email: invoice.patient.email || "",
+        contact: invoice.patient.phone || "",
+      },
     };
   }
 
   // Real Signature Verification (Synchronous Frontend Callback)
-  static async verifyPaymentWebhook({ invoiceId, gatewayPaymentId, razorpayOrderId, amountPaid, signature }) {
-    const secret = process.env.RAZORPAY_SECRET; 
+  static async verifyPaymentWebhook({
+    invoiceId,
+    gatewayPaymentId,
+    razorpayOrderId,
+    amountPaid,
+    signature,
+  }) {
+    const secret = process.env.RAZORPAY_SECRET;
 
     // HMAC SHA256 Verification
     const generatedSignature = crypto
@@ -63,16 +90,23 @@ export class PaymentService {
     const invoice = await db.invoice.findUnique({
       where: { invoice_id: invoiceId },
     });
-    
-    if (!invoice) throw new AppError("Invoice not found for webhook.", HTTP_STATUS.NOT_FOUND);
-    if (invoice.status === "paid") return { success: true, message: "Already marked as paid" }; // Idempotency check
+
+    if (!invoice || invoice.invoice_id !== invoiceId) {
+      throw new AppError(
+        "Invoice mismatch or not found.",
+        HTTP_STATUS.NOT_FOUND,
+      );
+    }
+    if (invoice.status === "paid")
+      return { success: true, message: "Already marked as paid" }; // Idempotency check
 
     // Convert incoming amountPaid to minor currency (paise)
     const remainingPaise = Number(invoice.total) - Number(invoice.amount_paid);
     let amountInPaise = Math.round(Number(amountPaid) * 100);
     if (
       Math.round(Number(amountPaid)) === remainingPaise ||
-      (Number(amountPaid) > remainingPaise && Math.round(Number(amountPaid)) <= Number(invoice.total))
+      (Number(amountPaid) > remainingPaise &&
+        Math.round(Number(amountPaid)) <= Number(invoice.total))
     ) {
       amountInPaise = Math.round(Number(amountPaid));
     }

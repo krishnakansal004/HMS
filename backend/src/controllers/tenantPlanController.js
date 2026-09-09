@@ -93,6 +93,7 @@ export class TenantPlanController {
   static async listRequests(req, res, next) {
     try {
       const result = await TenantPlanService.listPlanRequests({
+        userRole: req.userRole,
         query: req.query,
       });
 

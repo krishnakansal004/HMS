@@ -18,5 +18,5 @@ export const radiologyApi = {
   listOrders: (query) => api.get('/radiology/orders', query),
 };
 
-export const RADIOLOGY_STATUSES = ['ordered', 'scheduled', 'scanning', 'completed', 'cancelled'];
+export const RADIOLOGY_STATUSES = ['ordered', 'scheduled', 'in_progress', 'completed', 'cancelled'];
 export const RADIOLOGY_URGENCY = ['routine', 'urgent', 'stat'];

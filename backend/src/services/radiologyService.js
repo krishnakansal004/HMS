@@ -77,7 +77,7 @@ export class RadiologyService {
     const validStatuses = [
       "ordered",
       "scheduled",
-      "scanning",
+      "in_progress",
       "completed",
       "cancelled",
     ];

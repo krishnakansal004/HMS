@@ -88,6 +88,9 @@ const DoctorAttendanceBoard = lazy(
 const AttendanceBoard = lazy(
   () => import("../pages/hrms/AttendanceBoard.jsx")
 );
+const SettingsDashboard = lazy(
+  () => import("../pages/settings/SettingsDashboard.jsx")
+)
 
 // Universal loader for public lazy routes
 const FullPageLoader = () => (
@@ -101,7 +104,7 @@ const roadmap = [
   ["insurance", "Insurance Claims", "Phase 3"],
   ["expenses", "Expenses", "Phase 5"],
   // ["attendance", "Attendance", "Phase 6"],
-  ["settings", "Settings", "Phase 6"],
+  // ["settings", "Settings", "Phase 6"],
 ];
 
 export const router = createBrowserRouter([
@@ -447,6 +450,22 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         handle: { title: "Create Purchase Order" },
+      },
+      {
+        path: "settings",
+        element: (
+          <ProtectedRoute
+            roles={[
+              ROLES.HOSPITAL_ADMIN,
+              ROLES.ACCOUNTANT,
+              ROLES.RECEPTIONIST,
+              ROLES.DOCTOR,
+            ]}
+          >
+            <SettingsDashboard />
+          </ProtectedRoute>
+        ),
+        handle: { title: "Settings" },
       },
 
       ...roadmap.map(([path, title, phase]) => ({

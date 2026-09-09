@@ -1,5 +1,5 @@
 import { db } from '../config/db.js';
-
+import { queryAcrossTenants } from '../config/systemOwnerRawClient.js';
 export class TenantPlanRepository {
 
   // PLANS
@@ -137,27 +137,23 @@ export class TenantPlanRepository {
 
   static async findPlanRequestsPaginated({ status, skip, take }) {
     const whereCondition = status ? { status } : {};
-    return db.$transaction(async (tx) => {
-      const [total, requests] = await Promise.all([
-        tx.plan_request.count({ where: whereCondition }),
-        tx.plan_request.findMany({
-          where: whereCondition,
-          include: {
-            plan: {
-              select: { name: true },
-            },
-            tenant: {
-              select: { name: true, slug: true },
-            },
-          },
-          orderBy: { created_at: 'desc' },
-          skip,
-          take,
-        }),
-      ]);
-      return [total, requests];
-    });
-  }
+   return queryAcrossTenants(userRole, async (tx) => {
+    const [total, requests] = await Promise.all([
+      tx.plan_request.count({ where: whereCondition }),
+      tx.plan_request.findMany({
+        where: whereCondition,
+        include: {
+          plan: { select: { name: true } },
+          tenant: { select: { name: true, slug: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take,
+      }),
+    ]);
+    return [total, requests];
+  });
+}
 
   static async findTenantsPaginated({ skip, take }) {
     return await db.$transaction(async (tx) => {

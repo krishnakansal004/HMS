@@ -1,6 +1,6 @@
 import { AnalyticsService } from "../services/analyticsService.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
-
+import { queryAcrossTenants } from "../config/systemOwnerRawClient.js";
 export class AnalyticsController {
   static async getDashboardStats(req, res, next) {
     try {

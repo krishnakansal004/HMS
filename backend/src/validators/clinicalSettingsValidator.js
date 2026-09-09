@@ -13,6 +13,11 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
+const VALID_KEYS = [
+  'HOSPITAL_CONTACT_EMAIL', 'HOSPITAL_PHONE', 'HOSPITAL_ADDRESS', 
+  'INVOICE_PREFIX', 'DEFAULT_TAX_RATE', 'CURRENCY', 'TIMEZONE'
+];
+
 export const createTemplateValidator = [
   body('name').trim().notEmpty().withMessage('Template name is required').escape(),
   body('medicines').optional().isArray().withMessage('Medicines must be an array'),
@@ -27,7 +32,7 @@ export const deleteTemplateValidator = [
 ];
 
 export const updateSettingValidator = [
-  body('key').trim().notEmpty().withMessage('Setting key is required').escape(),
+  body('key').trim().isIn(VALID_KEYS).withMessage('Invalid configuration key'),
   body('value').notEmpty().withMessage('Setting value is required'),
   body('group').optional().trim().escape(),
   handleValidationErrors

@@ -126,7 +126,14 @@ export class InvoiceService {
       });
 
       // TODO: If updatedInvoice.status === 'paid', push a job to BullMQ to send a PDF Receipt to the patient's email.
-
+      if (updatedInvoice.status === 'paid') {
+        addPdfJob({
+          invoiceId: updatedInvoice.invoice_id,
+          tenantId: tenantId,
+          paidAt: payment.created_at
+        }).catch(err => console.error('[InvoiceService] Failed to queue PDF job:', err));
+      }
+      
       return updatedInvoice;
     } catch (error) {
       if (error.message === "INVOICE_NOT_FOUND") {

@@ -118,6 +118,20 @@ export class InventoryService {
       // TODO: If result.medicine.quantity <= result.medicine.reorder_level, enqueue a BullMQ job
       // to send a "Low Stock Alert" email/SMS to the Hospital Admin and Pharmacist.
 
+      if (result.medicine.quantity <= result.medicine.reorder_level) {
+        db.users.findFirst({
+          where: { tenant_id: tenantId, role: { name: 'HOSPITAL_ADMIN' }, deleted_at: null }
+        }).then(admin => {
+          if (admin) {
+            addNotificationJob("email", {
+              to: admin.email,
+              subject: `Low Stock Alert: ${result.medicine.name}`,
+              html: `<p>The stock for <b>${result.medicine.name}</b> (Batch: ${result.medicine.batch_number}) has dropped to ${result.medicine.quantity}, which is at or below the reorder level of ${result.medicine.reorder_level}. Please restock.</p>`
+            });
+          }
+        }).catch(err => console.error("Failed to queue low stock alert", err));
+      }
+      
       return result.medicine;
     } catch (error) {
       if (error.message === "INSUFFICIENT_STOCK") {

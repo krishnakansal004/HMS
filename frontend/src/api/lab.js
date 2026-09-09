@@ -21,4 +21,4 @@ export const labApi = {
   listOrders: (query) => api.get('/lab/orders', query),
 };
 
-export const LAB_ORDER_STATUSES = ['pending', 'collected', 'processing', 'completed', 'cancelled'];
+export const LAB_ORDER_STATUSES = ['pending', 'collected', 'in_lab', 'completed', 'cancelled'];

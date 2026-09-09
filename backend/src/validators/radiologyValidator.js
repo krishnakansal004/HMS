@@ -27,7 +27,7 @@ export const orderRadiologyValidator = [
 
 export const updateRadiologyValidator = [
   param('id').isUUID().withMessage('Valid Radiology Order ID required'),
-  body('status').isIn(['ordered', 'scheduled', 'scanning', 'completed', 'cancelled']).withMessage('Invalid status'),
+  body('status').isIn(['ordered', 'scheduled', 'in_progress', 'completed', 'cancelled']).withMessage('Invalid status'),
   body('findings').optional().isString().trim(),
   body('impression').optional().isString().trim(),
   body('scanMetadata').optional().isObject().withMessage('Scan metadata must be a valid JSON object'),

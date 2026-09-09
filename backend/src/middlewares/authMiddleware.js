@@ -68,3 +68,27 @@ export const requireRoles = (...allowedRoles) => {
     next();
   };
 };
+
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization?.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+    if (token) {
+      const decoded = jwt.verify(token, env.jwt.accessSecret);
+      const user = await tenantStorage.run({ tenantId: decoded.tenantId }, () =>
+        db.users.findUnique({ where: { user_id: decoded.sub } })
+      );
+      if (user && !user.deleted_at && user.tenant_id === decoded.tenantId) {
+        req.userId = user.user_id;
+        req.userRole = user.role?.name;
+        req.currentTenantId = user.tenant_id;
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Silently ignore auth errors for public access
+  }
+  next();
+};

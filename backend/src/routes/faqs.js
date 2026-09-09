@@ -5,12 +5,17 @@ import {
   listFaqValidator,
   deleteFaqValidator,
 } from "../validators/faqValidator.js";
-import { protect, requireRoles } from "../middlewares/authMiddleware.js";
+import { protect, requireRoles, optionalAuth } from "../middlewares/authMiddleware.js";
+import { requireTenant } from "../middlewares/tenantMiddleware.js";
 
 const router = express.Router();
 
 // Publicly readable FAQ list
-router.get("/", listFaqValidator, FaqController.list);
+router.get(
+  "/",
+  optionalAuth, 
+  listFaqValidator, 
+  FaqController.list);
 
 // Protected Management Routes
 router.post(
@@ -23,6 +28,7 @@ router.post(
 router.delete(
   "/:id",
   protect,
+  requireTenant,
   requireRoles("HOSPITAL_ADMIN", "DIRECTOR"),
   deleteFaqValidator,
   FaqController.remove,

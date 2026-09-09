@@ -11,11 +11,16 @@ import { fullName } from '../../utils/format.js';
 import { Spinner } from '../../components/ui/Table.jsx';
 import { useSessionDraft } from '../../hooks/useSessionDraft.js';
 import { useLeaveGuard } from '../../hooks/useLeaveGuard.js';
-
+import { useSettingsStore } from '../../store/settingsStore.js';
 const emptyItem = { entityType: 'OTHER', description: '', quantity: 1, unitPrice: '', gstRate: 0 };
 const initialState = { patientId: '', items: [{ ...emptyItem }], discount: '0' };
 
 export default function GenerateInvoicePage() {
+
+  const getSetting = useSettingsStore(s => s.getSetting);
+  const defaultTaxRate = getSetting('DEFAULT_TAX_RATE', '0');
+  const emptyItem = { entityType: 'OTHER', description: '', quantity: 1, unitPrice: '', gstRate: defaultTaxRate };
+  
   const navigate = useNavigate();
   // State backed by sessionStorage
   const [draft, setDraft, clearDraft] = useSessionDraft('invoice_draft', initialState);

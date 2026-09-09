@@ -6,6 +6,7 @@ import { db, tenantStorage } from "../config/db.js";
 import { hashSetupToken } from "../utils/setupToken.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { redisConnection } from "../config/redis.js";
 export class AuthService {
   static async registerPatient({
     firstName,
@@ -26,8 +27,9 @@ export class AuthService {
     }
 
     // Prevent Duplicate Emails within the system
-    const existingUser = await tenantStorage.run({ tenantId: tenant.tenant_id }, () =>
-      UserRepository.findUserByEmail(email.toLowerCase())
+    const existingUser = await tenantStorage.run(
+      { tenantId: tenant.tenant_id },
+      () => UserRepository.findUserByEmail(email.toLowerCase()),
     );
     if (existingUser) {
       const err = new Error("Email is already registered.");
@@ -190,7 +192,13 @@ export class AuthService {
       err.statusCode = 401;
       throw err;
     }
-
+    const isBlacklisted = await redisConnection.get(`bl_${refreshToken}`);
+    if (isBlacklisted) {
+      throw new AppError(
+        "Session expired or invalidated. Please log in again.",
+        HTTP_STATUS.UNAUTHORIZED,
+      );
+    }
     const runInTenantContext = (fn) =>
       decoded.tenantId
         ? tenantStorage.run({ tenantId: decoded.tenantId }, fn)
@@ -289,5 +297,18 @@ export class AuthService {
     );
 
     return { success: true };
+  }
+
+  static async logout(refreshToken) {
+    if (!refreshToken) return;
+    try {
+      const decoded = jwt.verify(refreshToken, env.jwt.refreshSecret);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      if (expiresIn > 0) {
+        await redisConnection.setex(`bl_${refreshToken}`, expiresIn, 'revoked');
+      }
+    } catch (err) {
+      // Ignore invalid or already-expired tokens during logout
+    }
   }
 }

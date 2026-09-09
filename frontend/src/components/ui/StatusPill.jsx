@@ -21,9 +21,10 @@ const STATUS_TONE_MAP = {
   admitted: 'primary', discharged: 'success', transferred: 'accent',
   // invoices
   draft: 'neutral', pending: 'warning', partial: 'accent', paid: 'success', cancelled: 'danger',
-  // lab / radiology
-  pending: 'warning', collected: 'accent', processing: 'accent', ordered: 'warning',
-  scheduled: 'accent', scanning: 'accent', completed: 'success', cancelled: 'danger',
+  // lab 
+  pending: 'warning', collected: 'accent', in_lab: 'accent', ordered: 'warning',
+  // radiology
+  scheduled: 'accent', in_progress: 'accent', completed: 'success', cancelled: 'danger',
   // insurance claims
   submitted: 'warning', under_review: 'accent', approved: 'success', rejected: 'danger', settled: 'success',
   // purchases

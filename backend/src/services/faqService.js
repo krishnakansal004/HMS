@@ -7,12 +7,12 @@ export class FaqService {
     const isGlobalRequest = !tenantId;
 
     if (isGlobalRequest) {
-      // RULE 1: If creating a global FAQ (tenantId is omitted), user MUST be a System Owner
+      // If creating a global FAQ (tenantId is omitted), user MUST be a System Owner
       if (userRole !== 'SYSTEM_OWNER') {
         throw new AppError('Only System Administrators can create global FAQs.', HTTP_STATUS.FORBIDDEN);
       }
     } else {
-      // RULE 2: If creating a Hospital FAQ, verify they aren't trying to inject a different hospital's ID
+      // If creating a Hospital FAQ, verify they aren't trying to inject a different hospital's ID
       // Note: req.currentTenantId is strictly enforced by the auth middleware anyway, 
       // but this acts as a foolproof defensive boundary.
       if (userRole !== 'SYSTEM_OWNER' && !tenantId) {
@@ -45,10 +45,18 @@ export class FaqService {
     });
   }
 
-  static async deleteFaq({ tenantId, userId, faqId, ipAddress }) {
-    const faq = await db.faq.findUnique({ where: { faq_id: faqId } });
-    if (!faq) throw new AppError('FAQ not found', HTTP_STATUS.NOT_FOUND);
-    await db.faq.delete({ where: { faq_id: faqId } });
-    return { success: true, deleted: faqId };
+  static async deleteFaq({ tenantId, userRole, faqId, ipAddress }) {
+  const where = { faq_id: faqId };
+  
+  if (userRole === 'SYSTEM_OWNER') {
+    where.tenant_id = null;
+  } else {
+    where.tenant_id = tenantId;
   }
+
+  const result = await db.faq.deleteMany({ where });
+  if (result.count === 0) throw new AppError('FAQ not found or unauthorized', HTTP_STATUS.NOT_FOUND);
+  
+  return { success: true, deleted: faqId };
+}
 }

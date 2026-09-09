@@ -66,6 +66,11 @@ export class DocumentService {
       documentId,
       tenantId,
     );
+    if (!['HOSPITAL_ADMIN', 'DIRECTOR', 'SYSTEM_OWNER'].includes(userRole)) {
+    if (existing.uploaded_by !== userId) {
+      throw new AppError("Unauthorized. You can only delete your own documents.", HTTP_STATUS.FORBIDDEN);
+    }
+  }
     if (!existing)
       throw new AppError("Document not found.", HTTP_STATUS.NOT_FOUND);
 
