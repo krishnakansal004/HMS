@@ -7,8 +7,10 @@ export class PaymentController {
       const { invoiceId } = req.body;
 
       const order = await PaymentService.createPaymentOrder({
-        tenantId: req.currentTenantId, 
+        tenantId: req.currentTenantId,
         invoiceId,
+        userId: req.userId,
+        userRole: req.userRole,
       });
 
       res.status(HTTP_STATUS.CREATED).json({ success: true, data: order });

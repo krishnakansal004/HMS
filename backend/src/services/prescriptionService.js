@@ -9,6 +9,7 @@ export class PrescriptionService {
     tenantId,
     userId,
     doctorProfileId,
+    userRole,
     patientId,
     appointmentId,
     diagnosis,
@@ -16,6 +17,28 @@ export class PrescriptionService {
     items,
     ipAddress,
   }) {
+    let targetDoctorId = doctorProfileId;
+    if (userRole === "DOCTOR") {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+      });
+      if (!doctorProfile) throw new AppError("Doctor profile not found.", HTTP_STATUS.NOT_FOUND);
+      
+      targetDoctorId = doctorProfile.doctor_profile_id;
+
+      const [hasAppointment, hasAdmission] = await Promise.all([
+        db.appointment.findFirst({
+          where: { patient_id: patientId, doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        }),
+        db.admission.findFirst({
+          where: { patient_id: patientId, admitting_doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        })
+      ]);
+      
+      if (!hasAppointment && !hasAdmission) {
+        throw new AppError("Unauthorized. You can only perform clinical actions for patients assigned to your care.", HTTP_STATUS.FORBIDDEN);
+      }
+    }
     // Verify Patient exists in this tenant
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId },
@@ -27,7 +50,7 @@ export class PrescriptionService {
     // Business Rule: Medicine stock must NOT decrease here (enforced by design: we only write to prescription table)
     const prescription = await PrescriptionRepository.create({
       tenantId,
-      doctorId: doctorProfileId,
+      doctorId: targetDoctorId,
       patientId,
       appointmentId,
       diagnosis,

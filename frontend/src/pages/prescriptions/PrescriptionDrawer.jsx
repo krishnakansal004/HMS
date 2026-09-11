@@ -5,6 +5,7 @@ import { Input, Select, Textarea } from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { prescriptionsApi } from '../../api/prescriptions.js';
 import { appointmentsApi } from '../../api/appointments.js';
+import { patientsApi } from '../../api/patients.js';
 import { doctorsApi } from '../../api/doctors.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { toast } from '../../components/ui/Toast.jsx';

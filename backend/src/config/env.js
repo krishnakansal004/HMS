@@ -9,6 +9,8 @@ const requiredEnvVars = [
   'REDIS_URL',
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_SECRET',
 ];
 
 const validateEnv = () => {
@@ -45,4 +47,8 @@ export const env = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   allowedOrigins: resolveAllowedOrigins(),
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_SECRET,
+  },
 };

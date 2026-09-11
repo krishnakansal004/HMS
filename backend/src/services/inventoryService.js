@@ -2,6 +2,8 @@ import { InventoryRepository } from "../repositories/inventoryRepository.js";
 import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { db } from "../config/db.js";
+import { addNotificationJob } from "../queues/notificationQueue.js";
 
 export class InventoryService {
   static async addMedicine({ tenantId, userId, data, ipAddress }) {

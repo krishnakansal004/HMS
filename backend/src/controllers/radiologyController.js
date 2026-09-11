@@ -7,6 +7,7 @@ export class RadiologyController {
       const order = await RadiologyService.orderRadiologyStudy({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
         ipAddress: req.ip,
       });

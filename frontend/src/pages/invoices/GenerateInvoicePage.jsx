@@ -27,6 +27,7 @@ export default function GenerateInvoicePage() {
   
   const [patients, setPatients] = useState([]);
   const [loadingDeps, setLoadingDeps] = useState(false);
+  const [loadingCharges, setLoadingCharges] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Check if form has been modified to trigger leave guard
@@ -54,6 +55,10 @@ export default function GenerateInvoicePage() {
     setDraft(prev => {
       const newItems = [...prev.items];
       newItems[index][field] = value;
+      if (field !== 'sourceKey' && (newItems[index].sourceKey || newItems[index].entityId)) {
+        newItems[index].sourceKey = undefined;
+        newItems[index].entityId = undefined;
+      }
       return { ...prev, items: newItems };
     });
   };
@@ -61,6 +66,35 @@ export default function GenerateInvoicePage() {
   const removeItem = (index) => {
     setDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   };
+
+  async function loadPatientCharges(patientId) {
+    setDraft(prev => ({ ...prev, patientId, items: [{ ...emptyItem }] }));
+    if (!patientId) return;
+    setLoadingCharges(true);
+    try {
+      const response = await invoicesApi.getPatientCharges(patientId);
+      const charges = response.data || [];
+      if (charges.length) {
+        setDraft(prev => ({
+          ...prev,
+          patientId,
+          items: charges.map((item) => ({
+            entityType: item.entityType,
+            entityId: item.entityId,
+            sourceKey: item.sourceKey,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: (Number(item.unitPrice) / 100).toFixed(2),
+            gstRate: item.gstRate,
+          })),
+        }));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load patient charges');
+    } finally {
+      setLoadingCharges(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -78,6 +112,8 @@ export default function GenerateInvoicePage() {
         taxRate: 0, 
         items: draft.items.map(i => ({
           entityType: i.entityType,
+          entityId: i.entityId,
+          sourceKey: i.sourceKey,
           description: i.description.trim(),
           itemName: i.description.trim(),
           quantity: Number(i.quantity),
@@ -113,7 +149,7 @@ export default function GenerateInvoicePage() {
         <Card>
           <CardHeader title="Patient Details" />
           <CardBody>
-            <Select required value={draft.patientId} onChange={(e) => setDraft(p => ({ ...p, patientId: e.target.value }))}>
+            <Select required value={draft.patientId} onChange={(e) => loadPatientCharges(e.target.value)} disabled={loadingCharges}>
               <option value="">Choose a patient...</option>
               {patients.map(p => (
                 <option key={p.patient_id} value={p.patient_id}>
@@ -130,6 +166,7 @@ export default function GenerateInvoicePage() {
             action={<Button size="sm" variant="secondary" icon={Plus} onClick={addItem}>Add Item</Button>} 
           />
           <CardBody className="flex flex-col gap-3">
+            {loadingCharges && <Spinner label="Loading patient charges..." />}
             {draft.items.map((item, index) => (
               <div key={index} className="flex items-start gap-3 bg-[var(--color-paper)] p-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">
                 <Select className="w-40" value={item.entityType} onChange={(e) => updateItem(index, 'entityType', e.target.value)}>
@@ -175,7 +212,7 @@ export default function GenerateInvoicePage() {
 
         <div className="flex justify-end gap-3 sticky bottom-4 bg-[var(--color-paper)]/90 backdrop-blur-sm p-4 rounded-xl border border-[var(--color-border)] shadow-sm">
           <Button variant="ghost" onClick={() => navigate('/invoices')}>Cancel</Button>
-          <Button type="submit" loading={saving} disabled={draft.items.length === 0 || !draft.patientId}>
+          <Button type="submit" loading={saving} disabled={draft.items.length === 0 || !draft.patientId || loadingCharges}>
             Generate & Save
           </Button>
         </div>

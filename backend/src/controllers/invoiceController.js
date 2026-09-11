@@ -2,6 +2,18 @@ import { InvoiceService } from "../services/invoiceService.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 
 export class InvoiceController {
+  static async charges(req, res, next) {
+    try {
+      const result = await InvoiceService.getPatientCharges({
+        tenantId: req.currentTenantId,
+        patientId: req.query.patientId,
+      });
+      res.status(HTTP_STATUS.OK).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async generate(req, res, next) {
     try {
       const invoice = await InvoiceService.generateInvoice({

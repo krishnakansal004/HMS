@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, CalendarClock, UserCheck, Stethoscope, ChevronRight } from 'lucide-react';
+import { Plus, CalendarClock, UserCheck, Stethoscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAsync } from '../../hooks/useAsync.js';
 import { appointmentsApi, APPOINTMENT_STATUSES } from '../../api/appointments.js';
@@ -19,6 +19,8 @@ export default function AppointmentsList() {
   const user = useAuthStore((s) => s.user);
   const isDoctor = user?.role === ROLES.DOCTOR;
   const isPatient = user?.role === ROLES.PATIENT;
+  const canUpdateStatus = [ROLES.HOSPITAL_ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR].includes(user?.role);
+  const canManageAllStatuses = [ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR].includes(user?.role);
 
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10));
@@ -143,10 +145,24 @@ export default function AppointmentsList() {
                     <Td className="capitalize text-sm">{a.type?.replace('_', ' ').toLowerCase()}</Td>
                     <Td><StatusPill status={a.status} /></Td>
                     
-                    {/* Hide entirely for Patients */}
-                    {!isPatient && (
+                    {!isPatient && canUpdateStatus && (
                       <Td className="text-right flex items-center justify-end gap-2">
-                        {/* ... your existing action buttons ... */}
+                        <Select
+                          aria-label="Change appointment status"
+                          value=""
+                          disabled={updatingId !== null || ['completed', 'cancelled', 'no_show'].includes(a.status)}
+                          onChange={(e) => {
+                            if (e.target.value) handleStatusChange(a.appointment_id, e.target.value);
+                          }}
+                          className="w-44"
+                        >
+                          <option value="">Change status...</option>
+                          {APPOINTMENT_STATUSES
+                            .filter((status) => status !== a.status && (canManageAllStatuses || ['confirmed', 'checked_in', 'cancelled', 'no_show'].includes(status)))
+                            .map((status) => (
+                              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+                            ))}
+                        </Select>
                       </Td>
                     )}
                   </Tr>

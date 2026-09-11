@@ -33,12 +33,36 @@ export class LabService {
   static async orderLabTest({
     tenantId,
     userId,
+    userRole,
     patientId,
     testId,
     doctorProfileId,
     prescriptionId,
     ipAddress,
   }) {
+    let targetDoctorId = doctorProfileId;
+
+    if (userRole === "DOCTOR") {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+      });
+      if (!doctorProfile) throw new AppError("Doctor profile not found.", HTTP_STATUS.NOT_FOUND);
+      
+      targetDoctorId = doctorProfile.doctor_profile_id;
+
+      const [hasAppointment, hasAdmission] = await Promise.all([
+        db.appointment.findFirst({
+          where: { patient_id: patientId, doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        }),
+        db.admission.findFirst({
+          where: { patient_id: patientId, admitting_doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        })
+      ]);
+      
+      if (!hasAppointment && !hasAdmission) {
+        throw new AppError("Unauthorized. You can only perform clinical actions for patients assigned to your care.", HTTP_STATUS.FORBIDDEN);
+      }
+    }
     // Verify Test exists in catalog
     const testCatalog = await LabRepository.findTestById(tenantId, testId);
     if (!testCatalog || testCatalog.status !== "active") {
@@ -64,7 +88,7 @@ export class LabService {
       test_id: testId,
       test_name_snapshot: testCatalog.name,
       test_code_snapshot: testCatalog.code,
-      doctor_id: doctorProfileId || null,
+      doctor_id: targetDoctorId || null,
       prescription_id: prescriptionId || null,
       sample_status: "pending", // pending -> collected -> processing -> completed -> cancelled
     });

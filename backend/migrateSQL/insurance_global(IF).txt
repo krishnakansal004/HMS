@@ -1,9 +1,8 @@
 -- Migration: 0063
 -- Purpose: Globalizes Insurance Companies, isolates SaaS Billing, and fixes Global Attribution.
 
--- ==============================================================================
 -- 1. INSURANCE: GLOBAL MASTER CATALOG & TENANT CONTRACTS
--- ==============================================================================
+
 -- Remove tenant isolation from insurance_company
 ALTER TABLE insurance_company DROP CONSTRAINT IF EXISTS fk_insurance_company_tenant;
 ALTER TABLE insurance_company DROP CONSTRAINT IF EXISTS uq_insurance_company_tenant_code;
@@ -36,9 +35,8 @@ CREATE POLICY tenant_isolation_tic ON tenant_insurance_contract
   USING (tenant_id = (current_setting('app.current_tenant_id', true))::uuid);
 CREATE TRIGGER trg_tic_updated_at BEFORE UPDATE ON tenant_insurance_contract FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ==============================================================================
 -- 2. BILLING: SAAS SUBSCRIPTION VS CLINICAL INVOICE AIR-GAP
--- ==============================================================================
+
 -- Detach SaaS plans from patient invoices
 ALTER TABLE invoice DROP CONSTRAINT IF EXISTS fk_invoice_plan;
 DROP INDEX IF EXISTS idx_invoice_plan;
@@ -103,9 +101,8 @@ ALTER TABLE plan_receipt ADD COLUMN subscription_invoice_id UUID;
 ALTER TABLE plan_receipt ADD CONSTRAINT fk_plan_receipt_sub_inv FOREIGN KEY (subscription_invoice_id) REFERENCES subscription_invoice(subscription_invoice_id) ON DELETE RESTRICT;
 ALTER TABLE plan_receipt DROP COLUMN invoice_id;
 
--- ==============================================================================
 -- 3. GLOBAL ATTRIBUTION: COMPOSITE FOREIGN KEYS
--- ==============================================================================
+
 -- FAQ
 ALTER TABLE faq ADD COLUMN author_tenant_id UUID;
 ALTER TABLE faq DROP CONSTRAINT IF EXISTS fk_faq_creator;

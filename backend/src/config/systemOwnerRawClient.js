@@ -1,4 +1,4 @@
-import { prisma } from './db.js'; // Import the raw, pre-configured base client
+import { prisma } from './db.js';
 import { AppError } from '../middlewares/errorHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
 

@@ -3,13 +3,31 @@ import Razorpay from "razorpay";
 import { db, tenantStorage } from "../config/db.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
+import { env } from "../config/env.js";
 
 export class PaymentService {
   // Initiation Flow
-  static async createPaymentOrder({ tenantId, invoiceId }) {
+  static async createPaymentOrder({ tenantId, invoiceId, userId, userRole }) {
+
+    let ownPatientId = null;
+    if (userRole === "PATIENT") {
+      const ownPatientRecord = await db.patient.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { patient_id: true },
+      });
+      if (!ownPatientRecord) {
+        throw new AppError("Invoice not found.", HTTP_STATUS.NOT_FOUND);
+      }
+      ownPatientId = ownPatientRecord.patient_id;
+    }
+
     // Fetch invoice and patient details for UI prefill
     const invoice = await db.invoice.findFirst({
-      where: { invoice_id: invoiceId, tenant_id: tenantId },
+      where: {
+        invoice_id: invoiceId,
+        tenant_id: tenantId,
+        ...(ownPatientId ? { patient_id: ownPatientId } : {}),
+      },
       include: {
         patient: {
           select: {
@@ -34,8 +52,8 @@ export class PaymentService {
       throw new AppError("No pending balance.", HTTP_STATUS.BAD_REQUEST);
 
     const rzp = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_SECRET,
+      key_id: env.razorpay.keyId,
+      key_secret: env.razorpay.keySecret,
     });
 
     const currencySetting = await db.setting.findFirst({
@@ -45,7 +63,7 @@ export class PaymentService {
     const currency = currencySetting?.value || "INR";
     const options = {
       amount: pendingAmountPaise,
-      currency: "INR",
+      currency,
       receipt: invoiceId.slice(0, 40),
     };
 
@@ -54,8 +72,12 @@ export class PaymentService {
       where: { invoice_id: invoiceId },
       data: { razorpay_order_id: order.id },
     });
+
     return {
-      ...order,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: env.razorpay.keyId,
       patient: {
         name: `${invoice.patient.first_name} ${invoice.patient.last_name || ""}`.trim(),
         email: invoice.patient.email || "",
@@ -97,6 +119,12 @@ export class PaymentService {
         HTTP_STATUS.NOT_FOUND,
       );
     }
+    if (!invoice.razorpay_order_id || invoice.razorpay_order_id !== razorpayOrderId) {
+      throw new AppError(
+        "Razorpay order does not match this invoice.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
+    }
     if (invoice.status === "paid")
       return { success: true, message: "Already marked as paid" }; // Idempotency check
 
@@ -109,6 +137,12 @@ export class PaymentService {
         Math.round(Number(amountPaid)) <= Number(invoice.total))
     ) {
       amountInPaise = Math.round(Number(amountPaid));
+    }
+    if (!Number.isFinite(amountInPaise) || amountInPaise <= 0 || amountInPaise > remainingPaise) {
+      throw new AppError(
+        "Payment amount does not match the invoice balance.",
+        HTTP_STATUS.BAD_REQUEST,
+      );
     }
 
     return tenantStorage.run({ tenantId: invoice.tenant_id }, async () => {

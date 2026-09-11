@@ -333,6 +333,7 @@ export const router = createBrowserRouter([
               ROLES.CASHIER,
               ROLES.RECEPTIONIST,
               ROLES.DOCTOR,
+              ROLES.PATIENT
             ]}
           >
             <InvoicesList />

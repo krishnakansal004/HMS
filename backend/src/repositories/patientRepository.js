@@ -93,12 +93,16 @@ export class PatientRepository {
       ];
     }
 
-    if (doctorProfileId) {
-      where.appointment = {
-        some: { 
-          doctor_id: doctorProfileId,
+   if (doctorProfileId) {
+      where.AND = [
+        {
+          OR: [
+            { appointment: { some: { doctor_id: doctorProfileId, deleted_at: null } } },
+            { admission: { some: { admitting_doctor_id: doctorProfileId, deleted_at: null } } },
+            { prescription: { some: { doctor_id: doctorProfileId, deleted_at: null } } }
+          ]
         }
-      };
+      ];
     }
 
     return db.$transaction(async (tx) => {

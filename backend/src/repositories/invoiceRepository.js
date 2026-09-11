@@ -30,7 +30,8 @@ export class InvoiceRepository {
               item_name_snapshot: item.description || item.itemName || 'Medical Service',
               quantity: item.quantity,
               unit_price_snapshot: item.unitPrice,
-              gst_rate_snapshot: item.gstRate ?? 0
+              gst_rate_snapshot: item.gstRate ?? 0,
+              source_key: item.sourceKey || null,
             }))
           }
         },

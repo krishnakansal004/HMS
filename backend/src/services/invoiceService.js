@@ -3,6 +3,7 @@ import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 import {db} from "../config/db.js"
+import { addPdfJob } from "../queues/pdfQueue.js";
 export class InvoiceService {
   static async generateInvoice({
     tenantId,
@@ -59,6 +60,88 @@ export class InvoiceService {
     });
 
     return invoice;
+  }
+
+  static async getPatientCharges({ tenantId, patientId }) {
+    const patient = await db.patient.findFirst({
+      where: { patient_id: patientId, tenant_id: tenantId, deleted_at: null },
+      select: { patient_id: true },
+    });
+    if (!patient) throw new AppError('Patient not found.', HTTP_STATUS.NOT_FOUND);
+
+    const [appointments, labOrders, prescriptions, medicines, invoicedItems] = await Promise.all([
+      db.appointment.findMany({
+        where: { tenant_id: tenantId, patient_id: patientId, deleted_at: null, status: { notIn: ['cancelled', 'no_show'] } },
+        include: { doctor_profile: { select: { consultation_fee: true } } },
+        orderBy: { slot_start: 'asc' },
+      }),
+      db.lab_order.findMany({
+        where: { tenant_id: tenantId, patient_id: patientId, deleted_at: null, sample_status: { not: 'cancelled' } },
+        include: { lab_test: { select: { price: true } } },
+        orderBy: { created_at: 'asc' },
+      }),
+      db.prescription.findMany({
+        where: { tenant_id: tenantId, patient_id: patientId, deleted_at: null },
+        select: { prescription_id: true, medicines: true },
+        orderBy: { created_at: 'asc' },
+      }),
+      db.medicine.findMany({
+        where: { tenant_id: tenantId, deleted_at: null },
+        select: { name: true, selling_price: true },
+      }),
+      db.invoice_item.findMany({
+        where: {
+          tenant_id: tenantId,
+          source_key: { not: null },
+          invoice: { patient_id: patientId, deleted_at: null },
+        },
+        select: { source_key: true },
+      }),
+    ]);
+
+    const invoiced = new Set(invoicedItems.map((item) => item.source_key));
+    const charges = [];
+    const addCharge = (charge) => {
+      if (charge.unitPrice > 0 && !invoiced.has(charge.sourceKey)) charges.push(charge);
+    };
+
+    appointments.forEach((appointment) => addCharge({
+      entityType: 'CONSULTATION',
+      entityId: appointment.appointment_id,
+      sourceKey: `appointment:${appointment.appointment_id}`,
+      description: `Consultation with Dr. ${appointment.doctor_name_snapshot}`,
+      quantity: 1,
+      unitPrice: Math.round(Number(appointment.doctor_profile.consultation_fee || 0) * 100),
+      gstRate: 0,
+    }));
+
+    labOrders.forEach((order) => addCharge({
+      entityType: 'LAB',
+      entityId: order.lab_order_id,
+      sourceKey: `lab:${order.lab_order_id}`,
+      description: `Lab Test: ${order.test_name_snapshot}`,
+      quantity: 1,
+      unitPrice: Math.round(Number(order.lab_test.price || 0)),
+      gstRate: 0,
+    }));
+
+    const medicinePrices = new Map(medicines.map((medicine) => [medicine.name.trim().toLowerCase(), Number(medicine.selling_price || 0)]));
+    prescriptions.forEach((prescription) => {
+      const prescribedMedicines = Array.isArray(prescription.medicines) ? prescription.medicines : [];
+      prescribedMedicines.forEach((medicine, index) => {
+        const name = String(medicine.name || '').trim();
+        addCharge({
+          entityType: 'MEDICINE',
+          sourceKey: `prescription:${prescription.prescription_id}:${index}`,
+          description: `Medicine: ${name || 'Prescribed medicine'}`,
+          quantity: 1,
+          unitPrice: Math.round((medicinePrices.get(name.toLowerCase()) || 0) * 100),
+          gstRate: 0,
+        });
+      });
+    });
+
+    return { data: charges, total: charges.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) };
   }
 
   static async recordPayment({

@@ -8,6 +8,7 @@ export class RadiologyService {
   static async orderRadiologyStudy({
     tenantId,
     userId,
+    userRole,
     patientId,
     doctorProfileId,
     modality,
@@ -18,6 +19,30 @@ export class RadiologyService {
     notes,
     ipAddress,
   }) {
+    let targetDoctorId = doctorProfileId;
+
+    // ZERO-TRUST CLINICAL ISOLATION
+    if (userRole === "DOCTOR") {
+      const doctorProfile = await db.doctor_profile.findFirst({
+        where: { user_id: userId, tenant_id: tenantId, deleted_at: null },
+      });
+      if (!doctorProfile) throw new AppError("Doctor profile not found.", HTTP_STATUS.NOT_FOUND);
+      
+      targetDoctorId = doctorProfile.doctor_profile_id;
+
+      const [hasAppointment, hasAdmission] = await Promise.all([
+        db.appointment.findFirst({
+          where: { patient_id: patientId, doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        }),
+        db.admission.findFirst({
+          where: { patient_id: patientId, admitting_doctor_id: targetDoctorId, tenant_id: tenantId, deleted_at: null }
+        })
+      ]);
+      
+      if (!hasAppointment && !hasAdmission) {
+        throw new AppError("Unauthorized. You can only perform clinical actions for patients assigned to your care.", HTTP_STATUS.FORBIDDEN);
+      }
+    }
     // Verify Patient exists
     const patient = await db.patient.findFirst({
       where: { patient_id: patientId, tenant_id: tenantId },
@@ -33,7 +58,7 @@ export class RadiologyService {
       patient_id: patientId,
       patient_name_snapshot:
         `${patient.first_name} ${patient.last_name || ""}`.trim(),
-      doctor_id: doctorProfileId || null,
+      doctor_id: targetDoctorId || null,
       modality, // X-RAY, MRI, CT, ULTRASOUND, ECG
       study_type: studyType,
       body_part: bodyPart || null,

@@ -7,6 +7,7 @@ export class PrescriptionController {
       const prescription = await PrescriptionService.createPrescription({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
         ipAddress: req.ip,
       });

@@ -7,6 +7,7 @@ export class LabController {
       const test = await LabService.createTestCatalogItem({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         data: req.body,
         ipAddress: req.ip,
       });

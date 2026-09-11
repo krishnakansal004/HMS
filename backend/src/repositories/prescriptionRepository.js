@@ -9,7 +9,7 @@ export class PrescriptionRepository {
         doctor_id: doctorId,
         patient_id: patientId,
         appointment_id: appointmentId || null,
-        patient_name_snapshot: '', // Populated via service
+        patient_name_snapshot: '',
         diagnosis: diagnosis,
         approval_status: 'pending',
         notes: instructions,

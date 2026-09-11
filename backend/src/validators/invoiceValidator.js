@@ -24,6 +24,7 @@ export const generateInvoiceValidator = [
   body('items.*.description').trim().notEmpty().withMessage('Description is required').escape(),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be an integer greater than 0'),
   body('items.*.unitPrice').isInt({ min: 0 }).withMessage('Unit price must be an integer (in minor currency)'),
+  body('items.*.sourceKey').optional().isLength({ max: 255 }).withMessage('Source key is too long').escape(),
   
   handleValidationErrors
 ];

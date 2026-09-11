@@ -7,6 +7,7 @@ import { api } from './client.js';
 // src/utils/format.js.
 
 export const invoicesApi = {
+  getPatientCharges: (patientId) => api.get('/invoices/charges', { patientId }),
   /**
    * @param {{patientId:string, discount?:number, taxRate?:number, items: Array<{
    *   entityType:'CONSULTATION'|'MEDICINE'|'LAB'|'RADIOLOGY'|'ROOM'|'OTHER',
@@ -24,26 +25,7 @@ export const invoicesApi = {
   getSummary: () => api.get('/invoices/summary'),
 };
 
-export const paymentsApi = {
-  /**
-   * Initiates a Razorpay order. The backend strictly calculates the pending amount.
-   * @param {{invoiceId: string}} data 
-   */
-  initiate: (data) => api.post('/payments/initiate', data),
-
-  /**
-   * Synchronous frontend callback to verify the Razorpay cryptographic signature 
-   * and record the payment in the database.
-   * @param {{
-   *   invoiceId: string, 
-   *   gatewayPaymentId: string, 
-   *   razorpayOrderId: string, 
-   *   amountPaid: number, 
-   *   signature: string
-   * }} data 
-   */
-  verifyWebhook: (data) => api.post('/payments/webhook/verify', data),
-};
+// paymentsApi lives in ./payments.js only now.
 
 export const INVOICE_STATUSES = ['draft', 'pending', 'partial', 'paid', 'cancelled'];
 export const INVOICE_ITEM_TYPES = ['CONSULTATION', 'MEDICINE', 'LAB', 'RADIOLOGY', 'ROOM', 'OTHER'];

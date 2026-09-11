@@ -3,6 +3,7 @@ import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 import { db } from "../config/db.js";
+import { InvoiceRepository } from "../repositories/invoiceRepository.js";
 export class AppointmentService {
   static async bookAppointment({
     tenantId,
@@ -78,6 +79,36 @@ export class AppointmentService {
       notes,
       status: "scheduled",
     });
+
+    const doctorProfile = await db.doctor_profile.findFirst({
+      where: {
+        doctor_profile_id: targetDoctorId,
+        tenant_id: tenantId,
+        deleted_at: null,
+      },
+      select: { consultation_fee: true },
+    });
+    const consultationFee = Number(doctorProfile?.consultation_fee || 0);
+
+    if (consultationFee > 0) {
+      await InvoiceRepository.createInvoiceTransaction({
+        tenantId,
+        patientId: targetPatientId,
+        subtotal: Math.round(consultationFee * 100),
+        gstTotal: 0,
+        total: Math.round(consultationFee * 100),
+        status: "pending",
+        items: [{
+          entityType: "CONSULTATION",
+          entityId: appointment.appointment_id,
+          sourceKey: `appointment:${appointment.appointment_id}`,
+          description: `Consultation with Dr. ${appointment.doctor_name_snapshot}`,
+          quantity: 1,
+          unitPrice: Math.round(consultationFee * 100),
+          gstRate: 0,
+        }],
+      });
+    }
 
     AuditService.logAction({
       tenantId,

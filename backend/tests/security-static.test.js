@@ -36,4 +36,27 @@ describe('security architecture regression checks', () => {
     expect(controller).toMatch(/userRole:\s*req\.userRole/)
     expect(route).toMatch(/requireTenant[\s\S]*FaqController\.remove/)
   })
+
+  it('sends Razorpay initiation payloads as objects, not raw UUID strings', () => {
+    const patientDashboard = read('../frontend/src/pages/dashboard/PatientDashboard.jsx')
+    const invoicesList = read('../frontend/src/pages/invoices/InvoicesList.jsx')
+    expect(patientDashboard).toMatch(/paymentsApi\.initiate\(\{ invoiceId \}\)/)
+    expect(invoicesList).toMatch(/paymentsApi\.initiate\(\{ invoiceId \}\)/)
+    expect(patientDashboard).not.toMatch(/paymentsApi\.initiate\(invoiceId\)/)
+    expect(invoicesList).not.toMatch(/paymentsApi\.initiate\(invoiceId\)/)
+  })
+
+  it('binds payment verification to the stored Razorpay order and balance', () => {
+    const paymentService = read('src/services/paymentService.js')
+    expect(paymentService).toMatch(/invoice\.razorpay_order_id !== razorpayOrderId/)
+    expect(paymentService).toMatch(/amountInPaise > remainingPaise/)
+  })
+
+  it('retries expired authenticated requests with the refreshed access token', () => {
+    const client = read('../frontend/src/api/client.js')
+    expect(client).toMatch(/includeToken = false/)
+    expect(client).toMatch(/refreshSession\(\{ includeToken: true \}\)/)
+    expect(client).toMatch(/requestWithToken\(path, opts, refreshed\.accessToken\)/)
+    expect(client).toMatch(/Authorization = `Bearer \$\{token\}`/)
+  })
 })

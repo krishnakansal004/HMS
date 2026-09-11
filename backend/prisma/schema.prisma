@@ -472,6 +472,7 @@ model invoice {
   invoice_number Int
   patient_id     String    @db.Uuid
   tenant_id      String    @db.Uuid
+  razorpay_order_id String? @db.VarChar(255)
   plan_id        String?   @db.Uuid
   subtotal       Decimal   @db.Decimal(10, 2)
   gst_total      Decimal   @db.Decimal(10, 2)
@@ -509,6 +510,7 @@ model invoice_item {
   quantity            Int
   unit_price_snapshot Decimal   @db.Decimal(10, 2)
   gst_rate_snapshot   Decimal   @default(0) @db.Decimal(5, 2)
+  source_key          String?   @db.VarChar(255)
   created_at          DateTime? @default(now()) @db.Timestamptz(6)
   updated_at          DateTime? @default(now()) @db.Timestamptz(6)
   deleted_at          DateTime? @db.Timestamptz(6)
@@ -839,7 +841,9 @@ model prescription {
   tenant_id             String    @db.Uuid
   doctor_id             String    @db.Uuid
   patient_id            String    @db.Uuid
+  appointment_id        String?   @db.Uuid
   patient_name_snapshot String    @db.VarChar(255)
+  diagnosis             String?
   medicines             Json      @default("[]")
   tests                 Json      @default("[]")
   approval_status       String    @default("pending") @db.VarChar(50)

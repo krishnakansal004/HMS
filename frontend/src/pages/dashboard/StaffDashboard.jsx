@@ -26,7 +26,7 @@ export default function StaffDashboard({ user }) {
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
-          Welcome back, {user?.name?.split(' ')[0] || user?.email}
+          Welcome back, {user?.name || user?.email}
         </h2>
         <p className="text-sm text-[var(--color-ink-soft)] mt-1">
           Signed in as {ROLE_LABELS[user?.role] || user?.role}
@@ -62,7 +62,7 @@ export default function StaffDashboard({ user }) {
         </CardBody>
       </Card>
 
-      <RoadmapNote />
+      {/* <RoadmapNote /> */}
     </div>
   );
 }

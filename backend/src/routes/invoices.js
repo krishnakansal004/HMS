@@ -23,6 +23,13 @@ router.post(
   InvoiceController.generate,
 );
 
+router.get(
+  "/charges",
+  requireRoles("HOSPITAL_ADMIN", "ACCOUNTANT", "CASHIER", "RECEPTIONIST"),
+  listInvoicesValidator,
+  InvoiceController.charges,
+);
+
 // POST /api/invoices/:id/pay
 // Who: Hospital Admin, Accountant, Cashier
 router.post(

@@ -135,7 +135,7 @@ export class TenantPlanRepository {
     });
   }
 
-  static async findPlanRequestsPaginated({ status, skip, take }) {
+  static async findPlanRequestsPaginated({ userRole, status, skip, take }) {
     const whereCondition = status ? { status } : {};
    return queryAcrossTenants(userRole, async (tx) => {
     const [total, requests] = await Promise.all([

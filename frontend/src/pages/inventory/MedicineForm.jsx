@@ -7,6 +7,7 @@ import { inventoryApi } from '../../api/inventory.js';
 import { suppliersApi } from '../../api/suppliers.js';
 import { toast } from '../../components/ui/Toast.jsx';
 import { Spinner, EmptyState } from '../../components/ui/Table.jsx';
+import AddSupplierModal from '../purchases/AddSupplierModal.jsx';
 
 const emptyForm = {
   name: '', sku: '', category: '', batchNumber: '', expiryDate: '',
@@ -22,15 +23,24 @@ export default function MedicineForm({ open, onClose, onSaved }) {
   // Production Data States
   const [suppliers, setSuppliers] = useState([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
+
+  async function loadSuppliers() {
+    setLoadingSuppliers(true);
+    try {
+      const response = await suppliersApi.list();
+      setSuppliers(response.data || []);
+    } catch {
+      setSuppliers([]);
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  }
 
   useEffect(() => {
     if (open) {
-      setLoadingSuppliers(true);
-      suppliersApi.list()
-        .then(res => setSuppliers(res.data || []))
-        .catch(() => setSuppliers([]))
-        .finally(() => setLoadingSuppliers(false));
+      loadSuppliers();
     } else {
       setForm(emptyForm);
       setErrors({});
@@ -109,16 +119,24 @@ export default function MedicineForm({ open, onClose, onSaved }) {
   // PRODUCTION GUARD: Block rendering if dependencies are missing
   if (open && !loadingSuppliers && suppliers.length === 0) {
     return (
-      <Modal open={open} onClose={onClose} title="Action Required">
-        <EmptyState 
-          icon={Building2} 
-          title="No Suppliers Registered" 
-          description="You cannot add inventory without assigning it to a supplier. Please ask your Hospital Admin or Store Manager to register a supplier first." 
+      <>
+        <Modal open={open} onClose={onClose} title="Action Required">
+          <EmptyState
+            icon={Building2}
+            title="No Suppliers Registered"
+            description="Add a supplier here before creating inventory, or close this panel to manage suppliers elsewhere."
+            action={<Button icon={Building2} onClick={() => setSupplierModalOpen(true)}>Register Supplier</Button>}
+          />
+          <div className="flex justify-end mt-4">
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+          </div>
+        </Modal>
+        <AddSupplierModal
+          open={supplierModalOpen}
+          onClose={() => setSupplierModalOpen(false)}
+          onSaved={loadSuppliers}
         />
-        <div className="flex justify-end mt-4">
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-        </div>
-      </Modal>
+      </>
     );
   }
 

@@ -18,6 +18,7 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
   
   const [patients, setPatients] = useState([]);
   const [loadingDeps, setLoadingDeps] = useState(false);
+  const [loadingCharges, setLoadingCharges] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -46,9 +47,39 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
   const updateItem = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
+    if (field !== 'sourceKey' && (newItems[index].sourceKey || newItems[index].entityId)) {
+      newItems[index].sourceKey = undefined;
+      newItems[index].entityId = undefined;
+    }
     setItems(newItems);
   };
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
+
+  async function loadPatientCharges(nextPatientId) {
+    setPatientId(nextPatientId);
+    setItems([{ ...emptyItem }]);
+    if (!nextPatientId) return;
+    setLoadingCharges(true);
+    try {
+      const response = await invoicesApi.getPatientCharges(nextPatientId);
+      const charges = response.data || [];
+      if (charges.length) {
+        setItems(charges.map((item) => ({
+          entityType: item.entityType,
+          entityId: item.entityId,
+          sourceKey: item.sourceKey,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: (Number(item.unitPrice) / 100).toFixed(2),
+          gstRate: item.gstRate,
+        })));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load patient charges');
+    } finally {
+      setLoadingCharges(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -68,6 +99,8 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
         taxRate: 0, 
         items: items.map(i => ({
           entityType: i.entityType,
+          entityId: i.entityId,
+          sourceKey: i.sourceKey,
           description: i.description.trim(),
           itemName: i.description.trim(),
           quantity: Number(i.quantity),
@@ -100,7 +133,7 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSubmit} loading={saving} disabled={loadingDeps || items.length === 0 || !patientId}>
+            <Button onClick={handleSubmit} loading={saving} disabled={loadingDeps || items.length === 0 || !patientId || loadingCharges}>
               Generate & Save
             </Button>
           </div>
@@ -111,7 +144,7 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
         <Spinner label="Loading patients..." />
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <Select label="Select Patient" required value={patientId} onChange={(e) => setPatientId(e.target.value)}>
+          <Select label="Select Patient" required value={patientId} onChange={(e) => loadPatientCharges(e.target.value)} disabled={loadingCharges}>
             <option value="">Choose a patient...</option>
             {patients.map(p => (
               <option key={p.patient_id} value={p.patient_id}>
@@ -126,6 +159,7 @@ export default function GenerateInvoiceForm({ open, onClose, onSaved }) {
               <Button size="sm" variant="secondary" icon={Plus} onClick={addItem}>Add Item</Button>
             </div>
             
+            {loadingCharges && <Spinner label="Loading patient charges..." />}
             <div className="flex flex-col gap-3">
               {items.map((item, index) => (
                 <div key={index} className="flex items-start gap-3 bg-[var(--color-paper)] p-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">

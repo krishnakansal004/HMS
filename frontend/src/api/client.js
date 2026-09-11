@@ -64,7 +64,7 @@ export class ApiError extends Error {
  * @returns {Promise<object>} the user object from the response
  * @throws {ApiError} if there's no valid refresh cookie
  */
-export function refreshSession() {
+export function refreshSession({ includeToken = false } = {}) {
   if (!refreshPromise) {
     refreshPromise = fetch('/api/auth/refresh', {
       method: 'POST',
@@ -83,7 +83,9 @@ export function refreshSession() {
         }
         accessToken = payload.data.accessToken;
         onTokenRefreshed?.(payload.data.user);
-        return payload.data.user;
+        return includeToken
+          ? { accessToken: payload.data.accessToken, user: payload.data.user }
+          : payload.data.user;
       })
       .finally(() => {
         refreshPromise = null;
@@ -92,12 +94,23 @@ export function refreshSession() {
   return refreshPromise;
 }
 
+async function requestWithToken(path, opts, token) {
+  return request(path, { ...opts, _retried: true, _accessToken: token });
+}
+
 /**
  * @param {string} path e.g. '/patients' or '/patients/123'
  * @param {{method?: string, body?: any, query?: Record<string, any>, isForm?: boolean, _retried?: boolean}} opts
  */
 export async function request(path, opts = {}) {
-  const { method = 'GET', body, query, isForm = false, _retried = false } = opts;
+  const {
+    method = 'GET',
+    body,
+    query,
+    isForm = false,
+    _retried = false,
+    _accessToken = null,
+  } = opts;
   let url = `/api${path}`;
 
   if (query && Object.keys(query).length) {
@@ -118,7 +131,8 @@ export async function request(path, opts = {}) {
   };
   
   headers[CSRF_HEADER_NAME] = CSRF_HEADER_VALUE;
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const token = _accessToken || accessToken;
+  if (token) headers.Authorization = `Bearer ${token}`;
   if (!isForm && body !== undefined) headers['Content-Type'] = 'application/json';
 
   let res;
@@ -137,8 +151,8 @@ export async function request(path, opts = {}) {
   // Silent-refresh-and-retry logic remains unchanged
   if (res.status === 401 && !_retried && !path.startsWith('/auth/')) {
     try {
-      await refreshSession();
-      return request(path, { ...opts, _retried: true });
+      const refreshed = await refreshSession({ includeToken: true });
+      return requestWithToken(path, opts, refreshed.accessToken);
     } catch {
       onSessionExpired?.();
     }
