@@ -26,4 +26,8 @@ export const authApi = {
    * token and hospitalSlug both come from the link in the setup email.
    */
   setupPassword: (data) => api.post('/auth/setup-password', data),
+
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };

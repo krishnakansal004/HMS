@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { RootShell, RootIndex } from "./RootShell.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import Login from "../pages/auth/Login.jsx";
+import ForgotPassword from "../pages/auth/ForgotPassword.jsx";
 import Register from "../pages/auth/Register.jsx";
 import Dashboard from "../pages/Dashboard.jsx";
 import ComingSoon from "../pages/ComingSoon.jsx";
@@ -39,6 +40,9 @@ const DoctorDetails = lazy(
 );
 const SetupPassword = lazy(
   () => import("../pages/auth/SetupPassword.jsx")
+);
+const ResetPassword = lazy(
+  () => import("../pages/auth/ResetPassword.jsx")
 );
 const InventoryList = lazy(
   () => import("../pages/inventory/InventoryList.jsx"),
@@ -110,6 +114,8 @@ const roadmap = [
 export const router = createBrowserRouter([
   // PUBLIC / UNPROTECTED ROUTES
   { path: "/login", element: <Login /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/reset-password", element: <ResetPassword /> },
   { path: "/register", element: <Register /> },
   {
     path: "/apply/:hospitalSlug",
@@ -124,6 +130,14 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<FullPageLoader />}>
         <SetupPassword />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/portal/:hospitalSlug/reset-password",
+    element: (
+      <Suspense fallback={<FullPageLoader />}>
+        <ResetPassword />
       </Suspense>
     ),
   },

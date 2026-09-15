@@ -152,7 +152,7 @@ export function passwordResetTemplate(user, resetUrl) {
     <h1>Password Reset Requested</h1>
     <p>Hi ${user.name || 'User'},</p>
     <p>We received a request to reset the password for your account (<strong>${user.email}</strong>).</p>
-    <p>If you made this request, click the button below to set a new password. This link will expire in 1 hour.</p>
+    <p>If you made this request, click the button below to set a new password. This link will expire in 10 minutes.</p>
     <p style="text-align:center;margin:24px 0;"><a class="cta" href="${resetUrl}">Reset Password</a></p>
     <p>If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
     <p>For security reasons, this link can be used only once.</p>

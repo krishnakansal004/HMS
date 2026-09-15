@@ -116,4 +116,28 @@ export class AuthController {
       next(error);
     }
   }
+
+  static async forgotPassword(req, res, next) {
+    try {
+      await AuthService.requestPasswordReset(req.body);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "If an account matches those details, a password reset link has been sent.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async resetPassword(req, res, next) {
+    try {
+      await AuthService.resetPassword(req.body);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Password reset successfully. You can now log in.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

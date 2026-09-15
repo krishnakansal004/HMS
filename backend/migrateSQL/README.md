@@ -128,6 +128,13 @@ node runMigrations.js --baseline-existing
 Do not baseline a database until the selected version has been verified. New
 databases should use the normal command and should not be baselined.
 
+## 0069 — staff payroll MVP
+
+Adds tenant-scoped staff compensation profiles, payroll runs, and immutable
+payroll item snapshots. Payroll uses the tenant `TIMEZONE` setting, excludes
+doctors, pays approved leave, treats missing attendance as unpaid, and supports
+manual additions/deductions plus manual payment marking.
+
 ## 0037 — ON DELETE consistency fix
 
 Found while reviewing FK delete behavior: `appointment.patient_id`/`.doctor_id`
@@ -180,3 +187,9 @@ tracking applied filenames in a `schema_migrations` table). Whatever you use,
 make sure it wraps each file in a transaction and stops on first failure —
 don't let a partial migration silently continue past 0011/0013 (the bed/patient
 split) or 0026/0027 (invoice/invoice_item).
+### 0070 — Password reset session invalidation
+
+Adds nullable `users.password_changed_at`. Password reset and account setup
+set this timestamp; access and refresh authentication reject tokens issued
+before it. Existing sessions remain valid during rollout because the column is
+nullable.

@@ -42,3 +42,18 @@ export const setupPasswordValidator = [
     .matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and a number'),
   handleValidationErrors
 ];
+
+export const forgotPasswordValidator = [
+  body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('hospitalSlug').optional({ values: 'falsy' }).trim().escape(),
+  handleValidationErrors
+];
+
+export const resetPasswordValidator = [
+  body('token').trim().notEmpty().withMessage('Reset token is required'),
+  body('hospitalSlug').optional({ values: 'falsy' }).trim().escape(),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and a number'),
+  handleValidationErrors
+];

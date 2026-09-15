@@ -11,10 +11,10 @@ import crypto from 'crypto';
 // setup token instead, exactly what users.password_reset_token /
 // password_reset_expires already exist on the schema for (they were
 // sitting unused -- nothing anywhere read or wrote them before this).
-export function generateSetupToken() {
+export function generateSetupToken(ttlMs = 24 * 60 * 60 * 1000) {
   const plainToken = crypto.randomBytes(32).toString('hex');
   const tokenHash = hashSetupToken(plainToken);
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h, matches the copy already in doctorApprovalTemplate ("expire in 24 hours")
+  const expiresAt = new Date(Date.now() + ttlMs);
   return { plainToken, tokenHash, expiresAt };
 }
 

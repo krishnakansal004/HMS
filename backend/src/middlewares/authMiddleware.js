@@ -43,6 +43,10 @@ export const protect = async (req, res, next) => {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: "Not authorized, tenant context invalid" });
     }
 
+    if (user.password_changed_at && decoded.iat < Math.floor(new Date(user.password_changed_at).getTime() / 1000)) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: "Session expired. Please log in again." });
+    }
+
     // Inject identity onto request object
     req.userId = user.user_id;
     req.userRole = user.role.name;

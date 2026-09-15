@@ -3,10 +3,13 @@ import jwt from "jsonwebtoken";
 import { UserRepository } from "../repositories/userRepository.js";
 import { env } from "../config/env.js";
 import { db, tenantStorage } from "../config/db.js";
-import { hashSetupToken } from "../utils/setupToken.js";
+import { generateSetupToken, hashSetupToken } from "../utils/setupToken.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
 import { redisConnection } from "../config/redis.js";
+import { sendEmail } from "../utils/notify.js";
+import { passwordResetTemplate } from "../utils/emailTemplates.js";
+import { buildPublicFrontendUrl } from "../utils/publicUrl.js";
 export class AuthService {
   static async registerPatient({
     firstName,
@@ -219,6 +222,12 @@ export class AuthService {
       throw err;
     }
 
+    if (user.password_changed_at && decoded.iat < Math.floor(new Date(user.password_changed_at).getTime() / 1000)) {
+      const err = new Error("Session expired. Please log in again.");
+      err.statusCode = 401;
+      throw err;
+    }
+
     if (user.role.name !== "SYSTEM_OWNER") {
       if (!user.tenant || user.tenant.status !== "active") {
         const err = new Error("This hospital account is suspended.");
@@ -251,6 +260,95 @@ export class AuthService {
         mustChangePassword: user.must_change_password,
       },
     };
+  }
+
+  static async requestPasswordReset({ email, hospitalSlug }) {
+    const normalizedEmail = email.toLowerCase();
+    const tenant = hospitalSlug ? await UserRepository.findTenantBySlug(hospitalSlug) : null;
+    let user;
+
+    if (hospitalSlug) {
+      if (!tenant || tenant.status !== "active") return;
+      user = await tenantStorage.run({ tenantId: tenant.tenant_id }, () =>
+        UserRepository.findUserByEmail(normalizedEmail),
+      );
+    } else {
+      // A blank hospital ID is reserved for the global System Owner account.
+      user = await UserRepository.findUserByEmail(normalizedEmail);
+      if (user?.role?.name !== "SYSTEM_OWNER") return;
+    }
+
+    if (!user || user.deleted_at || !user.password_hash) return;
+
+    const { plainToken, tokenHash, expiresAt } = generateSetupToken(10 * 60 * 1000);
+    const userTenant = tenant || user.tenant;
+    const resetPath = userTenant?.slug
+      ? `/portal/${userTenant.slug}/reset-password?token=${encodeURIComponent(plainToken)}`
+      : `/reset-password?token=${encodeURIComponent(plainToken)}`;
+
+    const update = () => db.users.update({
+      where: { user_id: user.user_id },
+      data: {
+        password_reset_token: tokenHash,
+        password_reset_expires: expiresAt,
+      },
+    });
+    if (userTenant?.tenant_id) {
+      await tenantStorage.run({ tenantId: userTenant.tenant_id }, update);
+    } else {
+      await update();
+    }
+
+    try {
+      const { html, attachments } = passwordResetTemplate(user, buildPublicFrontendUrl(resetPath));
+      await sendEmail(user.email, "Reset your HMS password", html, { attachments });
+    } catch (error) {
+      // Keep the response indistinguishable for existing and unknown accounts.
+      console.warn("[auth] password reset email delivery failed", error?.message || "unknown error");
+    }
+  }
+
+  static async resetPassword({ token, hospitalSlug, newPassword }) {
+    const tokenHash = hashSetupToken(token);
+    const tenant = hospitalSlug ? await UserRepository.findTenantBySlug(hospitalSlug) : null;
+    if (hospitalSlug && (!tenant || tenant.status !== "active")) {
+      throw new AppError("This password reset link is invalid or has expired.", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const findUser = () => db.users.findFirst({
+      where: {
+        ...(tenant ? { tenant_id: tenant.tenant_id } : {}),
+        password_reset_token: tokenHash,
+        password_reset_expires: { gt: new Date() },
+        deleted_at: null,
+      },
+      include: { role: true, tenant: true },
+    });
+    const user = tenant
+      ? await tenantStorage.run({ tenantId: tenant.tenant_id }, findUser)
+      : await findUser();
+
+    if (!user || (!tenant && user.role?.name !== "SYSTEM_OWNER")) {
+      throw new AppError("This password reset link is invalid or has expired.", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const update = () => db.users.update({
+      where: { user_id: user.user_id },
+      data: {
+        password_hash: passwordHash,
+        must_change_password: false,
+        password_reset_token: null,
+        password_reset_expires: null,
+        password_changed_at: new Date(),
+      },
+    });
+    if (user.tenant_id) {
+      await tenantStorage.run({ tenantId: user.tenant_id }, update);
+    } else {
+      await update();
+    }
+    return { success: true };
   }
 
   static async completeAccountSetup({ token, hospitalSlug, newPassword }) {
@@ -292,6 +390,7 @@ export class AuthService {
           must_change_password: false,
           password_reset_token: null,
           password_reset_expires: null,
+          password_changed_at: new Date(),
         },
       }),
     );

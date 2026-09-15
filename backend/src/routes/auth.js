@@ -4,6 +4,8 @@ import {
   registerValidator,
   loginValidator,
   setupPasswordValidator,
+  forgotPasswordValidator,
+  resetPasswordValidator,
 } from "../validators/authValidator.js";
 import { authLimiter } from "../middlewares/rateLimiters.js";
 import { requireCsrfHeader } from "../middlewares/csrfMiddleware.js";
@@ -48,6 +50,20 @@ router.post(
   authLimiter,
   setupPasswordValidator,
   AuthController.setupPassword,
+);
+
+router.post(
+  "/forgot-password",
+  authLimiter,
+  forgotPasswordValidator,
+  AuthController.forgotPassword,
+);
+
+router.post(
+  "/reset-password",
+  authLimiter,
+  resetPasswordValidator,
+  AuthController.resetPassword,
 );
 // Endpoint: POST /api/auth/refresh
 // Roles: Public (gated by possession of a valid refreshToken cookie, not

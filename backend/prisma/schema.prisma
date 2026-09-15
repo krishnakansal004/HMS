@@ -1179,6 +1179,9 @@ model tenant {
   plan_request          plan_request[]
   prescription          prescription[]
   prescription_template prescription_template[]
+  staff_compensation    staff_compensation[]
+  payroll_run           payroll_run[]
+  payroll_item          payroll_item[]
   purchase              purchase[]
   purchase_item         purchase_item[]
   query                 query[]
@@ -1271,6 +1274,7 @@ model users {
   must_change_password   Boolean   @default(false)
   password_reset_token   String?   @db.VarChar(255)
   password_reset_expires DateTime? @db.Timestamptz(6)
+  password_changed_at    DateTime? @db.Timestamptz(6)
   created_at             DateTime? @default(now()) @db.Timestamptz(6)
   updated_at             DateTime? @default(now()) @db.Timestamptz(6)
   deleted_at             DateTime? @db.Timestamptz(6)
@@ -1291,6 +1295,11 @@ model users {
   operation_theater        operation_theater[]
   patient                  patient[]
   prescription_template    prescription_template[]
+  staff_compensation       staff_compensation?
+  payroll_runs_created     payroll_run[]             @relation("payroll_run_creator")
+  payroll_runs_approved    payroll_run[]             @relation("payroll_run_approver")
+  payroll_items            payroll_item[]
+  payroll_items_paid       payroll_item[]             @relation("payroll_item_payer")
   setting                  setting[]
   shift                    shift[]
   telemedicine_session     telemedicine_session[]
@@ -1304,6 +1313,84 @@ model users {
   @@index([role_id], map: "idx_user_role")
   @@index([tenant_id], map: "idx_user_tenant")
   @@index([tenant_id], map: "idx_users_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+model staff_compensation {
+  compensation_id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String   @db.Uuid
+  user_id               String   @db.Uuid
+  monthly_gross_paise   BigInt
+  employment_start_date DateTime @db.Date
+  employment_end_date   DateTime? @db.Date
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant tenant @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_staff_compensation_tenant")
+  user   users  @relation(fields: [tenant_id, user_id], references: [tenant_id, user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_staff_compensation_user")
+
+  @@unique([tenant_id, user_id], map: "uq_staff_compensation_user")
+  @@index([tenant_id], map: "idx_staff_compensation_tenant")
+  @@index([tenant_id, employment_start_date, employment_end_date], map: "idx_staff_compensation_active_dates")
+}
+
+model payroll_run {
+  payroll_run_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  period_start  DateTime @db.Date
+  period_end    DateTime @db.Date
+  timezone      String   @db.VarChar(100)
+  status        String   @default("DRAFT") @db.VarChar(20)
+  created_by    String   @db.Uuid
+  approved_by   String?  @db.Uuid
+  approved_at   DateTime? @db.Timestamptz(6)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant   tenant @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payroll_run_tenant")
+  creator  users  @relation("payroll_run_creator", fields: [tenant_id, created_by], references: [tenant_id, user_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payroll_run_creator")
+  approver users? @relation("payroll_run_approver", fields: [tenant_id, approved_by], references: [tenant_id, user_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payroll_run_approver")
+  items    payroll_item[]
+
+  @@unique([tenant_id, period_start, period_end], map: "uq_payroll_run_period")
+  @@unique([tenant_id, payroll_run_id], map: "uq_payroll_run_tenant_id")
+  @@index([tenant_id, status], map: "idx_payroll_run_tenant_status")
+  @@index([tenant_id, period_start, period_end], map: "idx_payroll_run_tenant_period")
+}
+
+model payroll_item {
+  payroll_item_id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String   @db.Uuid
+  payroll_run_id        String   @db.Uuid
+  user_id               String   @db.Uuid
+  employee_name_snapshot String  @db.VarChar(255)
+  employee_email_snapshot String @db.VarChar(255)
+  role_name_snapshot    String   @db.VarChar(100)
+  monthly_gross_paise   BigInt
+  calendar_days         Int
+  active_days           Decimal  @db.Decimal(8, 2)
+  present_days          Decimal  @default(0) @db.Decimal(8, 2)
+  half_days             Decimal  @default(0) @db.Decimal(8, 2)
+  approved_leave_days   Decimal  @default(0) @db.Decimal(8, 2)
+  paid_days             Decimal  @default(0) @db.Decimal(8, 2)
+  gross_payable_paise   BigInt
+  additions_paise       BigInt   @default(0)
+  deductions_paise      BigInt   @default(0)
+  net_pay_paise         BigInt
+  adjustment_note       String?
+  payment_status        String   @default("UNPAID") @db.VarChar(20)
+  paid_at               DateTime? @db.Timestamptz(6)
+  paid_by               String?  @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant     tenant      @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payroll_item_tenant")
+  run        payroll_run @relation(fields: [tenant_id, payroll_run_id], references: [tenant_id, payroll_run_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payroll_item_run")
+  user       users       @relation(fields: [tenant_id, user_id], references: [tenant_id, user_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payroll_item_user")
+  payer      users?      @relation("payroll_item_payer", fields: [tenant_id, paid_by], references: [tenant_id, user_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payroll_item_payer")
+
+  @@unique([tenant_id, payroll_run_id, user_id], map: "uq_payroll_item_user")
+  @@index([tenant_id, payroll_run_id], map: "idx_payroll_item_tenant_run")
+  @@index([tenant_id, user_id], map: "idx_payroll_item_tenant_user")
 }
 
 model voice_note {

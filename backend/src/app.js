@@ -42,6 +42,7 @@ import planReceiptsRoutes from './routes/planReceipts.js';
 import prescriptionTemplatesRoutes from './routes/prescriptionTemplates.js';
 import queriesRoutes from './routes/queries.js';
 import voiceNotesRoutes from './routes/voiceNotes.js';
+import payrollRoutes from './routes/payroll.js';
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/plan-receipts', planReceiptsRoutes);
 app.use('/api/prescription-templates', prescriptionTemplatesRoutes);
 app.use('/api/queries', queriesRoutes);
 app.use('/api/voice-notes', voiceNotesRoutes);
+app.use('/api/payroll', payrollRoutes);
 // Catch-all 404 Route handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });

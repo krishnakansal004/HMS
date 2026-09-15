@@ -90,6 +90,13 @@ export default function Login() {
           <Button type="submit" loading={status === 'loading'} className="mt-2 w-full">
             Sign in
           </Button>
+          <Link
+            to="/forgot-password"
+            state={{ hospitalSlug: form.hospitalSlug, email: form.email }}
+            className="text-center text-sm text-[var(--color-primary)] hover:underline"
+          >
+            Forgot password?
+          </Link>
         </form>
 
         <p className="text-center text-sm text-[var(--color-ink-soft)] mt-5">

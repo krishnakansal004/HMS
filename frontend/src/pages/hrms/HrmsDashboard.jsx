@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Calendar, FileText, Plus, UserPlus } from 'lucide-react';
+import { Users, Calendar, FileText, Plus, UserPlus, WalletCards } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { hrmsApi } from '../../api/hrms.js';
 import Card, { CardHeader, CardBody } from '../../components/ui/Card.jsx';
@@ -12,6 +12,7 @@ import ShiftFormModal from './ShiftFormModal.jsx';
 import LeaveFormModal from './LeaveFormModal.jsx';
 import InviteStaffModal from './InviteStaffModal.jsx';
 import { useAuthStore } from '../../store/authStore.js';
+import PayrollPanel from './PayrollPanel.jsx';
 
 export default function HrmsDashboard() {
   const [activeTab, setActiveTab] = useState('staff');
@@ -67,6 +68,14 @@ export default function HrmsDashboard() {
         >
           <Users size={16} /> Staff Directory
         </button>
+        {['HOSPITAL_ADMIN', 'HR'].includes(user?.role) && (
+          <button
+            onClick={() => setActiveTab('payroll')}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'payroll' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
+          >
+            <WalletCards size={16} /> Payroll
+          </button>
+        )}
       </div>
 
       {/* Tab Content: Staff Directory */}
@@ -112,6 +121,8 @@ export default function HrmsDashboard() {
           )}
         </Card>
       )}
+
+      {activeTab === 'payroll' && <PayrollPanel />}
 
       {/* Modals */}
       <ShiftFormModal open={shiftModalOpen} onClose={() => setShiftModalOpen(false)} onSaved={staffQuery.refetch} />
