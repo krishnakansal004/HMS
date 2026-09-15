@@ -5,8 +5,11 @@ import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET /api/plans (Public - so hospitals can view available pricing plans)
-router.get("/", TenantPlanController.listPlans);
+// GET /api/plans/public (Public pricing catalog for hospital onboarding)
+router.get("/public", TenantPlanController.listPublicPlans);
+
+// GET /api/plans (System Owner / Director catalog)
+router.get("/", protect, requireRoles("SYSTEM_OWNER", "DIRECTOR"), TenantPlanController.listPlans);
 
 // POST /api/plans (System Owner / Director only)
 router.post(

@@ -698,6 +698,7 @@ model patient {
   queue_token          queue_token[]
   radiology_order      radiology_order[]
   telemedicine_session telemedicine_session[]
+  voice_note           voice_note[]
 
   @@unique([tenant_id, patient_id])
   @@index([tenant_id], map: "idx_patient_tenant")
@@ -785,6 +786,7 @@ model plan {
   plan_request      plan_request[]
   plan_role_feature plan_role_feature[]
   tenant            tenant[]
+  tenant_signup     tenant_signup[]
 }
 
 model plan_receipt {
@@ -1185,11 +1187,42 @@ model tenant {
   stock_movement        stock_movement[]
   supplier              supplier[]
   telemedicine_session  telemedicine_session[]
+  voice_note            voice_note[]
   plan                  plan?                   @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_tenant_plan")
   users                 users[]
+  tenant_signup         tenant_signup[]
   ward                  ward[]
 
   @@index([plan_id], map: "idx_tenant_plan")
+}
+
+model tenant_signup {
+  signup_id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plan_id             String    @db.Uuid
+  tenant_id           String?   @db.Uuid
+  hospital_name       String    @db.VarChar(255)
+  slug                String    @db.VarChar(255)
+  admin_name          String    @db.VarChar(255)
+  admin_email         String    @db.VarChar(255)
+  password_hash       String
+  billing_period      String    @default("monthly") @db.VarChar(20)
+  amount_paise        Int       @default(0)
+  currency            String    @default("INR") @db.VarChar(10)
+  status              String    @default("pending") @db.VarChar(30)
+  razorpay_order_id   String?   @unique @db.VarChar(255)
+  razorpay_payment_id String?   @unique @db.VarChar(255)
+  payment_signature   String?   @db.VarChar(255)
+  paid_at             DateTime? @db.Timestamptz(6)
+  expires_at          DateTime  @db.Timestamptz(6)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+
+  plan   plan    @relation(fields: [plan_id], references: [plan_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_tenant_signup_plan")
+  tenant tenant? @relation(fields: [tenant_id], references: [tenant_id], onDelete: SetNull, onUpdate: NoAction, map: "fk_tenant_signup_tenant")
+
+  @@index([slug, status], map: "idx_tenant_signup_slug_status")
+  @@index([admin_email, status], map: "idx_tenant_signup_email_status")
+  @@index([expires_at], map: "idx_tenant_signup_expires")
 }
 
 model user_permission_override {
@@ -1238,6 +1271,7 @@ model users {
   setting                  setting[]
   shift                    shift[]
   telemedicine_session     telemedicine_session[]
+  voice_note               voice_note[]
   user_permission_override user_permission_override[]
   role                     role                       @relation(fields: [role_id], references: [role_id], onUpdate: NoAction, map: "fk_user_role")
   tenant                   tenant                     @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_tenant")
@@ -1247,6 +1281,26 @@ model users {
   @@index([role_id], map: "idx_user_role")
   @@index([tenant_id], map: "idx_user_tenant")
   @@index([tenant_id], map: "idx_users_tenant_active", where: raw("(deleted_at IS NULL)"))
+}
+
+model voice_note {
+  voice_note_id    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String   @db.Uuid
+  patient_id       String   @db.Uuid
+  recorded_by      String   @db.Uuid
+  storage_url      String
+  public_id        String?
+  mime_type        String   @db.VarChar(100)
+  size_bytes       Int
+  duration_seconds Int?
+  visible_to_roles String[] @db.VarChar(50)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant  tenant  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_voice_note_tenant")
+  patient patient @relation(fields: [tenant_id, patient_id], references: [tenant_id, patient_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_voice_note_patient")
+  users   users   @relation(fields: [tenant_id, recorded_by], references: [tenant_id, user_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_voice_note_recorder")
+
+  @@index([tenant_id, patient_id, created_at], map: "idx_voice_note_tenant_patient_created")
 }
 
 model ward {

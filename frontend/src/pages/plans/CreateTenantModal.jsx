@@ -31,7 +31,7 @@ export default function CreateTenantModal({ open, onClose, onSaved, plans }) {
     setSaving(true);
     setErrors({});
     try {
-      await tenantsApi.provision(form);
+      await tenantsApi.adminProvision(form);
       toast.success('Hospital tenant and admin account provisioned successfully.');
       onSaved();
       onClose();

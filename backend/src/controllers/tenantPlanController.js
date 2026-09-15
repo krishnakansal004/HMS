@@ -32,6 +32,15 @@ export class TenantPlanController {
     }
   }
 
+  static async listPublicPlans(req, res, next) {
+    try {
+      const plans = await TenantPlanService.listPublicPlans();
+      res.status(HTTP_STATUS.OK).json({ success: true, data: plans });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async provision(req, res, next) {
     try {
       const result = await TenantPlanService.provisionHospitalTenant({
@@ -47,6 +56,50 @@ export class TenantPlanController {
           adminEmail: result.adminUser.email,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async provisionPublic(req, res, next) {
+    try {
+      const result = await TenantPlanService.startPublicProvisioning({
+        ...req.body,
+        ipAddress: req.ip,
+      });
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: result.paymentRequired
+          ? "Payment required to finish hospital signup."
+          : "Hospital tenant provisioned successfully",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyPublicProvisionPayment(req, res, next) {
+    try {
+      const result = await TenantPlanService.verifyPublicProvisionPayment(req.body);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Payment verified and hospital provisioned successfully.",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async provisionWebhook(req, res, next) {
+    try {
+      const result = await TenantPlanService.handlePublicProvisionWebhook({
+        rawBody: req.rawBody,
+        webhookSignature: req.headers["x-razorpay-signature"],
+        payload: req.body,
+      });
+      res.status(HTTP_STATUS.OK).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

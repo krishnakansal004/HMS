@@ -92,3 +92,8 @@ export async function uploadToCloudinary(buffer, folder = 'invoices', resourceTy
     uploadStream.end(buffer);
   });
 }
+
+export async function deleteFromCloudinary(publicId, resourceType = 'video') {
+  if (!publicId) return { result: 'not_found' };
+  return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+}

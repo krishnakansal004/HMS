@@ -11,6 +11,7 @@ const requiredEnvVars = [
   'JWT_REFRESH_SECRET',
   'RAZORPAY_KEY_ID',
   'RAZORPAY_SECRET',
+  'RAZORPAY_WEBHOOK_SECRET',
 ];
 
 const validateEnv = () => {
@@ -50,5 +51,6 @@ export const env = {
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
   },
 };

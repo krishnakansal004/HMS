@@ -16,3 +16,6 @@ export { expensesApi } from './expenses.js';
 export { prescriptionsApi } from './prescriptions.js';
 export { settingsApi } from './settings.js';
 export { plansApi, tenantsApi, planRequestsApi, PLAN_PERIODS } from './plans.js';
+export { faqsApi } from './faqs.js';
+export { queriesApi } from './queries.js';
+export { voiceNotesApi } from './voiceNotes.js';

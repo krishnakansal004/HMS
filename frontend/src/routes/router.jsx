@@ -1,9 +1,9 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
 // Eager Imports Path - Loads Instantly
-import AppShell from "../components/layout/AppShell.jsx";
+import { RootShell, RootIndex } from "./RootShell.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
@@ -132,16 +132,16 @@ export const router = createBrowserRouter([
   // PROTECTED ROUTES
   {
     path: "/",
-    element: (
-      <ProtectedRoute>
-        <AppShell />
-      </ProtectedRoute>
-    ),
+    element: <RootShell />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <RootIndex /> },
       {
         path: "dashboard",
-        element: <Dashboard />,
+        element: (
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
         handle: { title: "Dashboard" },
       },
       {
@@ -333,7 +333,6 @@ export const router = createBrowserRouter([
               ROLES.CASHIER,
               ROLES.RECEPTIONIST,
               ROLES.DOCTOR,
-              ROLES.PATIENT
             ]}
           >
             <InvoicesList />
@@ -471,7 +470,11 @@ export const router = createBrowserRouter([
 
       ...roadmap.map(([path, title, phase]) => ({
         path,
-        element: <ComingSoon moduleName={title} phase={phase} />,
+        element: (
+          <ProtectedRoute>
+            <ComingSoon moduleName={title} phase={phase} />
+          </ProtectedRoute>
+        ),
         handle: { title },
       })),
     ],

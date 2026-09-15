@@ -16,6 +16,8 @@ import {
   Plus,
   Clock,
   Mail,
+  Mic,
+  Trash2,
 } from "lucide-react";
 import { useAsync } from "../../hooks/useAsync.js";
 import { patientsApi } from "../../api/patients.js";
@@ -32,6 +34,8 @@ import { Spinner, ErrorState, EmptyState } from "../../components/ui/Table.jsx";
 import { formatDate, formatDateTime, fullName } from "../../utils/format.js";
 import { useAuthStore } from "../../store/authStore.js";
 import { ROLES } from "../../utils/roles.js";
+import { toast } from "../../components/ui/Toast.jsx";
+import { voiceNotesApi } from "../../api/voiceNotes.js";
 
 // Drawers (You will create/update these next)
 import PrescriptionDrawer from "../prescriptions/PrescriptionDrawer.jsx";
@@ -48,6 +52,7 @@ export default function PatientDetails() {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
+  const [deletingVoiceNoteId, setDeletingVoiceNoteId] = useState(null);
 
   // 1. Fetch Core Patient Profile
   const {
@@ -57,6 +62,19 @@ export default function PatientDetails() {
     refetch: refetchPatient,
   } = useAsync(() => patientsApi.getById(id), [id]);
   const patient = response?.data;
+
+  const {
+    data: voiceNotesResponse,
+    loading: voiceNotesLoading,
+    error: voiceNotesError,
+    refetch: refetchVoiceNotes,
+  } = useAsync(
+    () => voiceNotesApi.list({ patientId: id }),
+    [id],
+    `patient_voice_notes_${id}`,
+  );
+  const voiceNotes = voiceNotesResponse?.data || [];
+  const canDeleteVoiceNotes = user?.role === ROLES.HOSPITAL_ADMIN;
 
   // 2. Fetch Unified Timeline Data
   const {
@@ -185,6 +203,20 @@ export default function PatientDetails() {
       setInviting(false);
     }
   }
+
+  async function handleDeleteVoiceNote(voiceNote) {
+    if (!window.confirm("Delete this voice note permanently?")) return;
+    setDeletingVoiceNoteId(voiceNote.voice_note_id);
+    try {
+      await voiceNotesApi.remove(voiceNote.voice_note_id);
+      toast.success("Voice note deleted.");
+      refetchVoiceNotes();
+    } catch (err) {
+      toast.error(err.message || "Unable to delete voice note.");
+    } finally {
+      setDeletingVoiceNoteId(null);
+    }
+  }
   // Check active admission status from the timeline data
   const activeAdmission = timelineData?.admissions?.find(
     (a) => a.status === "admitted",
@@ -289,6 +321,62 @@ export default function PatientDetails() {
                       "No prior medical history recorded."}
                   </p>
                 </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="Patient Voice Notes"
+                subtitle="Recordings shared with authorized care-team roles"
+                action={<Mic size={18} className="text-[var(--color-primary)]" />}
+              />
+              <CardBody>
+                {voiceNotesLoading ? (
+                  <Spinner label="Loading voice notes..." />
+                ) : voiceNotesError ? (
+                  <ErrorState message={voiceNotesError} />
+                ) : voiceNotes.length === 0 ? (
+                  <EmptyState
+                    icon={Mic}
+                    title="No voice notes"
+                    description="Patient recordings will appear here after upload."
+                  />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {voiceNotes.map((note) => (
+                      <div
+                        key={note.voice_note_id}
+                        className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-paper)] p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <p className="text-xs text-[var(--color-ink-soft)]">
+                            Recorded {formatDateTime(note.created_at)}
+                            {note.duration_seconds ? ` · ${note.duration_seconds}s` : ""}
+                          </p>
+                          {canDeleteVoiceNotes && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              icon={Trash2}
+                              loading={deletingVoiceNoteId === note.voice_note_id}
+                              disabled={deletingVoiceNoteId !== null}
+                              onClick={() => handleDeleteVoiceNote(note)}
+                              aria-label="Delete voice note"
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                        <audio
+                          controls
+                          preload="none"
+                          src={note.storage_url}
+                          className="w-full"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardBody>
             </Card>
           </div>

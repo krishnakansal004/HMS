@@ -41,6 +41,7 @@ import faqsRoutes from './routes/faqs.js';
 import planReceiptsRoutes from './routes/planReceipts.js';
 import prescriptionTemplatesRoutes from './routes/prescriptionTemplates.js';
 import queriesRoutes from './routes/queries.js';
+import voiceNotesRoutes from './routes/voiceNotes.js';
 
 const app = express();
 
@@ -50,7 +51,14 @@ app.use(cors({
   origin: env.allowedOrigins,
   credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buffer) => {
+    if (req.originalUrl.startsWith('/api/tenants/provision/webhook')) {
+      req.rawBody = Buffer.from(buffer);
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(morgan('combined'));
@@ -95,6 +103,7 @@ app.use('/api/faqs', faqsRoutes);
 app.use('/api/plan-receipts', planReceiptsRoutes);
 app.use('/api/prescription-templates', prescriptionTemplatesRoutes);
 app.use('/api/queries', queriesRoutes);
+app.use('/api/voice-notes', voiceNotesRoutes);
 // Catch-all 404 Route handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found on this server.` });

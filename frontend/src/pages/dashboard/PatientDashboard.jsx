@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarClock,
@@ -25,6 +25,7 @@ import { formatPaise, formatDate } from "../../utils/format.js";
 import { loadRazorpay } from "../../utils/loadRazorpay.js";
 import { toast } from "../../components/ui/Toast.jsx";
 import { TimelineIcon } from "./shared.jsx";
+import { voiceNotesApi } from "../../api/voiceNotes.js";
 
 export default function PatientDashboard({ user }) {
   const navigate = useNavigate();
@@ -83,6 +84,76 @@ export default function PatientDashboard({ user }) {
   );
 
   const [payingId, setPayingId] = useState(null);
+  const [recordingVoiceNote, setRecordingVoiceNote] = useState(false);
+  const [savingVoiceNote, setSavingVoiceNote] = useState(false);
+  const recorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const recordingStartedAtRef = useRef(0);
+  const voiceChunksRef = useRef([]);
+
+  const {
+    data: voiceNotesData,
+    loading: voiceNotesLoading,
+    refetch: refetchVoiceNotes,
+  } = useAsync(() => voiceNotesApi.list(), [], "pat_voice_notes");
+  const voiceNotes = voiceNotesData?.data || [];
+
+  useEffect(() => {
+    return () => {
+      recorderRef.current?.state === "recording" && recorderRef.current.stop();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  async function startVoiceNote() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Voice recording is not supported by this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      voiceChunksRef.current = [];
+      streamRef.current = stream;
+      recorderRef.current = recorder;
+      recordingStartedAtRef.current = Date.now();
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) voiceChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(voiceChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        if (!blob.size) return;
+        setSavingVoiceNote(true);
+        try {
+          await voiceNotesApi.create(
+            blob,
+            (Date.now() - recordingStartedAtRef.current) / 1000,
+          );
+          toast.success("Voice note shared with your care team.");
+          refetchVoiceNotes();
+        } catch (error) {
+          toast.error(error.message || "Unable to save voice note.");
+        } finally {
+          setSavingVoiceNote(false);
+        }
+      };
+      recorder.start();
+      setRecordingVoiceNote(true);
+    } catch (error) {
+      toast.error(error.name === "NotAllowedError" ? "Microphone permission is required." : "Unable to access the microphone.");
+    }
+  }
+
+  function stopVoiceNote() {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setRecordingVoiceNote(false);
+    }
+  }
 
   async function handleOnlinePayment(invoiceId) {
     setPayingId(invoiceId);
@@ -260,16 +331,38 @@ export default function PatientDashboard({ user }) {
                   </p>
                   <p className="text-xs text-[var(--color-ink-soft)] mt-1">
                     Record your symptoms before your visit to help doctors
-                    prepare.
+                    prepare. Only your hospital care team can access these notes.
                   </p>
                   <Button
                     size="sm"
                     variant="secondary"
                     className="mt-2"
-                    disabled
+                    loading={savingVoiceNote}
+                    disabled={savingVoiceNote}
+                    onClick={recordingVoiceNote ? stopVoiceNote : startVoiceNote}
                   >
-                    Record Audio (Coming Soon)
+                    {recordingVoiceNote ? "Stop & Upload" : "Record Audio"}
                   </Button>
+                  {recordingVoiceNote && (
+                    <p className="text-xs text-[var(--color-danger)] mt-2 animate-pulse">
+                      Recording… tap stop when you are finished.
+                    </p>
+                  )}
+                  {!voiceNotesLoading && voiceNotes.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex flex-col gap-2">
+                      <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                        Your voice notes
+                      </p>
+                      {voiceNotes.map((note) => (
+                        <div key={note.voice_note_id} className="flex items-center gap-2">
+                          <audio controls preload="none" src={note.storage_url} className="h-8 max-w-full" />
+                          <span className="text-[10px] text-[var(--color-ink-faint)] whitespace-nowrap">
+                            {formatDate(note.created_at)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,10 +1,10 @@
 import { api } from './client.js';
 
-// plans.js + tenants.js + planRequests.js — SYSTEM_OWNER / DIRECTOR surface
-// for provisioning new hospitals and managing subscription plans.
+// Plan catalog, hospital onboarding, and subscription request APIs.
 
 export const plansApi = {
   list: () => api.get('/plans'),
+  publicList: () => api.get('/plans/public'),
   /** @param {{name:string, publicFlag?:boolean, customized?:boolean, accessCode?:string, durations?:any[], prices?:object, limits?:object}} data */
   create: (data) => api.post('/plans', data),
 };
@@ -16,8 +16,11 @@ export const tenantsApi = {
    * Provisions a new hospital tenant + its first HOSPITAL_ADMIN user.
    */
   provision: (data) => api.post('/tenants/provision', data),
+  adminProvision: (data) => api.post('/tenants/admin-provision', data),
+  verifyProvisionPayment: (data) => api.post('/tenants/provision/verify-payment', data),
   list: (query) => api.get('/tenants', query),
   getById: (id) => api.get(`/tenants/${id}`),
+  updateStatus: (id, status) => api.patch(`/tenants/${id}/status`, { status }),
 };
 
 export const planRequestsApi = {

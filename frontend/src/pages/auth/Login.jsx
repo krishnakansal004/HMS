@@ -14,7 +14,11 @@ export default function Login() {
   const status = useAuthStore((s) => s.status);
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: '', password: '', hospitalSlug: '' });
+  const [form, setForm] = useState({
+    email: location.state?.prefillEmail || '',
+    password: '',
+    hospitalSlug: location.state?.hospitalSlug || '',
+  });
   const [errors, setErrors] = useState({});
 
   function update(field) {

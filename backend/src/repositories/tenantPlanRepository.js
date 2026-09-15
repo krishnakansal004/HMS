@@ -25,6 +25,13 @@ export class TenantPlanRepository {
     });
   }
 
+  static async findPublicPlans() {
+    return db.plan.findMany({
+      where: { status: 'active', public: true },
+      orderBy: { created_at: 'asc' },
+    });
+  }
+
   static async findPlanById(planId) {
     return await db.plan.findUnique({
       where: { plan_id: planId },
@@ -61,6 +68,104 @@ export class TenantPlanRepository {
       });
 
       return { tenant, adminUser };
+    });
+  }
+
+  static async findPendingSignupBySlug(slug) {
+    return db.tenant_signup.findFirst({
+      where: { slug, status: { in: ["pending", "paid"] } },
+    });
+  }
+
+  static async createTenantSignup(data) {
+    return db.tenant_signup.create({ data });
+  }
+
+  static async attachRazorpayOrder(signupId, razorpayOrderId) {
+    return db.tenant_signup.update({
+      where: { signup_id: signupId },
+      data: { razorpay_order_id: razorpayOrderId, updated_at: new Date() },
+    });
+  }
+
+  static async failTenantSignup(signupId) {
+    return db.tenant_signup.update({
+      where: { signup_id: signupId },
+      data: { status: "failed", updated_at: new Date() },
+    });
+  }
+
+  static async findSignupByOrderId(razorpayOrderId) {
+    return db.tenant_signup.findUnique({ where: { razorpay_order_id: razorpayOrderId } });
+  }
+
+  static async findTenantSignup(signupId) {
+    return db.tenant_signup.findUnique({ where: { signup_id: signupId } });
+  }
+
+  static async provisionTenantFromSignup({
+    signupId,
+    adminRoleId,
+    razorpayPaymentId,
+    paymentSignature,
+    paidAt,
+  }) {
+    return db.$transaction(async (tx) => {
+      const [lockedSignup] = await tx.$queryRaw`
+        SELECT * FROM tenant_signup
+        WHERE signup_id = ${signupId}::uuid
+        FOR UPDATE
+      `;
+
+      if (!lockedSignup) return null;
+      if (lockedSignup.status === "provisioned" && lockedSignup.tenant_id) {
+        const tenant = await tx.tenant.findUnique({
+          where: { tenant_id: lockedSignup.tenant_id },
+        });
+        await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${lockedSignup.tenant_id}::text, true)`;
+        const adminUser = await tx.users.findFirst({
+          where: { tenant_id: lockedSignup.tenant_id, email: lockedSignup.admin_email },
+        });
+        return { tenant, adminUser, alreadyProvisioned: true };
+      }
+
+      const tenant = await tx.tenant.create({
+        data: {
+          name: lockedSignup.hospital_name,
+          slug: lockedSignup.slug,
+          plan_id: lockedSignup.plan_id,
+          status: "active",
+        },
+      });
+
+      // users is FORCE-RLS protected. Bind this transaction to the newly
+      // created tenant before inserting the first hospital administrator.
+      await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenant.tenant_id}::text, true)`;
+
+      const adminUser = await tx.users.create({
+        data: {
+          tenant_id: tenant.tenant_id,
+          role_id: adminRoleId,
+          name: lockedSignup.admin_name,
+          email: lockedSignup.admin_email,
+          password_hash: lockedSignup.password_hash,
+          must_change_password: true,
+        },
+      });
+
+      await tx.tenant_signup.update({
+        where: { signup_id: signupId },
+        data: {
+          tenant_id: tenant.tenant_id,
+          status: "provisioned",
+          razorpay_payment_id: razorpayPaymentId,
+          payment_signature: paymentSignature || null,
+          paid_at: paidAt || new Date(),
+          updated_at: new Date(),
+        },
+      });
+
+      return { tenant, adminUser, alreadyProvisioned: false };
     });
   }
 

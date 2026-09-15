@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { Loader2, Stethoscope } from 'lucide-react';
 import { router } from './routes/router.jsx';
 import { useAuthStore } from './store/authStore.js';
+import { ToastViewport } from './components/ui/Toast.jsx';
 
 export default function App() {
   const bootstrapped = useAuthStore((s) => s.bootstrapped);
@@ -24,5 +25,10 @@ export default function App() {
     );
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastViewport />
+    </>
+  );;
 }

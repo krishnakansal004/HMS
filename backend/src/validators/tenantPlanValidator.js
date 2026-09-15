@@ -33,7 +33,16 @@ export const provisionTenantValidator = [
   body('adminPassword')
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
     .matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and a number'),
+  body('billingPeriod').optional().isIn(['monthly', 'yearly']).withMessage('Invalid billing period'),
   handleValidationErrors
+];
+
+export const verifyProvisionPaymentValidator = [
+  body('signupId').isUUID().withMessage('Valid signup ID is required'),
+  body('razorpayPaymentId').trim().notEmpty().withMessage('Razorpay payment ID is required'),
+  body('razorpayOrderId').trim().notEmpty().withMessage('Razorpay order ID is required'),
+  body('razorpaySignature').trim().notEmpty().withMessage('Razorpay signature is required'),
+  handleValidationErrors,
 ];
 
 export const requestPlanValidator = [

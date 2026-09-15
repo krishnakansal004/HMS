@@ -7,10 +7,12 @@ import Button from '../../components/ui/Button.jsx';
 import StatusPill from '../../components/ui/StatusPill.jsx';
 import { Spinner, ErrorState } from '../../components/ui/Table.jsx';
 import { formatDate } from '../../utils/format.js';
+import { useState } from 'react';
 
 export default function TenantDetails() {
   const { id } = useParams();
   const { data: response, loading, error } = useAsync(() => tenantsApi.getById(id), [id]);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   
   const tenant = response?.data;
   const plan = tenant?.plan;
@@ -19,6 +21,22 @@ export default function TenantDetails() {
   if (loading) return <Spinner label="Loading tenant details..." />;
   if (error) return <ErrorState message={error} />;
   if (!tenant) return <ErrorState message="Tenant not found" />;
+
+  async function handleStatusChange(newStatus) {
+    const action = newStatus === 'active' ? 'restore' : 'suspend';
+    if (!window.confirm(`Are you sure you want to ${action} this hospital's access?`)) return;
+
+    setUpdatingStatus(true);
+    try {
+      await tenantsApi.updateStatus(tenant.tenant_id, newStatus);
+      toast.success(`Hospital access successfully ${newStatus === 'active' ? 'restored' : 'suspended'}.`);
+      refetch();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update hospital status.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,9 +56,9 @@ export default function TenantDetails() {
         </div>
         <div className="ml-auto flex gap-2">
           {tenant.status === 'active' ? (
-            <Button variant="danger" icon={Activity}>Suspend Access</Button>
+            <Button variant="danger" icon={Activity} onClick={() => handleStatusChange('suspended')} loading={updatingStatus}>Suspend Access</Button>
           ) : (
-            <Button icon={Activity}>Restore Access</Button>
+            <Button icon={Activity} onClick={() => handleStatusChange('active')} loading={updatingStatus} >Restore Access</Button>
           )}
         </div>
       </div>
