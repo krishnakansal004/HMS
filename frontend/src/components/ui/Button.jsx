@@ -3,7 +3,7 @@ import classNames from '../../utils/cn.js';
 
 const VARIANTS = {
   primary: 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50',
-  secondary: 'bg-white text-[var(--color-ink)] border border-[var(--color-border-strong)] hover:bg-[var(--color-paper)] disabled:opacity-50',
+  secondary: 'bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-border-strong)] hover:bg-[var(--color-paper)] disabled:opacity-50',
   ghost: 'bg-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-paper)] disabled:opacity-40',
   danger: 'bg-[var(--color-danger)] text-white hover:opacity-90 disabled:opacity-50',
 };

@@ -154,13 +154,13 @@ export default function MedicineDrawer({ open, onClose, onSaved }) {
         <div className="flex flex-col gap-6">
           <div className="flex bg-[var(--color-paper)] p-1 rounded-[var(--radius-md)]">
             <button
-              className={`flex-1 py-1.5 text-sm font-medium rounded-[var(--radius-sm)] transition-colors ${mode === 'manual' ? 'bg-white text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-[var(--radius-sm)] transition-colors ${mode === 'manual' ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
               onClick={() => setMode('manual')}
             >
               Manual Entry
             </button>
             <button
-              className={`flex-1 py-1.5 text-sm font-medium rounded-[var(--radius-sm)] transition-colors ${mode === 'upload' ? 'bg-white text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-[var(--radius-sm)] transition-colors ${mode === 'upload' ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
               onClick={() => setMode('upload')}
             >
               Smart Upload (PDF)
@@ -186,7 +186,7 @@ export default function MedicineDrawer({ open, onClose, onSaved }) {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 text-[var(--color-ink-soft)]">
-                  <div className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-[var(--color-ink)] mb-2">
+                  <div className="h-12 w-12 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-ink)] mb-2">
                     <UploadCloud size={24} />
                   </div>
                   <p className="font-medium text-[var(--color-ink)]">Drag & drop your supplier invoice PDF</p>

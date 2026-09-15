@@ -114,7 +114,7 @@ export default function RegisterHospital() {
   if (successSlug) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-paper)] px-4">
-        <div className="max-w-md w-full bg-white border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8 text-center flex flex-col items-center gap-4 shadow-sm">
+        <div className="max-w-md w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-8 text-center flex flex-col items-center gap-4 shadow-sm">
           <div className="h-12 w-12 rounded-full bg-[var(--color-success-soft)] text-[var(--color-success)] flex items-center justify-center">
             <CheckCircle2 size={24} />
           </div>
@@ -144,7 +144,7 @@ export default function RegisterHospital() {
           <p className="text-sm text-[var(--color-ink-soft)] mt-1">Provision a secure multi-tenant hospital workspace and administrative account.</p>
         </div>
 
-        <Card className="bg-white shadow-sm border-[var(--color-border)]">
+        <Card className="bg-[var(--color-surface)] shadow-sm border-[var(--color-border)]">
           <CardBody className="p-8">
             {loadingPlans ? (
               <Spinner label="Loading subscription plans..." />

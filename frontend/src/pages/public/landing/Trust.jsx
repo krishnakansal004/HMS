@@ -2,7 +2,7 @@ import { TRUST_POINTS } from './content.js';
 
 export default function Trust() {
   return (
-    <section className="bg-[var(--color-ink)] text-white">
+    <section className="bg-[var(--color-ink-deep)] text-white">
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
         <div className="max-w-2xl">
           <h2 className="font-display font-semibold text-2xl lg:text-[32px]">

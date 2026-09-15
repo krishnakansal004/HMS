@@ -20,7 +20,7 @@ export default function Drawer({ open, onClose, title, children, footer, size = 
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[var(--color-ink)]/40 backdrop-blur-[2px] transition-opacity"
+        className="fixed inset-0 bg-[var(--color-ink-deep)]/40 backdrop-blur-[2px] transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />

@@ -17,7 +17,7 @@ export default function Sidebar({ role, hospitalName, open, onClose }) {
       <aside
         className={classNames(
           'fixed lg:sticky top-0 left-0 h-screen w-64 shrink-0 z-40',
-          'bg-[var(--color-ink)] text-white flex flex-col',
+          'bg-[var(--color-ink-deep)] text-white flex flex-col',
           'transition-transform lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}

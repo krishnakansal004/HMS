@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Stethoscope, Menu, X } from 'lucide-react';
+import { Stethoscope, Menu, X, Moon, Sun } from 'lucide-react';
 import Button from '../../../components/ui/Button.jsx';
+import { useThemeStore } from '../../../store/themeStore.js';
 
 const LINKS = [
   { href: '#features', label: 'Features' },
@@ -12,6 +13,13 @@ const LINKS = [
 
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
+
+  function handleThemeToggle() {
+    toggleTheme();
+    setOpen(false);
+  }
 
   // Without this, the landing page scrolls behind the open mobile menu
   // on touch devices — the menu covers the viewport but the page under
@@ -48,6 +56,16 @@ export default function LandingNav() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleThemeToggle}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <span>{theme === 'dark' ? 'Light' : 'Dark'} mode</span>
+          </button>
           <Link to="/login">
             <Button variant="secondary" size="md">Sign in</Button>
           </Link>
@@ -80,6 +98,14 @@ export default function LandingNav() {
             </a>
           ))}
           <div className="flex flex-col gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleThemeToggle}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)] transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
+            </button>
             <Link to="/login" onClick={() => setOpen(false)}>
               <Button variant="secondary" className="w-full">Sign in</Button>
             </Link>

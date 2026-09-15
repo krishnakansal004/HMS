@@ -505,7 +505,7 @@ function TimelineIcon({ type }) {
     Radiology:
       "bg-[var(--color-accent-soft)] text-[var(--color-accent)] border-[var(--color-accent)]",
     Invoice:
-      "bg-white text-[var(--color-ink-soft)] border-[var(--color-border-strong)]",
+      "bg-[var(--color-surface)] text-[var(--color-ink-soft)] border-[var(--color-border-strong)]",
   };
 
   return (

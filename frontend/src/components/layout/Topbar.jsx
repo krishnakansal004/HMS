@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
 import { initials } from '../../utils/format.js';
+import { useThemeStore } from '../../store/themeStore.js';
 
 export default function Topbar({ onMenuClick, title }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -57,6 +60,16 @@ export default function Topbar({ onMenuClick, title }) {
               <p className="text-sm font-medium truncate">{user?.name}</p>
               <p className="text-xs text-[var(--color-ink-soft)] truncate">{user?.email}</p>
             </div>
+            <button
+              onClick={() => {
+                toggleTheme();
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-paper)] hover:text-[var(--color-ink)]"
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              {theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
+            </button>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"

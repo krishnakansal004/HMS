@@ -81,7 +81,7 @@ export function TimelineIcon({ type }) {
     Radiology: <Scan size={14} />,
   };
   return (
-    <div className="h-8 w-8 rounded-full border shadow-sm flex items-center justify-center bg-white text-[var(--color-ink-soft)] border-[var(--color-border-strong)] z-10">
+    <div className="h-8 w-8 rounded-full border shadow-sm flex items-center justify-center bg-[var(--color-surface)] text-[var(--color-ink-soft)] border-[var(--color-border-strong)] z-10">
       {ICONS[type] || <History size={14} />}
     </div>
   );

@@ -111,7 +111,7 @@ export default function SystemOwnerDashboard() {
             ) : (
               <>
                 {plans.map((plan) => (
-                  <div key={plan.plan_id} className="flex flex-col justify-between rounded-xl border border-[var(--color-border)] p-6 hover:border-[var(--color-primary)] transition-colors bg-white">
+                  <div key={plan.plan_id} className="flex flex-col justify-between rounded-xl border border-[var(--color-border)] p-6 hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface)]">
                     <div>
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="font-display text-lg font-bold text-[var(--color-ink)]">{plan.name}</h3>
@@ -149,7 +149,7 @@ export default function SystemOwnerDashboard() {
                   onClick={() => setPlanModalOpen(true)}
                   className="rounded-xl bg-[var(--color-paper)] p-6 border-2 border-dashed border-[var(--color-border-strong)] flex flex-col items-center justify-center text-center hover:bg-[var(--color-border)] transition-colors cursor-pointer min-h-[220px]"
                 >
-                  <div className="rounded-full bg-white p-3 mb-3 shadow-sm text-[var(--color-ink-soft)]">
+                  <div className="rounded-full bg-[var(--color-surface)] p-3 mb-3 shadow-sm text-[var(--color-ink-soft)]">
                     <Plus size={24} />
                   </div>
                   <h3 className="text-sm font-medium text-[var(--color-ink)]">Create New Plan</h3>

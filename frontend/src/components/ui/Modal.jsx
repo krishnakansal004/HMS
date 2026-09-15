@@ -19,7 +19,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 py-10">
       <div
-        className="fixed inset-0 bg-[var(--color-ink)]/40 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-[var(--color-ink-deep)]/40 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />

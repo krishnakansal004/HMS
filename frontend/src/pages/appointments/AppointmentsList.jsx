@@ -73,7 +73,7 @@ export default function AppointmentsList() {
       <div className="flex items-center gap-3">
         <input 
           type="date" 
-          className="rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] bg-white px-3 py-2 text-sm text-[var(--color-ink)] focus:border-[var(--color-primary)] transition-colors"
+          className="rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] focus:border-[var(--color-primary)] transition-colors"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
         />

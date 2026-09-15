@@ -17,6 +17,7 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
   --color-ink: #12181f;
+  --color-ink-deep: #12181f;
   --color-ink-soft: #4b5565;
   --color-ink-faint: #8993a3;
 
@@ -47,10 +48,50 @@
   --radius-lg: 1rem;
 }
 
+/*
+  Night shift palette: deep green-black surfaces, softened borders, and the
+  same teal/brass identity as daylight mode. It is intentionally not pure
+  black, so long clinical tables remain calm and readable.
+*/
+.dark {
+  color-scheme: dark;
+
+  --color-ink: #e8f0ec;
+  --color-ink-deep: #0a1211;
+  --color-ink-soft: #b3c3bd;
+  --color-ink-faint: #829791;
+
+  --color-paper: #101918;
+  --color-surface: #182523;
+  --color-border: #2b3c39;
+  --color-border-strong: #405550;
+
+  --color-primary: #489a8b;
+  --color-primary-hover: #82d4c4;
+  --color-primary-soft: #1b3d38;
+  --color-primary-ink: #bceee5;
+
+  --color-accent: #d7aa5c;
+  --color-accent-soft: #40351f;
+
+  --color-danger: #f08b7e;
+  --color-danger-soft: #422522;
+  --color-warning: #e2b75e;
+  --color-warning-soft: #41351d;
+  --color-success: #65d09a;
+  --color-success-soft: #1b3b2d;
+  --color-info: #79baf0;
+  --color-info-soft: #1c3447;
+}
+
 html {
   font-family: var(--font-sans);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+}
+
+html, body {
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 body {

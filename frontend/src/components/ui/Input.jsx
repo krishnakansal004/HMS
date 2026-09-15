@@ -18,7 +18,7 @@ export const Input = forwardRef(function Input(
         ref={ref}
         id={inputId}
         className={classNames(
-          'w-full rounded-[var(--radius-sm)] border bg-white px-3 py-2 text-sm text-[var(--color-ink)]',
+          'w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]',
           'placeholder:text-[var(--color-ink-faint)] transition-colors',
           error
             ? 'border-[var(--color-danger)] focus:border-[var(--color-danger)]'
@@ -51,7 +51,7 @@ export const Select = forwardRef(function Select(
         ref={ref}
         id={selectId}
         className={classNames(
-          'w-full rounded-[var(--radius-sm)] border bg-white px-3 py-2 text-sm text-[var(--color-ink)]',
+          'w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]',
           'transition-colors',
           error
             ? 'border-[var(--color-danger)]'
@@ -87,7 +87,7 @@ export const Textarea = forwardRef(function Textarea(
         id={areaId}
         rows={3}
         className={classNames(
-          'w-full rounded-[var(--radius-sm)] border bg-white px-3 py-2 text-sm text-[var(--color-ink)]',
+          'w-full rounded-[var(--radius-sm)] border bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]',
           'placeholder:text-[var(--color-ink-faint)] transition-colors resize-y',
           error
             ? 'border-[var(--color-danger)]'

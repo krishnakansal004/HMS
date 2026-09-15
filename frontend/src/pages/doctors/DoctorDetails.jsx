@@ -64,7 +64,7 @@ export default function DoctorDetails() {
               ) : (
                 <div className="flex flex-col gap-3">
                   {schedule.map((day, idx) => (
-                    <div key={idx} className={`flex items-center justify-between p-3 rounded-[var(--radius-sm)] border ${day.enabled ? 'border-[var(--color-border)] bg-white' : 'border-dashed border-[var(--color-border-strong)] bg-[var(--color-paper)] opacity-60'}`}>
+                    <div key={idx} className={`flex items-center justify-between p-3 rounded-[var(--radius-sm)] border ${day.enabled ? 'border-[var(--color-border)] bg-[var(--color-surface)]' : 'border-dashed border-[var(--color-border-strong)] bg-[var(--color-paper)] opacity-60'}`}>
                       <div className="flex items-center gap-3 w-1/4">
                         {day.enabled ? <CheckCircle2 size={16} className="text-[var(--color-success)]" /> : <XCircle size={16} className="text-[var(--color-ink-faint)]" />}
                         <span className="text-sm font-semibold">{DAY_LABELS[day.dayOfWeek]}</span>
