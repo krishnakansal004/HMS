@@ -19,19 +19,19 @@ router.post(
   TenantPlanController.requestPlan,
 );
 
-// GET /api/plan-requests (System Owner / Director viewing pending requests)
+// GET /api/plan-requests (System Owner viewing pending requests)
 router.get(
   "/",
   protect,
-  requireRoles("SYSTEM_OWNER", "DIRECTOR"),
+  requireRoles("SYSTEM_OWNER"),
   TenantPlanController.listRequests,
 );
 
-// PATCH /api/plan-requests/:id/review (System Owner / Director approving/rejecting)
+// PATCH /api/plan-requests/:id/review (System Owner approving/rejecting)
 router.patch(
   "/:id/review",
   protect,
-  requireRoles("SYSTEM_OWNER", "DIRECTOR"),
+  requireRoles("SYSTEM_OWNER"),
   reviewPlanRequestValidator,
   TenantPlanController.reviewRequest,
 );

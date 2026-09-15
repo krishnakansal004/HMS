@@ -1,71 +1,3 @@
-// import multer from 'multer';
-
-// const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-
-// // Export memory-backed multer instances
-// export const uploadPatients = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
-// export const uploadAppointments = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
-// export const uploadPlanRequests = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
-
-// // Helper to manually upload a single multer file object buffer to Firebase Storage (drop-in wrapper)
-// export const uploadToCloudinary = async (fileBuffer, folderName, resourceType = 'auto') => {
-//     try {
-//         const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-//         const filename = `hms/${folderName}/${uuid}`;
-        
-//         const bucket = admin.storage().bucket();
-//         const file = bucket.file(filename);
-
-//         let contentType = undefined;
-//         if (folderName === 'plan-receipts' || folderName === 'prescriptions') {
-//             contentType = 'application/pdf';
-//         }
-
-//         await file.save(fileBuffer, {
-//             metadata: {
-//                 contentType
-//             }
-//         });
-
-//         // Generate signed URL with far future expiration
-//         const [signedUrl] = await file.getSignedUrl({
-//             action: 'read',
-//             expires: '03-01-2500' // Year 2500
-//         });
-
-//         console.log(`[Firebase Storage] Uploaded ${filename} successfully. URL: ${signedUrl}`);
-
-//         return {
-//             secure_url: signedUrl,
-//             public_id: filename,
-//             url: signedUrl
-//         };
-//     } catch (e) {
-//         console.error('[Firebase Storage] Upload error:', e);
-//         throw e;
-//     }
-// };
-
-// // Placeholder object to prevent import errors if default export is used
-// export const cloudinary = {
-//     config: () => {},
-//     uploader: {
-//         destroy: async (publicId) => {
-//             try {
-//                 const bucket = admin.storage().bucket();
-//                 await bucket.file(publicId).delete();
-//                 return { result: 'ok' };
-//             } catch (e) {
-//                 console.warn('[Firebase Storage] Delete warning:', e.message);
-//                 return { result: 'not_found' };
-//             }
-//         }
-//     }
-// };
-
-// export default cloudinary;
-
-// backend/src/config/cloudinary.js
 import { v2 as cloudinary } from 'cloudinary';
 import { AppError } from '../middlewares/errorHandler.js';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
@@ -96,4 +28,25 @@ export async function uploadToCloudinary(buffer, folder = 'invoices', resourceTy
 export async function deleteFromCloudinary(publicId, resourceType = 'video') {
   if (!publicId) return { result: 'not_found' };
   return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+}
+
+export function cloudinaryResourceType(mimeType) {
+  if (String(mimeType || '').startsWith('audio/')) return 'video';
+  if (String(mimeType || '').startsWith('video/')) return 'video';
+  if (String(mimeType || '').startsWith('image/')) return 'image';
+  return 'raw';
+}
+
+// Generate signed delivery only after application authentication and tenant
+// authorization. Never call this from a bulk list query.
+export function createSignedCloudinaryUrl(publicId, mimeType) {
+  if (!publicId) {
+    throw new AppError('Document storage reference is unavailable.', HTTP_STATUS.CONFLICT);
+  }
+  return cloudinary.url(publicId, {
+    secure: true,
+    sign_url: true,
+    resource_type: cloudinaryResourceType(mimeType),
+    type: 'upload',
+  });
 }

@@ -1,4 +1,5 @@
 import { db, tenantStorage } from '../config/db.js';
+import { queryAcrossTenants } from '../config/systemOwnerRawClient.js';
 
 export class CustomizationRequestRepository {
 
@@ -39,6 +40,17 @@ export class CustomizationRequestRepository {
     return this.findByIdAndTenant(requestId, tenantId);
   }
 
+  static async updateStatusAcrossTenants(requestId, status, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => {
+      const result = await tx.customization_request.updateMany({
+        where: { request_id: requestId },
+        data: { status, updated_at: new Date() },
+      });
+      if (result.count === 0) return null;
+      return tx.customization_request.findUnique({ where: { request_id: requestId } });
+    });
+  }
+
   static async findManyPaginated({ tenantId, status, skip, take }) {
     const where = { tenant_id: tenantId };
     if (status) where.status = status;
@@ -50,5 +62,21 @@ export class CustomizationRequestRepository {
       ]);
       return [total, requests];
     });
+  }
+
+  static async findManyPaginatedAcrossTenants({ userRole, status, skip, take }) {
+    return queryAcrossTenants(userRole, async (prisma) => prisma.$transaction(async (tx) => {
+      const where = status ? { status } : {};
+      const [total, requests] = await Promise.all([
+        tx.customization_request.count({ where }),
+        tx.customization_request.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { created_at: 'desc' },
+        }),
+      ]);
+      return [total, requests];
+    }));
   }
 }

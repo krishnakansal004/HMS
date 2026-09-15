@@ -1,4 +1,5 @@
 import { DocumentRepository } from "../repositories/documentRepository.js";
+import { createSignedCloudinaryUrl } from "../config/cloudinary.js";
 import { AuditService } from "./auditService.js";
 import { AppError } from "../middlewares/errorHandler.js";
 import { HTTP_STATUS } from "../constants/httpStatus.js";
@@ -66,13 +67,12 @@ export class DocumentService {
       documentId,
       tenantId,
     );
-    if (!['HOSPITAL_ADMIN', 'DIRECTOR', 'SYSTEM_OWNER'].includes(userRole)) {
-    if (existing.uploaded_by !== userId) {
-      throw new AppError("Unauthorized. You can only delete your own documents.", HTTP_STATUS.FORBIDDEN);
-    }
-  }
     if (!existing)
       throw new AppError("Document not found.", HTTP_STATUS.NOT_FOUND);
+
+    if (!['HOSPITAL_ADMIN', 'DIRECTOR', 'SYSTEM_OWNER'].includes(userRole) && existing.uploaded_by !== userId) {
+      throw new AppError("Unauthorized. You can only delete your own documents.", HTTP_STATUS.FORBIDDEN);
+    }
 
     await DocumentRepository.deleteByIdAndTenant(documentId, tenantId);
 
@@ -90,5 +90,36 @@ export class DocumentService {
     });
 
     return { success: true };
+  }
+
+  static async getDownloadUrl({ tenantId, userId, userRole, documentId, ipAddress }) {
+    const document = await DocumentRepository.findByIdAndTenant(documentId, tenantId);
+    if (!document) {
+      throw new AppError("Document not found.", HTTP_STATUS.NOT_FOUND);
+    }
+
+    const downloadUrl = createSignedCloudinaryUrl(document.public_id, document.mime_type);
+    AuditService.logAction({
+      tenantId,
+      userId,
+      action: "DOWNLOAD_DOCUMENT",
+      entityType: "DOCUMENT",
+      entityId: documentId,
+      newValue: { role: userRole, mimeType: document.mime_type },
+      ipAddress,
+    });
+
+    return {
+      document: {
+        document_id: document.document_id,
+        entity_type: document.entity_type,
+        entity_id: document.entity_id,
+        mime_type: document.mime_type,
+        size_bytes: document.size_bytes,
+        created_at: document.created_at,
+      },
+      downloadUrl,
+      generatedAt: new Date().toISOString(),
+    };
   }
 }

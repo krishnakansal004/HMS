@@ -22,11 +22,14 @@ router.post(
 
 // ------------------------------------------------------------------
 // POST /api/payments/webhook/verify
-// Purpose: Frontend callback confirming the transaction is settled.
-// Who: Public callback endpoint. Authenticated via HMAC signature.
+// Purpose: Authenticated frontend callback confirming the transaction is settled.
+// HMAC plus tenant/user authorization are both required.
 // ------------------------------------------------------------------
 router.post(
   "/webhook/verify",
+  protect,
+  requireTenant,
+  requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "CASHIER", "PATIENT"),
   webhookValidator,
   PaymentController.handleWebhook
 );

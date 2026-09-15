@@ -14,13 +14,12 @@ export class CustomizationRequestService {
     userId,
     requestId,
     status,
+    userRole,
     ipAddress,
   }) {
-    const updated = await CustomizationRequestRepository.updateStatus(
-      requestId,
-      tenantId,
-      status,
-    );
+    const updated = userRole === "SYSTEM_OWNER"
+      ? await CustomizationRequestRepository.updateStatusAcrossTenants(requestId, status, userRole)
+      : await CustomizationRequestRepository.updateStatus(requestId, tenantId, status);
     if (!updated)
       throw new AppError(
         "Customization request not found.",
@@ -40,18 +39,14 @@ export class CustomizationRequestService {
     return updated;
   }
 
-  static async list({ tenantId, query }) {
+  static async list({ tenantId, userRole, query }) {
     const { status, page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const [total, data] =
-      await CustomizationRequestRepository.findManyPaginated({
-        tenantId,
-        status,
-        skip,
-        take,
-      });
+    const [total, data] = userRole === "SYSTEM_OWNER"
+      ? await CustomizationRequestRepository.findManyPaginatedAcrossTenants({ userRole, status, skip, take })
+      : await CustomizationRequestRepository.findManyPaginated({ tenantId, status, skip, take });
     return { total, page: Number(page), pages: Math.ceil(total / take), data };
   }
 }

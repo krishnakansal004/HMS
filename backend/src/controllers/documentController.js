@@ -45,4 +45,19 @@ export class DocumentController {
       next(error);
     }
   }
+
+  static async download(req, res, next) {
+    try {
+      const result = await DocumentService.getDownloadUrl({
+        tenantId: req.currentTenantId,
+        userId: req.userId,
+        userRole: req.userRole,
+        documentId: req.params.id,
+        ipAddress: req.ip,
+      });
+      res.status(HTTP_STATUS.OK).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

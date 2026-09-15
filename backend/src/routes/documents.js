@@ -22,6 +22,14 @@ router.get(
   "/", 
   listForEntityValidator, 
   DocumentController.listForEntity);
+
+// Signed Cloudinary delivery is generated only after authentication and
+// tenant/object checks. The list endpoint never creates signed URLs.
+router.get(
+  "/:id/download",
+  documentIdValidator,
+  DocumentController.download,
+);
   
 router.delete(
   "/:id",

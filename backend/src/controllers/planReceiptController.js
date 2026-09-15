@@ -7,6 +7,7 @@ export class PlanReceiptController {
       const receipt = await PlanReceiptService.generateReceipt({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         invoiceId: req.body.invoiceId,
         ipAddress: req.ip,
       });
@@ -20,6 +21,7 @@ export class PlanReceiptController {
     try {
       const receipt = await PlanReceiptService.getReceipt({
         tenantId: req.currentTenantId,
+        userRole: req.userRole,
         receiptId: req.params.id,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, data: receipt });
@@ -32,6 +34,7 @@ export class PlanReceiptController {
     try {
       const result = await PlanReceiptService.listReceipts({
         tenantId: req.currentTenantId,
+        userRole: req.userRole,
         query: req.query,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });

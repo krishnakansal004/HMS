@@ -16,6 +16,7 @@ export class CustomizationRequestController {
       const updated = await CustomizationRequestService.updateStatus({
         tenantId: req.currentTenantId,
         userId: req.userId,
+        userRole: req.userRole,
         requestId: req.params.id,
         status: req.body.status,
         ipAddress: req.ip,
@@ -30,6 +31,7 @@ export class CustomizationRequestController {
     try {
       const result = await CustomizationRequestService.list({
         tenantId: req.currentTenantId,
+        userRole: req.userRole,
         query: req.query,
       });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });

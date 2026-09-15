@@ -130,7 +130,7 @@ export class TenantPlanService {
     return payment;
   }
 
-  static async completePaidSignup({ signup, paymentId, paymentSignature = null }) {
+  static async completePaidSignup({ signup, payment, paymentId, paymentSignature = null }) {
     const adminRole = await db.role.findUnique({ where: { name: "HOSPITAL_ADMIN" } });
     if (!adminRole) {
       throw new AppError("System configuration error: HOSPITAL_ADMIN role missing.", HTTP_STATUS.INTERNAL_SERVER_ERROR);
@@ -140,6 +140,7 @@ export class TenantPlanService {
       signupId: signup.signup_id,
       adminRoleId: adminRole.role_id,
       razorpayPaymentId: paymentId,
+      razorpaySubscriptionId: payment?.subscription_id || null,
       paymentSignature,
       paidAt: new Date(),
     });
@@ -195,9 +196,10 @@ export class TenantPlanService {
       throw new AppError("Cryptographic signature verification failed.", HTTP_STATUS.UNAUTHORIZED);
     }
 
-    await this.fetchCapturedPayment(signup, razorpayPaymentId);
+    const payment = await this.fetchCapturedPayment(signup, razorpayPaymentId);
     return this.completePaidSignup({
       signup,
+      payment,
       paymentId: razorpayPaymentId,
       paymentSignature: razorpaySignature,
     });
@@ -218,22 +220,23 @@ export class TenantPlanService {
     if (!['payment.captured', 'order.paid'].includes(payload?.event)) {
       return { ignored: true };
     }
-    const payment = payload?.payload?.payment?.entity;
+    const payloadPayment = payload?.payload?.payment?.entity;
     const order = payload?.payload?.order?.entity;
-    const orderId = payment?.order_id || order?.id;
-    const paymentId = payment?.id;
+    const orderId = payloadPayment?.order_id || order?.id;
+    const paymentId = payloadPayment?.id;
     if (!orderId || !paymentId) return { ignored: true };
 
     const signup = await TenantPlanRepository.findSignupByOrderId(orderId);
     if (!signup) return { ignored: true };
     if (signup.status === "provisioned") return { alreadyProcessed: true };
 
-    await this.fetchCapturedPayment(signup, paymentId);
-    await this.completePaidSignup({ signup, paymentId });
+    const payment = await this.fetchCapturedPayment(signup, paymentId);
+    await this.completePaidSignup({ signup, payment, paymentId });
     return { processed: true };
   }
 
   static async createPlan({
+    userRole,
     userId,
     name,
     publicFlag,
@@ -253,7 +256,7 @@ export class TenantPlanService {
       prices: prices ? JSON.parse(JSON.stringify(prices)) : undefined,
       limits: limits ? JSON.parse(JSON.stringify(limits)) : undefined,
       status: "active",
-    });
+    }, userRole);
 
     AuditService.logAction({
       tenantId: null, // Global action
@@ -268,24 +271,24 @@ export class TenantPlanService {
     return plan;
   }
 
-  static async listPlans() {
-    return TenantPlanRepository.findActivePlans();
+  static async listPlans({ userRole } = {}) {
+    return TenantPlanRepository.findActivePlans(userRole);
   }
 
   static async listPublicPlans() {
     return TenantPlanRepository.findPublicPlans();
   }
 
-  static async updateTenantStatus({ userId, tenantId, status, ipAddress }) {
+  static async updateTenantStatus({ userId, userRole, tenantId, status, ipAddress }) {
     const validStatuses = ["active", "suspended", "cancelled"];
     if (!validStatuses.includes(status)) {
       throw new AppError("Invalid tenant status.", HTTP_STATUS.BAD_REQUEST);
     }
 
-    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    const tenant = await TenantPlanRepository.findTenantByIdAcrossTenants(tenantId, userRole);
     if (!tenant) throw new AppError("Tenant not found.", HTTP_STATUS.NOT_FOUND);
 
-    const updatedTenant = await TenantPlanRepository.updateTenantStatus(tenantId, status);
+    const updatedTenant = await TenantPlanRepository.updateTenantStatus(tenantId, status, userRole);
 
     AuditService.logAction({
       tenantId, 
@@ -301,16 +304,16 @@ export class TenantPlanService {
     return updatedTenant;
   }
 
-  static async updateTenantPlan({ userId, tenantId, planId, ipAddress }) {
-    const plan = await TenantPlanRepository.findPlanById(planId);
+  static async updateTenantPlan({ userId, userRole, tenantId, planId, ipAddress }) {
+    const plan = await TenantPlanRepository.findPlanByIdAcrossTenants(planId, userRole);
     if (!plan || plan.status !== "active") {
       throw new AppError("Selected plan is invalid or inactive.", HTTP_STATUS.BAD_REQUEST);
     }
     
-    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    const tenant = await TenantPlanRepository.findTenantByIdAcrossTenants(tenantId, userRole);
     if (!tenant) throw new AppError("Tenant not found.", HTTP_STATUS.NOT_FOUND);
 
-    const updatedTenant = await TenantPlanRepository.updateTenantPlan(tenantId, planId);
+    const updatedTenant = await TenantPlanRepository.updateTenantPlan(tenantId, planId, userRole);
 
     AuditService.logAction({
       tenantId,
@@ -327,6 +330,7 @@ export class TenantPlanService {
   }
 
   static async provisionHospitalTenant({
+    userRole,
     name,
     slug,
     planId,
@@ -382,6 +386,7 @@ export class TenantPlanService {
           passwordHash,
         },
         adminRole.role_id,
+        userRole,
       );
 
     AuditService.logAction({
@@ -448,29 +453,17 @@ export class TenantPlanService {
     return request;
   }
 
-  static async reviewPlanRequest({ userId, requestId, status, ipAddress }) {
-    const request = await TenantPlanRepository.findPlanRequestById(requestId);
-    if (!request) {
-      throw new AppError("Plan request not found.", HTTP_STATUS.NOT_FOUND);
-    }
-
+  static async reviewPlanRequest({ userId, userRole, requestId, status, ipAddress }) {
     const validStatuses = ["approved", "rejected", "pending"];
     if (!validStatuses.includes(status)) {
       throw new AppError("Invalid request status.", HTTP_STATUS.BAD_REQUEST);
     }
 
-    // If approved, update the tenant's active plan directly
-    if (status === "approved") {
-      await db.tenant.update({
-        where: { tenant_id: request.tenant_id },
-        data: { plan_id: request.plan_id, updated_at: new Date() },
-      });
-    }
-
-    const updatedRequest = await TenantPlanRepository.updatePlanRequestStatus(
-      requestId,
-      status,
-    );
+    const reviewResult = await TenantPlanRepository.reviewPlanRequestAcrossTenants({
+      requestId, status, userRole,
+    });
+    if (!reviewResult) throw new AppError("Plan request not found.", HTTP_STATUS.NOT_FOUND);
+    const { request, updatedRequest } = reviewResult;
 
     AuditService.logAction({
       tenantId: request.tenant_id,
@@ -507,20 +500,20 @@ static async listPlanRequests({ userRole, query }) {
     };
   }
 
-  static async getTenantById({ tenantId }) {
+  static async getTenantById({ tenantId, userRole }) {
     // The repository method expects a direct string, not an object
-    const tenant = await TenantPlanRepository.findTenantById(tenantId);
+    const tenant = await TenantPlanRepository.findTenantByIdAcrossTenants(tenantId, userRole);
     if (!tenant) {
       throw new AppError('Tenant not found.', HTTP_STATUS.NOT_FOUND);
     }
     return tenant;
   }
 
-  static async listTenants({ query }) {
+  static async listTenants({ userRole, query }) {
     const { page = 1, limit = 50 } = query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
-    const [total, tenants] = await TenantPlanRepository.findTenantsPaginated({ skip, take });
+    const [total, tenants] = await TenantPlanRepository.findTenantsPaginated({ userRole, skip, take });
     return {
       total,
       page: Number(page),

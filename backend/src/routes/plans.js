@@ -8,14 +8,14 @@ const router = express.Router();
 // GET /api/plans/public (Public pricing catalog for hospital onboarding)
 router.get("/public", TenantPlanController.listPublicPlans);
 
-// GET /api/plans (System Owner / Director catalog)
-router.get("/", protect, requireRoles("SYSTEM_OWNER", "DIRECTOR"), TenantPlanController.listPlans);
+// GET /api/plans (System Owner platform catalog)
+router.get("/", protect, requireRoles("SYSTEM_OWNER"), TenantPlanController.listPlans);
 
-// POST /api/plans (System Owner / Director only)
+// POST /api/plans (System Owner only)
 router.post(
   "/",
   protect,
-  requireRoles("SYSTEM_OWNER", "DIRECTOR"),
+  requireRoles("SYSTEM_OWNER"),
   createPlanValidator,
   TenantPlanController.createPlan,
 );

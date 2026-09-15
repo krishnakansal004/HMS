@@ -88,29 +88,34 @@ export class PaymentService {
 
   // Real Signature Verification (Synchronous Frontend Callback)
   static async verifyPaymentWebhook({
+    tenantId,
     invoiceId,
     gatewayPaymentId,
     razorpayOrderId,
-    amountPaid,
+    amountPaid: _amountPaid,
     signature,
   }) {
-    const secret = process.env.RAZORPAY_SECRET;
-
-    // HMAC SHA256 Verification
     const generatedSignature = crypto
-      .createHmac("sha256", secret)
+      .createHmac("sha256", env.razorpay.keySecret)
       .update(razorpayOrderId + "|" + gatewayPaymentId)
       .digest("hex");
 
-    if (generatedSignature !== signature) {
+    const expected = Buffer.from(generatedSignature);
+    const received = Buffer.from(String(signature || ""));
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
       throw new AppError(
         "Cryptographic signature verification failed. Possible fraud attempt.",
         HTTP_STATUS.UNAUTHORIZED,
       );
     }
 
-    const invoice = await db.invoice.findUnique({
-      where: { invoice_id: invoiceId },
+    const invoice = await db.invoice.findFirst({
+      where: {
+        invoice_id: invoiceId,
+        tenant_id: tenantId,
+        razorpay_order_id: razorpayOrderId,
+        deleted_at: null,
+      },
     });
 
     if (!invoice || invoice.invoice_id !== invoiceId) {
@@ -128,17 +133,35 @@ export class PaymentService {
     if (invoice.status === "paid")
       return { success: true, message: "Already marked as paid" }; // Idempotency check
 
-    // Convert incoming amountPaid to minor currency (paise)
-    const remainingPaise = Number(invoice.total) - Number(invoice.amount_paid);
-    let amountInPaise = Math.round(Number(amountPaid) * 100);
-    if (
-      Math.round(Number(amountPaid)) === remainingPaise ||
-      (Number(amountPaid) > remainingPaise &&
-        Math.round(Number(amountPaid)) <= Number(invoice.total))
-    ) {
-      amountInPaise = Math.round(Number(amountPaid));
+    const razorpay = new Razorpay({
+      key_id: env.razorpay.keyId,
+      key_secret: env.razorpay.keySecret,
+    });
+    let gatewayPayment;
+    try {
+      gatewayPayment = await razorpay.payments.fetch(gatewayPaymentId);
+    } catch {
+      throw new AppError("Payment could not be verified with Razorpay.", HTTP_STATUS.BAD_REQUEST);
     }
-    if (!Number.isFinite(amountInPaise) || amountInPaise <= 0 || amountInPaise > remainingPaise) {
+
+    const currencySetting = await tenantStorage.run(
+      { tenantId: invoice.tenant_id },
+      () => db.setting.findFirst({ where: { tenant_id: invoice.tenant_id, key: "CURRENCY" } }),
+    );
+    const expectedCurrency = currencySetting?.value || "INR";
+    const remainingPaise = Number(invoice.total) - Number(invoice.amount_paid);
+    const amountInPaise = Number(gatewayPayment.amount);
+
+    if (
+      gatewayPayment.id !== gatewayPaymentId ||
+      gatewayPayment.order_id !== razorpayOrderId ||
+      gatewayPayment.status !== "captured" ||
+      gatewayPayment.currency !== expectedCurrency ||
+      !Number.isFinite(amountInPaise) ||
+      amountInPaise <= 0 ||
+      amountInPaise > remainingPaise ||
+      amountInPaise !== remainingPaise
+    ) {
       throw new AppError(
         "Payment amount does not match the invoice balance.",
         HTTP_STATUS.BAD_REQUEST,
@@ -161,6 +184,11 @@ export class PaymentService {
         if (targetInvoice.status === "paid") {
           return { success: true, message: "Already marked as paid" };
         }
+
+        const existingPayment = await tx.payment.findFirst({
+          where: { transaction_id: gatewayPaymentId },
+        });
+        if (existingPayment) return existingPayment;
 
         const payment = await tx.payment.create({
           data: {

@@ -98,6 +98,36 @@ Added after a direct Q&A pass on the schema:
 Kept as a separate file rather than editing 0000-0035, in case those were
 already shared with the team.
 
+## Tracked migration runner
+
+Run migrations from `backend/` with:
+
+```bash
+node runMigrations.js
+```
+
+The runner creates `schema_migrations`, applies pending SQL files in lexical
+order, records a SHA-256 checksum for every file, and fails if an applied file
+is edited. It takes a PostgreSQL advisory lock and runs each migration in its
+own transaction.
+
+`--reset-dev` is an explicit development-only database reset and is rejected
+unless `NODE_ENV=development`. Never use it against production.
+
+For a pre-existing untracked database, verify its schema manually and perform
+the one-time baseline with both flags below. Set the version to the last
+migration that is already present; pending migrations after that version will
+then be applied normally:
+
+```bash
+ALLOW_MIGRATION_BASELINE=true \
+MIGRATION_BASELINE_VERSION=0067_tenant_signup.sql \
+node runMigrations.js --baseline-existing
+```
+
+Do not baseline a database until the selected version has been verified. New
+databases should use the normal command and should not be baselined.
+
 ## 0037 — ON DELETE consistency fix
 
 Found while reviewing FK delete behavior: `appointment.patient_id`/`.doctor_id`

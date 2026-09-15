@@ -28,36 +28,36 @@ router.post(
   TenantPlanController.provisionWebhook,
 );
 
-// Internal provisioning remains available to the system owner/director and
+// Internal provisioning is a platform operation available only to the system owner and
 // does not use the public payment flow.
 router.post(
   "/admin-provision",
   protect,
-  requireRoles("SYSTEM_OWNER", "DIRECTOR"),
+  requireRoles("SYSTEM_OWNER"),
   provisionTenantValidator,
   TenantPlanController.provision,
 );
 
-// GET /api/tenants (System Owner / Director viewing all hospitals)
+// GET /api/tenants (System Owner viewing all hospitals)
 router.get(
   '/',
   protect,
-  requireRoles('SYSTEM_OWNER', 'DIRECTOR'),
+  requireRoles('SYSTEM_OWNER'),
   TenantPlanController.listTenants
 );
 
-// GET /api/tenants/:id (System Owner / Director viewing specific hospital)
+// GET /api/tenants/:id (System Owner viewing a specific hospital)
 router.get(
   '/:id',
   protect,
-  requireRoles('SYSTEM_OWNER', 'DIRECTOR'),
+  requireRoles('SYSTEM_OWNER'),
   TenantPlanController.getTenant
 );
 
 router.patch(
   '/:id/status', 
   protect, 
-  requireRoles('SYSTEM_OWNER', 'DIRECTOR'), 
+  requireRoles('SYSTEM_OWNER'),
   updateTenantStatusValidator,
   TenantPlanController.updateStatus
 );
@@ -65,7 +65,7 @@ router.patch(
 router.patch(
   '/:id/plan', 
   protect, 
-  requireRoles('SYSTEM_OWNER', 'DIRECTOR'), 
+  requireRoles('SYSTEM_OWNER'),
   updateTenantPlanValidator,
   TenantPlanController.updatePlan
 );

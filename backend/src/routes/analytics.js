@@ -18,7 +18,7 @@ router.get(
 
 router.get(
   "/platform",
-  requireRoles("SYSTEM_OWNER", "DIRECTOR"), 
+  requireRoles("SYSTEM_OWNER"),
   AnalyticsController.getPlatformStats);
 
 export default router;

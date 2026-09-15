@@ -3,8 +3,8 @@ import { queryAcrossTenants } from '../config/systemOwnerRawClient.js';
 export class TenantPlanRepository {
 
   // PLANS
-  static async createPlan(data) {
-    return await db.plan.create({
+  static async createPlan(data, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.plan.create({
       data: {
         name: data.name,
         public: data.public ?? false,
@@ -15,14 +15,14 @@ export class TenantPlanRepository {
         limits: data.limits || undefined,
         status: data.status || 'active',
       },
-    });
+    }));
   }
 
-  static async findActivePlans() {
-    return await db.plan.findMany({
+  static async findActivePlans(userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.plan.findMany({
       where: { status: 'active' },
       orderBy: { created_at: 'asc' },
-    });
+    }));
   }
 
   static async findPublicPlans() {
@@ -38,9 +38,15 @@ export class TenantPlanRepository {
     });
   }
 
+  static async findPlanByIdAcrossTenants(planId, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.plan.findUnique({
+      where: { plan_id: planId },
+    }));
+  }
+
   // TENANTS
-  static async createTenantTransaction(tenantData, adminUserData, adminRoleId) {
-    return await db.$transaction(async (prisma) => {
+  static async createTenantTransaction(tenantData, adminUserData, adminRoleId, userRole) {
+    const provision = async (prisma) => {
       const tenant = await prisma.tenant.create({
         data: {
           name: tenantData.name,
@@ -68,7 +74,11 @@ export class TenantPlanRepository {
       });
 
       return { tenant, adminUser };
-    });
+    };
+
+    return userRole === 'SYSTEM_OWNER'
+      ? queryAcrossTenants(userRole, (prisma) => prisma.$transaction(provision))
+      : db.$transaction(provision);
   }
 
   static async findPendingSignupBySlug(slug) {
@@ -107,6 +117,7 @@ export class TenantPlanRepository {
     signupId,
     adminRoleId,
     razorpayPaymentId,
+    razorpaySubscriptionId,
     paymentSignature,
     paidAt,
   }) {
@@ -126,7 +137,11 @@ export class TenantPlanRepository {
         const adminUser = await tx.users.findFirst({
           where: { tenant_id: lockedSignup.tenant_id, email: lockedSignup.admin_email },
         });
-        return { tenant, adminUser, alreadyProvisioned: true };
+        const subscription = await tx.tenant_subscription.findFirst({
+          where: { tenant_id: lockedSignup.tenant_id },
+          orderBy: { created_at: 'desc' },
+        });
+        return { tenant, adminUser, subscription, alreadyProvisioned: true };
       }
 
       const tenant = await tx.tenant.create({
@@ -153,6 +168,26 @@ export class TenantPlanRepository {
         },
       });
 
+      const periodStart = paidAt || new Date();
+      const periodEnd = new Date(periodStart);
+      if (lockedSignup.billing_period === 'yearly') {
+        periodEnd.setUTCFullYear(periodEnd.getUTCFullYear() + 1);
+      } else {
+        periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1);
+      }
+
+      const subscription = await tx.tenant_subscription.create({
+        data: {
+          tenant_id: tenant.tenant_id,
+          plan_id: lockedSignup.plan_id,
+          razorpay_subscription_id: razorpaySubscriptionId || null,
+          billing_period: lockedSignup.billing_period,
+          status: 'active',
+          current_period_start: periodStart,
+          current_period_end: periodEnd,
+        },
+      });
+
       await tx.tenant_signup.update({
         where: { signup_id: signupId },
         data: {
@@ -165,7 +200,7 @@ export class TenantPlanRepository {
         },
       });
 
-      return { tenant, adminUser, alreadyProvisioned: false };
+      return { tenant, adminUser, subscription, alreadyProvisioned: false };
     });
   }
 
@@ -199,6 +234,15 @@ export class TenantPlanRepository {
     });
   }
 
+  static async findTenantByIdAcrossTenants(tenantId, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.tenant.findUnique({
+      where: { tenant_id: tenantId },
+      include: {
+        plan: { select: { plan_id: true, name: true, limits: true } },
+      },
+    }));
+  }
+
   // PLAN REQUESTS
   // (mounted, live, under /api/plan-requests) has been broken in exactly
   // the same "wrong accessor name" way as appointmentRepository.js's
@@ -228,6 +272,29 @@ export class TenantPlanRepository {
         },
       },
     });
+  }
+
+  static async reviewPlanRequestAcrossTenants({ requestId, status, userRole }) {
+    return queryAcrossTenants(userRole, async (prisma) => prisma.$transaction(async (tx) => {
+      const request = await tx.plan_request.findUnique({
+        where: { plan_request_id: requestId },
+        include: { plan: { select: { name: true } }, tenant: { select: { name: true, slug: true } } },
+      });
+      if (!request) return null;
+
+      if (status === 'approved') {
+        await tx.tenant.update({
+          where: { tenant_id: request.tenant_id },
+          data: { plan_id: request.plan_id, updated_at: new Date() },
+        });
+      }
+
+      const updatedRequest = await tx.plan_request.update({
+        where: { plan_request_id: requestId },
+        data: { status, updated_at: new Date() },
+      });
+      return { request, updatedRequest };
+    }));
   }
 
   static async updatePlanRequestStatus(requestId, status) {
@@ -260,8 +327,8 @@ export class TenantPlanRepository {
   });
 }
 
-  static async findTenantsPaginated({ skip, take }) {
-    return await db.$transaction(async (tx) => {
+  static async findTenantsPaginated({ userRole, skip, take }) {
+    return queryAcrossTenants(userRole, async (prisma) => prisma.$transaction(async (tx) => {
       const [total, tenants] = await Promise.all([
         tx.tenant.count(),
         tx.tenant.findMany({
@@ -272,28 +339,20 @@ export class TenantPlanRepository {
         }),
       ]);
       return [total, tenants];
-    });
+    }));
   }
 
-  static async getTenantById({ tenantId }) {
-    const tenant = await TenantPlanRepository.findTenantById(tenantId);
-    if (!tenant) {
-      throw new AppError('Tenant not found.', HTTP_STATUS.NOT_FOUND);
-    }
-    return tenant;
-  }
-
-  static async updateTenantStatus(tenantId, status) {
-    return await db.tenant.update({
+  static async updateTenantStatus(tenantId, status, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.tenant.update({
       where: { tenant_id: tenantId },
       data: { status, updated_at: new Date() }
-    });
+    }));
   }
 
-  static async updateTenantPlan(tenantId, planId) {
-    return await db.tenant.update({
+  static async updateTenantPlan(tenantId, planId, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.tenant.update({
       where: { tenant_id: tenantId },
       data: { plan_id: planId, updated_at: new Date() }
-    });
+    }));
   }
 }

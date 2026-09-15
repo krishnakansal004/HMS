@@ -31,6 +31,7 @@ export class PaymentController {
       } = req.body;
 
       const payment = await PaymentService.verifyPaymentWebhook({
+        tenantId: req.currentTenantId,
         invoiceId,
         gatewayPaymentId,
         razorpayOrderId,

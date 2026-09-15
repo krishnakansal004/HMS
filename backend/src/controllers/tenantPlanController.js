@@ -6,6 +6,7 @@ export class TenantPlanController {
     try {
       const plan = await TenantPlanService.createPlan({
         userId: req.userId,
+        userRole: req.userRole,
         ...req.body,
         ipAddress: req.ip,
       });
@@ -22,7 +23,7 @@ export class TenantPlanController {
 
   static async listPlans(req, res, next) {
     try {
-      const plans = await TenantPlanService.listPlans();
+      const plans = await TenantPlanService.listPlans({ userRole: req.userRole });
       res.status(HTTP_STATUS.OK).json({
         success: true,
         data: plans,
@@ -45,6 +46,7 @@ export class TenantPlanController {
     try {
       const result = await TenantPlanService.provisionHospitalTenant({
         ...req.body,
+        userRole: req.userRole,
         ipAddress: req.ip,
       });
 
@@ -128,6 +130,7 @@ export class TenantPlanController {
     try {
       const request = await TenantPlanService.reviewPlanRequest({
         userId: req.userId,
+        userRole: req.userRole,
         requestId: req.params.id,
         status: req.body.status,
         ipAddress: req.ip,
@@ -161,7 +164,7 @@ export class TenantPlanController {
 
   static async listTenants(req, res, next) {
     try {
-      const result = await TenantPlanService.listTenants({ query: req.query });
+      const result = await TenantPlanService.listTenants({ userRole: req.userRole, query: req.query });
       res.status(HTTP_STATUS.OK).json({ success: true, ...result });
     } catch (error) {
       next(error);
@@ -170,7 +173,7 @@ export class TenantPlanController {
 
   static async getTenant(req, res, next) {
     try {
-      const tenant = await TenantPlanService.getTenantById({ tenantId: req.params.id });
+      const tenant = await TenantPlanService.getTenantById({ tenantId: req.params.id, userRole: req.userRole });
       res.status(HTTP_STATUS.OK).json({ success: true, data: tenant });
     } catch (error) {
       next(error);
@@ -181,6 +184,7 @@ export class TenantPlanController {
     try {
       const tenant = await TenantPlanService.updateTenantStatus({
         userId: req.userId,
+        userRole: req.userRole,
         tenantId: req.params.id,
         status: req.body.status,
         ipAddress: req.ip,
@@ -199,6 +203,7 @@ export class TenantPlanController {
     try {
       const tenant = await TenantPlanService.updateTenantPlan({
         userId: req.userId,
+        userRole: req.userRole,
         tenantId: req.params.id,
         planId: req.body.planId,
         ipAddress: req.ip,

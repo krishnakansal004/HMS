@@ -13,9 +13,9 @@ const startServer = async () => {
       logger.info(`[SERVER] Hospital Management System running on port ${env.port} in [${env.nodeEnv}] mode.`);
     });
 
-    // Graceful Shutdown handling
+    // Shutdown handling
     const shutdown = async (signal) => {
-      logger.warn(`[SERVER] Received ${signal}. Starting graceful shutdown...`);
+      logger.warn(`[SERVER] Received ${signal}. Starting shutdown...`);
       server.close(async () => {
         await disconnectDB();
         logger.info('[SERVER] Closed out remaining connections. Process terminated.');

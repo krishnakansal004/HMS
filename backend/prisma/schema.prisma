@@ -729,6 +729,7 @@ model payment {
   tenant  tenant  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([invoice_id], map: "idx_payment_invoice")
+  @@index([transaction_id], map: "idx_payment_transaction_id")
   @@index([tenant_id], map: "idx_payment_tenant")
   @@index([tenant_id], map: "idx_payment_tenant_active", where: raw("(deleted_at IS NULL)"))
 }
@@ -787,6 +788,7 @@ model plan {
   plan_role_feature plan_role_feature[]
   tenant            tenant[]
   tenant_signup     tenant_signup[]
+  tenant_subscription tenant_subscription[]
 }
 
 model plan_receipt {
@@ -1191,6 +1193,7 @@ model tenant {
   plan                  plan?                   @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "fk_tenant_plan")
   users                 users[]
   tenant_signup         tenant_signup[]
+  tenant_subscription   tenant_subscription[]
   ward                  ward[]
 
   @@index([plan_id], map: "idx_tenant_plan")
@@ -1223,6 +1226,26 @@ model tenant_signup {
   @@index([slug, status], map: "idx_tenant_signup_slug_status")
   @@index([admin_email, status], map: "idx_tenant_signup_email_status")
   @@index([expires_at], map: "idx_tenant_signup_expires")
+}
+
+model tenant_subscription {
+  subscription_id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                String    @db.Uuid
+  plan_id                  String    @db.Uuid
+  razorpay_subscription_id String?   @unique @db.VarChar(255)
+  billing_period           String    @db.VarChar(20)
+  status                   String    @default("pending") @db.VarChar(30)
+  current_period_start     DateTime? @db.Timestamptz(6)
+  current_period_end       DateTime? @db.Timestamptz(6)
+  cancel_at_period_end     Boolean   @default(false)
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime  @default(now()) @db.Timestamptz(6)
+
+  plan   plan   @relation(fields: [plan_id], references: [plan_id], onDelete: Restrict, onUpdate: NoAction, map: "fk_tenant_subscription_plan")
+  tenant tenant @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_tenant_subscription_tenant")
+
+  @@index([tenant_id, status], map: "idx_tenant_subscription_tenant_status")
+  @@index([current_period_end], map: "idx_tenant_subscription_period_end")
 }
 
 model user_permission_override {
