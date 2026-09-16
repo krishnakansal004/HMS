@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Stethoscope } from 'lucide-react';
+import { scrollToSection } from '../../../utils/scrollToSection.js';
 
 export default function LandingFooter() {
   return (
@@ -16,9 +17,9 @@ export default function LandingFooter() {
         </div>
 
         <div className="flex items-center gap-6 text-sm text-[var(--color-ink-soft)]">
-          <a href="#features" className="hover:text-[var(--color-ink)] transition-colors">Features</a>
-          <a href="#plans" className="hover:text-[var(--color-ink)] transition-colors">Plans</a>
-          <a href="#contact" className="hover:text-[var(--color-ink)] transition-colors">Contact</a>
+          <button type="button" onClick={() => scrollToSection('features')} className="bg-transparent p-0 hover:text-[var(--color-ink)] transition-colors">Features</button>
+          <button type="button" onClick={() => scrollToSection('plans')} className="bg-transparent p-0 hover:text-[var(--color-ink)] transition-colors">Plans</button>
+          <button type="button" onClick={() => scrollToSection('contact')} className="bg-transparent p-0 hover:text-[var(--color-ink)] transition-colors">Contact</button>
           <Link to="/login" className="hover:text-[var(--color-ink)] transition-colors">Sign in</Link>
         </div>
       </div>

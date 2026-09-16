@@ -7,11 +7,13 @@ import {
 } from "../validators/doctorAttendanceValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
 
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("hrms"));
 
 // A doctor checks themselves in/out by default (targetUserId omitted).
 // HOSPITAL_ADMIN/HR can act for another doctor -- enforced in the service,

@@ -21,6 +21,26 @@ export class TenantPlanController {
     }
   }
 
+  static async updateSubscriptionPlan(req, res, next) {
+    try {
+      const plan = await TenantPlanService.updatePlan({
+        planId: req.params.id,
+        userId: req.userId,
+        userRole: req.userRole,
+        ...req.body,
+        ipAddress: req.ip,
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Subscription plan updated successfully",
+        data: plan,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async listPlans(req, res, next) {
     try {
       const plans = await TenantPlanService.listPlans({ userRole: req.userRole });

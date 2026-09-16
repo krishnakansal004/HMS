@@ -15,16 +15,18 @@ const TONES = {
 };
 
 const STATUS_TONE_MAP = {
+  // Shared statuses are declared once and reused across modules.
+  pending: 'warning', cancelled: 'danger', in_progress: 'accent',
   // appointments — lowercase, matching chk_appointment_status
-  confirmed: 'primary', checked_in: 'accent', in_progress: 'accent', no_show: 'danger',
+  confirmed: 'primary', checked_in: 'accent', no_show: 'danger',
   // admissions — lowercase, matching chk_admission_status
   admitted: 'primary', discharged: 'success', transferred: 'accent',
   // invoices
-  draft: 'neutral', pending: 'warning', partial: 'accent', paid: 'success', cancelled: 'danger',
+  draft: 'neutral', partial: 'accent', paid: 'success',
   // lab 
-  pending: 'warning', collected: 'accent', in_lab: 'accent', ordered: 'warning',
+  collected: 'accent', in_lab: 'accent', ordered: 'warning',
   // radiology
-  scheduled: 'accent', in_progress: 'accent', completed: 'success', cancelled: 'danger',
+  scheduled: 'accent', completed: 'success',
   // insurance claims
   submitted: 'warning', under_review: 'accent', approved: 'success', rejected: 'danger', settled: 'success',
   // purchases

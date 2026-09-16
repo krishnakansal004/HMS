@@ -2,6 +2,7 @@ import express from "express";
 import { PayrollController } from "../controllers/payrollController.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 import {
   adjustmentValidator,
   compensationValidator,
@@ -13,6 +14,7 @@ import {
 
 const router = express.Router();
 router.use(protect, requireTenant);
+router.use(requirePlanFeature("payroll"));
 
 router.get("/compensation", requireRoles("HOSPITAL_ADMIN", "HR"), PayrollController.listCompensation);
 router.put("/compensation/:userId", requireRoles("HOSPITAL_ADMIN"), compensationValidator, PayrollController.setCompensation);

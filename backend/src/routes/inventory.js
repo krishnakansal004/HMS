@@ -8,12 +8,14 @@ import {
 } from "../validators/inventoryValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
 
 // Secure all inventory routes
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("inventory"));
 
 // POST /api/inventory/medicines
 // Who: Hospital Admin, Pharmacist, Store Manager

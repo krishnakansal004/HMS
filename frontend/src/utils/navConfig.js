@@ -74,6 +74,7 @@ export const NAV_ITEMS = [
     label: 'Laboratory',
     to: '/lab',
     icon: FlaskConical,
+    feature: 'lab_radiology',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.LAB_TECHNICIAN, ROLES.RECEPTIONIST],
   },
   {
@@ -81,6 +82,7 @@ export const NAV_ITEMS = [
     label: 'Radiology',
     to: '/radiology',
     icon: Scan,
+    feature: 'lab_radiology',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.DOCTOR, ROLES.RADIOLOGY_TECHNICIAN, ROLES.RECEPTIONIST],
   },
   {
@@ -88,6 +90,7 @@ export const NAV_ITEMS = [
     label: 'Pharmacy Inventory',
     to: '/inventory',
     icon: Pill,
+    feature: 'inventory',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.PHARMACIST, ROLES.STORE_MANAGER, ROLES.NURSE, ROLES.DOCTOR],
   },
   {
@@ -95,6 +98,7 @@ export const NAV_ITEMS = [
     label: 'Purchases',
     to: '/purchases',
     icon: Truck,
+    feature: 'inventory',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.STORE_MANAGER, ROLES.ACCOUNTANT],
   },
   {
@@ -102,6 +106,7 @@ export const NAV_ITEMS = [
     label: 'Billing',
     to: '/invoices',
     icon: Receipt,
+    feature: 'billing',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.CASHIER, ROLES.RECEPTIONIST, ROLES.DOCTOR],
   },
   {
@@ -109,6 +114,7 @@ export const NAV_ITEMS = [
     label: 'Insurance Claims',
     to: '/insurance',
     icon: ShieldCheck,
+    feature: 'billing',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.RECEPTIONIST, ROLES.DOCTOR],
   },
   {
@@ -116,6 +122,7 @@ export const NAV_ITEMS = [
     label: 'Expenses',
     to: '/expenses',
     icon: Wallet,
+    feature: 'billing',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.ACCOUNTANT, ROLES.HR],
   },
   {
@@ -123,6 +130,7 @@ export const NAV_ITEMS = [
     label: 'Attendance',
     to: '/attendance',
     icon: Clock,
+    feature: 'hrms',
     roles: [ROLES.HOSPITAL_ADMIN, ROLES.HR, ROLES.DOCTOR, ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.PHARMACIST, ROLES.LAB_TECHNICIAN],
   },
   {
@@ -158,6 +166,7 @@ export const NAV_ITEMS = [
   label: 'HRMS & Staff',
   to: '/hrms',
   icon: Users, 
+  feature: 'hrms',
   roles: [ROLES.HOSPITAL_ADMIN, ROLES.HR, ROLES.DIRECTOR],
 },
 { 
@@ -165,10 +174,18 @@ export const NAV_ITEMS = [
   label: 'Doctor Attendance', 
   icon: CalendarClock, 
   to: '/doctor-attendance', 
+  feature: 'hrms',
   roles: ['HOSPITAL_ADMIN', 'HR', 'DIRECTOR', 'DOCTOR'] 
 },
 ];
 
-export function navForRole(role) {
-  return NAV_ITEMS.filter((item) => item.roles === null || item.roles.includes(role));
+export function navForRole(role, planFeatures = null) {
+  return NAV_ITEMS.filter((item) => {
+    const roleAllowed = item.roles === null || item.roles.includes(role);
+    // Paid modules stay hidden until the signed-in tenant has an explicit
+    // entitlement. This mirrors backend fail-closed enforcement and avoids
+    // dashboard widgets calling APIs that the tenant cannot use.
+    const featureAllowed = !item.feature || planFeatures?.[item.feature] === true;
+    return roleAllowed && featureAllowed;
+  });
 }

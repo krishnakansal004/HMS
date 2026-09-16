@@ -6,12 +6,14 @@ import {
 } from "../validators/attendanceValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
 
 // All routes require valid JWT and Tenant context
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("hrms"));
 
 // POST /api/attendance/check-in
 // Who: Any hospital staff member marking their own attendance, or HR marking for someone else.

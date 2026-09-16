@@ -2,6 +2,7 @@ import express from "express";
 import { HrmsController } from "../controllers/hrmsController.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 import {
   applyLeaveValidator,
   reviewLeaveValidator,
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("hrms"));
 
 // Any authenticated staff member can apply for their own leave.
 // HOSPITAL_ADMIN/HR can apply on someone else's behalf (enforced in the

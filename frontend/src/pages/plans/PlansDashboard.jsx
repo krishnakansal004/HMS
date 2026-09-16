@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Building2, Server } from 'lucide-react';
+import { Plus, Building2, Server, Pencil } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { plansApi, planRequestsApi } from '../../api/plans.js';
 import Card from '../../components/ui/Card.jsx';
@@ -13,6 +13,7 @@ import ReviewRequestModal from './ReviewRequestModal.jsx';
 
 export default function PlansDashboard() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [reviewing, setReviewing] = useState(null);
 
   const { data: plansData, loading: plansLoading, error: plansError, refetch: refetchPlans } = useAsync(() => plansApi.list(), [], 'plans_list');
@@ -50,9 +51,10 @@ export default function PlansDashboard() {
                   </div>
                   <Server className="text-[var(--color-primary)] opacity-40" size={24} />
                 </div>
+                <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(plan)}>Edit entitlements</Button>
                 <div className="text-sm text-[var(--color-ink-soft)]">
-                  <p>Admins: <b>{plan.limits?.admins || 'Unlimited'}</b></p>
-                  <p>Doctors: <b>{plan.limits?.doctors || 'Unlimited'}</b></p>
+                  <p>Admins: <b>{plan.limits?.admins ?? 'Not specified'}</b></p>
+                  <p>Doctors: <b>{plan.limits?.doctors ?? 'Not specified'}</b></p>
                 </div>
                 <div className="mt-auto pt-4 border-t border-[var(--color-border)] font-mono-data text-sm font-medium">
                   ₹{plan.prices?.monthly || 0}/mo • ₹{plan.prices?.yearly || 0}/yr
@@ -101,6 +103,7 @@ export default function PlansDashboard() {
       </Card>
 
       <CreatePlanModal open={createOpen} onClose={() => setCreateOpen(false)} onSaved={handleSaved} />
+      <CreatePlanModal open={!!editing} plan={editing} onClose={() => setEditing(null)} onSaved={handleSaved} />
       <ReviewRequestModal open={!!reviewing} onClose={() => setReviewing(null)} onSaved={handleSaved} request={reviewing} />
     </div>
   );

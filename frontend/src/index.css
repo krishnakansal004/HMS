@@ -49,39 +49,39 @@
 }
 
 /*
-  Night shift palette: deep green-black surfaces, softened borders, and the
-  same teal/brass identity as daylight mode. It is intentionally not pure
-  black, so long clinical tables remain calm and readable.
+  Night shift palette: quiet graphite surfaces with a muted mineral blue
+  accent. It keeps long clinical tables calm without turning the workspace
+  into a saturated green dashboard.
 */
 .dark {
   color-scheme: dark;
 
-  --color-ink: #e8f0ec;
-  --color-ink-deep: #0a1211;
-  --color-ink-soft: #b3c3bd;
-  --color-ink-faint: #829791;
+  --color-ink: #edf1f3;
+  --color-ink-deep: #0c1014;
+  --color-ink-soft: #b7c1c9;
+  --color-ink-faint: #84909b;
 
-  --color-paper: #101918;
-  --color-surface: #182523;
-  --color-border: #2b3c39;
-  --color-border-strong: #405550;
+  --color-paper: #12171d;
+  --color-surface: #1a2027;
+  --color-border: #2b343e;
+  --color-border-strong: #414c58;
 
-  --color-primary: #489a8b;
-  --color-primary-hover: #82d4c4;
-  --color-primary-soft: #1b3d38;
-  --color-primary-ink: #bceee5;
+  --color-primary: #8fb8bb;
+  --color-primary-hover: #b7d6d5;
+  --color-primary-soft: #24363b;
+  --color-primary-ink: #dceff0;
 
-  --color-accent: #d7aa5c;
-  --color-accent-soft: #40351f;
+  --color-accent: #d6b57a;
+  --color-accent-soft: #3d3426;
 
-  --color-danger: #f08b7e;
-  --color-danger-soft: #422522;
-  --color-warning: #e2b75e;
-  --color-warning-soft: #41351d;
-  --color-success: #65d09a;
-  --color-success-soft: #1b3b2d;
-  --color-info: #79baf0;
-  --color-info-soft: #1c3447;
+  --color-danger: #ee9a90;
+  --color-danger-soft: #42282a;
+  --color-warning: #e3bd72;
+  --color-warning-soft: #40351f;
+  --color-success: #8cc9a4;
+  --color-success-soft: #203a2d;
+  --color-info: #89b8e3;
+  --color-info-soft: #203449;
 }
 
 html {
@@ -101,6 +101,10 @@ body {
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
+}
+
+section[id] {
+  scroll-margin-top: 5rem;
 }
 
 .font-mono-data {

@@ -97,11 +97,11 @@ export default function TenantDetails() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[var(--color-paper)] p-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">
                     <p className="text-xs text-[var(--color-ink-soft)] uppercase tracking-wide font-medium">Max Doctors</p>
-                    <p className="font-mono-data text-lg font-semibold text-[var(--color-ink)] mt-1">{limits.doctors || 'Unlimited'}</p>
+                    <p className="font-mono-data text-lg font-semibold text-[var(--color-ink)] mt-1">{limits.doctors ?? 'Not specified'}</p>
                   </div>
                   <div className="bg-[var(--color-paper)] p-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">
                     <p className="text-xs text-[var(--color-ink-soft)] uppercase tracking-wide font-medium">Max Inpatient Beds</p>
-                    <p className="font-mono-data text-lg font-semibold text-[var(--color-ink)] mt-1">{limits.beds || 'Unlimited'}</p>
+                    <p className="font-mono-data text-lg font-semibold text-[var(--color-ink)] mt-1">{limits.beds ?? 'Not specified'}</p>
                   </div>
                 </div>
               </div>

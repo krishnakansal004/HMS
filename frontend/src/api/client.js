@@ -49,11 +49,17 @@ export function setSessionHandlers({ onExpired, onRefreshed } = {}) {
 }
 
 export class ApiError extends Error {
-  constructor(message, { status, fieldErrors } = {}) {
+  constructor(message, { status, fieldErrors, code, upgrade, resource, feature, plan, limit } = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fieldErrors = fieldErrors || [];
+    this.code = code || null;
+    this.upgrade = upgrade || null;
+    this.resource = resource || null;
+    this.feature = feature || null;
+    this.plan = plan || null;
+    this.limit = limit ?? null;
   }
 }
 
@@ -167,7 +173,19 @@ export async function request(path, opts = {}) {
 
   if (!res.ok) {
     const message = payload?.message || `Request failed (${res.status})`;
-    throw new ApiError(message, { status: res.status, fieldErrors: payload?.errors });
+    if (payload?.upgrade?.available && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hms:upgrade-required', { detail: payload }));
+    }
+    throw new ApiError(message, {
+      status: res.status,
+      fieldErrors: payload?.errors,
+      code: payload?.code,
+      upgrade: payload?.upgrade,
+      resource: payload?.resource,
+      feature: payload?.feature,
+      plan: payload?.plan,
+      limit: payload?.limit,
+    });
   }
 
   return payload;

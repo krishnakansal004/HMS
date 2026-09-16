@@ -7,11 +7,20 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import { env } from "../config/env.js";
+import { getMissingPlanContractFields, hasCompletePlanContract, normalizePlanLimits } from "../config/planEntitlements.js";
 
 export class TenantPlanService {
   static getPublicPlanAmount(plan, billingPeriod = "monthly") {
     const prices = plan?.prices && typeof plan.prices === "object" ? plan.prices : {};
-    const rawAmount = prices[billingPeriod] ?? (billingPeriod === "yearly" ? prices.monthly : 0);
+    const monthly = Number(prices.monthly || 0);
+    const yearly = Number(prices.yearly ?? monthly * 12);
+    const fallbackAmounts = {
+      monthly,
+      '3months': monthly * 3,
+      yearly,
+      '5years': yearly * 5,
+    };
+    const rawAmount = prices[billingPeriod] ?? fallbackAmounts[billingPeriod];
     const amount = Number(rawAmount || 0);
     if (!Number.isFinite(amount) || amount < 0) {
       throw new AppError("Selected plan has invalid pricing.", HTTP_STATUS.BAD_REQUEST);
@@ -40,7 +49,7 @@ export class TenantPlanService {
     ipAddress,
   }) {
     const plan = await TenantPlanRepository.findPlanById(planId);
-    if (!plan || plan.status !== "active" || !plan.public) {
+    if (!plan || plan.status !== "active" || !plan.public || !hasCompletePlanContract(plan)) {
       throw new AppError("Selected plan is not available for public signup.", HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -247,6 +256,15 @@ export class TenantPlanService {
     limits,
     ipAddress,
   }) {
+    const missingFields = getMissingPlanContractFields(limits);
+    if (missingFields.length > 0) {
+      throw new AppError(
+        `Every plan must explicitly define these limits and entitlements: ${missingFields.join(', ')}.`,
+        HTTP_STATUS.BAD_REQUEST,
+      );
+    }
+    const normalizedLimits = normalizePlanLimits(limits);
+
     const plan = await TenantPlanRepository.createPlan({
       name,
       public: publicFlag || false,
@@ -254,7 +272,7 @@ export class TenantPlanService {
       access_code: accessCode || null,
       durations: durations ? JSON.parse(JSON.stringify(durations)) : undefined,
       prices: prices ? JSON.parse(JSON.stringify(prices)) : undefined,
-      limits: limits ? JSON.parse(JSON.stringify(limits)) : undefined,
+      limits: JSON.parse(JSON.stringify(normalizedLimits)),
       status: "active",
     }, userRole);
 
@@ -264,7 +282,61 @@ export class TenantPlanService {
       action: "CREATE_SUBSCRIPTION_PLAN",
       entityType: "PLAN",
       entityId: plan.plan_id,
-      newValue: { name, limits },
+      newValue: { name, limits: normalizedLimits },
+      ipAddress,
+    });
+
+    return plan;
+  }
+
+  static async updatePlan({
+    planId,
+    userRole,
+    userId,
+    name,
+    publicFlag,
+    customized,
+    accessCode,
+    durations,
+    prices,
+    limits,
+    status,
+    ipAddress,
+  }) {
+    const missingFields = getMissingPlanContractFields(limits);
+    if (missingFields.length > 0) {
+      throw new AppError(
+        `Every plan must explicitly define these limits and entitlements: ${missingFields.join(', ')}.`,
+        HTTP_STATUS.BAD_REQUEST,
+      );
+    }
+    const normalizedLimits = normalizePlanLimits(limits);
+
+    const existing = await TenantPlanRepository.findPlanByIdAcrossTenants(planId, userRole);
+    if (!existing) throw new AppError('Plan not found.', HTTP_STATUS.NOT_FOUND);
+
+    const updateData = {
+      limits: JSON.parse(JSON.stringify(normalizedLimits)),
+      updated_at: new Date(),
+    };
+    if (name !== undefined) updateData.name = name;
+    if (publicFlag !== undefined) updateData.public = publicFlag;
+    if (customized !== undefined) updateData.customized = customized;
+    if (accessCode !== undefined) updateData.access_code = accessCode || null;
+    if (durations !== undefined) updateData.durations = durations ? JSON.parse(JSON.stringify(durations)) : null;
+    if (prices !== undefined) updateData.prices = prices ? JSON.parse(JSON.stringify(prices)) : null;
+    if (status !== undefined) updateData.status = status;
+
+    const plan = await TenantPlanRepository.updatePlan(planId, updateData, userRole);
+
+    AuditService.logAction({
+      tenantId: null,
+      userId,
+      action: "UPDATE_SUBSCRIPTION_PLAN",
+      entityType: "PLAN",
+      entityId: plan.plan_id,
+      oldValue: { name: existing.name, limits: existing.limits },
+      newValue: { name: plan.name, limits: normalizedLimits },
       ipAddress,
     });
 
@@ -276,7 +348,10 @@ export class TenantPlanService {
   }
 
   static async listPublicPlans() {
-    return TenantPlanRepository.findPublicPlans();
+    const plans = await TenantPlanRepository.findPublicPlans();
+    // An incomplete plan is an internal configuration issue, not a public
+    // pricing tier. Never advertise guessed limits or implicit access.
+    return plans.filter(hasCompletePlanContract);
   }
 
   static async updateTenantStatus({ userId, userRole, tenantId, status, ipAddress }) {
@@ -306,7 +381,7 @@ export class TenantPlanService {
 
   static async updateTenantPlan({ userId, userRole, tenantId, planId, ipAddress }) {
     const plan = await TenantPlanRepository.findPlanByIdAcrossTenants(planId, userRole);
-    if (!plan || plan.status !== "active") {
+    if (!plan || plan.status !== "active" || !hasCompletePlanContract(plan)) {
       throw new AppError("Selected plan is invalid or inactive.", HTTP_STATUS.BAD_REQUEST);
     }
     
@@ -341,7 +416,7 @@ export class TenantPlanService {
   }) {
     // Verify Plan exists
     const plan = await TenantPlanRepository.findPlanById(planId);
-    if (!plan || plan.status !== "active") {
+    if (!plan || plan.status !== "active" || !hasCompletePlanContract(plan)) {
       throw new AppError(
         "Selected subscription plan is invalid or inactive.",
         HTTP_STATUS.BAD_REQUEST,
@@ -407,12 +482,11 @@ export class TenantPlanService {
     userId,
     planId,
     period,
-    requestedAmount,
     accessCode,
     ipAddress,
   }) {
     const plan = await TenantPlanRepository.findPlanById(planId);
-    if (!plan || plan.status !== "active") {
+    if (!plan || plan.status !== "active" || !hasCompletePlanContract(plan) || (!plan.public && !plan.customized)) {
       throw new AppError("Target plan not found.", HTTP_STATUS.NOT_FOUND);
     }
 
@@ -426,9 +500,9 @@ export class TenantPlanService {
       }
     }
 
-    const formattedAmount = requestedAmount
-      ? Math.round(Number(requestedAmount) * 100)
-      : 0;
+    // The browser may display a price, but it must never decide what a plan
+    // request is worth. Keep the stored amount server-authoritative.
+    const formattedAmount = this.getPublicPlanAmount(plan, period || 'monthly');
 
     const request = await TenantPlanRepository.createPlanRequest(
       tenantId,

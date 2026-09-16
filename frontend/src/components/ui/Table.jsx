@@ -60,11 +60,16 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
 }
 
 export function ErrorState({ message, onRetry }) {
+  const planRestricted = /not included in your|has reached its .* limit|subscription needs attention/i.test(String(message || ''));
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-14 text-center px-6">
-      <p className="font-medium text-[var(--color-danger)] text-sm">Something went wrong</p>
+      <p className={`font-medium text-sm ${planRestricted ? 'text-[var(--color-primary)]' : 'text-[var(--color-danger)]'}`}>
+        {planRestricted ? 'Available with an upgraded plan' : 'Something went wrong'}
+      </p>
       <p className="text-xs text-[var(--color-ink-soft)] max-w-sm">{message}</p>
-      {onRetry && (
+      {planRestricted ? (
+        <p className="mt-1 text-xs text-[var(--color-ink-faint)]">Hospital administrators can use Upgrade plan to view available options.</p>
+      ) : onRetry && (
         <button onClick={onRetry} className="mt-2 text-xs font-medium text-[var(--color-primary)] hover:underline">
           Try again
         </button>

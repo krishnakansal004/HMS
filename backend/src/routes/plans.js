@@ -1,6 +1,6 @@
 import express from "express";
 import { TenantPlanController } from "../controllers/tenantPlanController.js";
-import { createPlanValidator } from "../validators/tenantPlanValidator.js";
+import { createPlanValidator, updatePlanValidator } from "../validators/tenantPlanValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -18,6 +18,15 @@ router.post(
   requireRoles("SYSTEM_OWNER"),
   createPlanValidator,
   TenantPlanController.createPlan,
+);
+
+// PATCH /api/plans/:id (System Owner only)
+router.patch(
+  "/:id",
+  protect,
+  requireRoles("SYSTEM_OWNER"),
+  updatePlanValidator,
+  TenantPlanController.updateSubscriptionPlan,
 );
 
 export default router;

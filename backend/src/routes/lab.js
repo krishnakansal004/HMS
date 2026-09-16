@@ -8,11 +8,13 @@ import {
 } from "../validators/labValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
 
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("lab_radiology"));
 
 // POST /api/lab/catalog
 // Who: Hospital Admin, Pathologist

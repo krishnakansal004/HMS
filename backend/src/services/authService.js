@@ -171,6 +171,9 @@ export class AuthService {
         role: user.role.name,
         tenantSlug: user.tenant?.slug || null,
         tenantName: user.tenant?.name || null,
+        planId: user.tenant?.plan?.plan_id || null,
+        planName: user.tenant?.plan?.name || null,
+        planFeatures: user.tenant?.plan?.limits?.features || null,
         mustChangePassword: user.must_change_password,
       },
     };
@@ -257,6 +260,9 @@ export class AuthService {
         role: user.role.name,
         tenantSlug: user.tenant?.slug || null,
         tenantName: user.tenant?.name || null,
+        planId: user.tenant?.plan?.plan_id || null,
+        planName: user.tenant?.plan?.name || null,
+        planFeatures: user.tenant?.plan?.limits?.features || null,
         mustChangePassword: user.must_change_password,
       },
     };

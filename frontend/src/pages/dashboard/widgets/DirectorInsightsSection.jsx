@@ -14,8 +14,8 @@ import { StatCard } from '../shared.jsx';
  * full clinical view elsewhere, and System Owner gets the cross-tenant
  * platform view instead (see SystemOwnerPlatformSection).
  */
-export default function DirectorInsightsSection({ role }) {
-  const enabled = role === 'DIRECTOR';
+export default function DirectorInsightsSection({ role, planFeatures }) {
+  const enabled = role === 'DIRECTOR' && planFeatures?.advanced_analytics === true;
 
   const stats = useAsync(
     () => (enabled ? dashboardApi.getStats() : Promise.resolve(null)),

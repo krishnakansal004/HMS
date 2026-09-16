@@ -7,6 +7,7 @@ export const plansApi = {
   publicList: () => api.get('/plans/public'),
   /** @param {{name:string, publicFlag?:boolean, customized?:boolean, accessCode?:string, durations?:any[], prices?:object, limits?:object}} data */
   create: (data) => api.post('/plans', data),
+  update: (id, data) => api.patch(`/plans/${id}`, data),
 };
 
 export const tenantsApi = {
@@ -24,7 +25,7 @@ export const tenantsApi = {
 };
 
 export const planRequestsApi = {
-  /** @param {{planId:string, period?:'monthly'|'3months'|'yearly'|'5years', requestedAmount?:number, accessCode?:string}} data */
+  /** @param {{planId:string, period?:'monthly'|'3months'|'yearly'|'5years', accessCode?:string}} data */
   create: (data) => api.post('/plan-requests', data),
   list: () => api.get('/plan-requests'),
   /** @param {'approved'|'rejected'} status */

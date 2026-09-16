@@ -18,6 +18,13 @@ export class TenantPlanRepository {
     }));
   }
 
+  static async updatePlan(planId, data, userRole) {
+    return queryAcrossTenants(userRole, async (tx) => tx.plan.update({
+      where: { plan_id: planId },
+      data,
+    }));
+  }
+
   static async findActivePlans(userRole) {
     return queryAcrossTenants(userRole, async (tx) => tx.plan.findMany({
       where: { status: 'active' },

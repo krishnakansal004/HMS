@@ -16,7 +16,7 @@ export class UserRepository {
   static async findUserById(userId) {
     return db.users.findUnique({
       where: { user_id: userId },
-      include: { role: true, tenant: true },
+      include: { role: true, tenant: { include: { plan: true } } },
     });
   }
 

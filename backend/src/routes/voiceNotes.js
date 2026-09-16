@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 import { VoiceNoteController } from "../controllers/voiceNoteController.js";
 import {
   listVoiceNotesValidator,
@@ -20,6 +21,7 @@ const upload = multer({
 
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("voice_notes"));
 
 router.post(
   "/",

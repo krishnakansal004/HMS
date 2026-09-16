@@ -9,6 +9,7 @@ import {
 } from "../validators/patientValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { enforcePlanLimit } from "../utils/saas.js";
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use(requireTenant);
 router.post(
   "/",
   requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "DOCTOR", "NURSE"),
+  enforcePlanLimit("patient"),
   registerPatientValidator,
   PatientController.register,
 );

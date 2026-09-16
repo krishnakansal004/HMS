@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Layers, Plus } from 'lucide-react';
+import { Building2, Layers, Plus, Pencil } from 'lucide-react';
 import { useAsync } from '../../hooks/useAsync.js';
 import { plansApi, tenantsApi } from '../../api/plans.js';
 import Card, { CardHeader, CardBody } from '../../components/ui/Card.jsx';
@@ -17,6 +17,7 @@ export default function SystemOwnerDashboard() {
   const [activeTab, setActiveTab] = useState('tenants');
   const [tenantModalOpen, setTenantModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
 
   // Fetch Live Data from Backend API
   const plansQuery = useAsync(() => plansApi.list(), [], 'plans_list');
@@ -124,8 +125,8 @@ export default function SystemOwnerDashboard() {
                         <span className="text-sm text-[var(--color-ink-soft)]">/mo</span>
                       </div>
                       <div className="text-sm text-[var(--color-ink-soft)] space-y-1">
-                        <p>Doctors limit: <strong className="text-[var(--color-ink)]">{plan.limits?.doctors || 'Unlimited'}</strong></p>
-                        <p>Beds limit: <strong className="text-[var(--color-ink)]">{plan.limits?.beds || 'Unlimited'}</strong></p>
+                        <p>Doctors limit: <strong className="text-[var(--color-ink)]">{plan.limits?.doctors ?? 'Not specified'}</strong></p>
+                        <p>Beds limit: <strong className="text-[var(--color-ink)]">{plan.limits?.beds ?? 'Not specified'}</strong></p>
                       </div>
                     </div>
                     
@@ -140,6 +141,7 @@ export default function SystemOwnerDashboard() {
                           Custom
                         </span>
                       )}
+                      <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditingPlan(plan)}>Edit</Button>
                     </div>
                   </div>
                 ))}
@@ -164,14 +166,20 @@ export default function SystemOwnerDashboard() {
       <CreateTenantModal 
         open={tenantModalOpen} 
         onClose={() => setTenantModalOpen(false)} 
-        onClick={tenantsQuery.refetch} 
+        onSaved={tenantsQuery.refetch}
         plans={plans} 
       />
       
       <CreatePlanModal 
         open={planModalOpen} 
         onClose={() => setPlanModalOpen(false)} 
-        onClick={plansQuery.refrefetch} 
+        onSaved={plansQuery.refetch}
+      />
+      <CreatePlanModal
+        open={!!editingPlan}
+        plan={editingPlan}
+        onClose={() => setEditingPlan(null)}
+        onSaved={plansQuery.refetch}
       />
     </div>
   );

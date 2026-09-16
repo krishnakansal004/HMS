@@ -151,23 +151,90 @@ import { toast } from '../../components/ui/Toast.jsx';
 const emptyForm = {
   name: '', publicFlag: 'true', customized: 'false', 
   priceMonthly: '', priceYearly: '', 
-  limitAdmins: '', limitDoctors: '', limitPatients: ''
+  limitAdmins: '', limitDoctors: '', limitStaff: '', limitPatients: '',
+  customFeatures: [], customFeatureInput: '',
+  features: {
+    billing: true,
+    lab_radiology: true,
+    inventory: false,
+    hrms: false,
+    payroll: false,
+    clinical_media: false,
+    voice_notes: false,
+    advanced_analytics: false,
+    abdm: false,
+    priority_support: false,
+  },
 };
 
-export default function CreatePlanModal({ open, onClose, onSaved }) {
+const FEATURE_OPTIONS = [
+  ['billing', 'Billing & online payments'],
+  ['lab_radiology', 'Lab & radiology orders'],
+  ['inventory', 'Pharmacy & inventory'],
+  ['hrms', 'Staff & HR management'],
+  ['payroll', 'Payroll processing'],
+  ['clinical_media', 'Clinical documents & media'],
+  ['voice_notes', 'Patient voice notes'],
+  ['advanced_analytics', 'Advanced analytics'],
+  ['abdm', 'ABDM readiness'],
+  ['priority_support', 'Priority support'],
+];
+
+function formFromPlan(plan) {
+  if (!plan) return { ...emptyForm, features: { ...emptyForm.features }, customFeatures: [] };
+  return {
+    name: plan.name || '',
+    publicFlag: String(plan.public ?? false),
+    customized: String(plan.customized ?? false),
+    priceMonthly: plan.prices?.monthly ?? '',
+    priceYearly: plan.prices?.yearly ?? '',
+    limitAdmins: plan.limits?.admins ?? '',
+    limitDoctors: plan.limits?.doctors ?? '',
+    limitStaff: plan.limits?.staff ?? '',
+    limitPatients: plan.limits?.patients ?? '',
+    customFeatures: Array.isArray(plan.limits?.customFeatures) ? plan.limits.customFeatures : [],
+    customFeatureInput: '',
+    features: { ...emptyForm.features, ...(plan.limits?.features || {}) },
+  };
+}
+
+export default function CreatePlanModal({ open, onClose, onSaved, plan = null }) {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setForm(emptyForm);
-      setErrors({});
-    }
-  }, [open]);
+    setForm(open ? formFromPlan(plan) : formFromPlan(null));
+    setErrors({});
+  }, [open, plan]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  }
+
+  function toggleFeature(feature) {
+    setForm((f) => ({
+      ...f,
+      features: { ...f.features, [feature]: !f.features[feature] },
+    }));
+  }
+
+  function addCustomFeature(event) {
+    event.preventDefault();
+    const value = form.customFeatureInput.trim();
+    if (!value || form.customFeatures.includes(value)) return;
+    setForm((f) => ({
+      ...f,
+      customFeatures: [...f.customFeatures, value].slice(0, 20),
+      customFeatureInput: '',
+    }));
+  }
+
+  function removeCustomFeature(feature) {
+    setForm((f) => ({
+      ...f,
+      customFeatures: f.customFeatures.filter((item) => item !== feature),
+    }));
   }
 
   async function handleSubmit(e) {
@@ -188,12 +255,20 @@ export default function CreatePlanModal({ open, onClose, onSaved }) {
         limits: {
           admins: Number(form.limitAdmins) || 0,
           doctors: Number(form.limitDoctors) || 0,
-          patients: Number(form.limitPatients) || 0
+          staff: Number(form.limitStaff) || 0,
+          patients: Number(form.limitPatients) || 0,
+          features: form.features,
+          customFeatures: form.customFeatures,
         }
       };
 
-      await plansApi.create(payload);
-      toast.success('Subscription plan created successfully');
+      if (plan) {
+        await plansApi.update(plan.plan_id, payload);
+        toast.success('Subscription plan updated successfully');
+      } else {
+        await plansApi.create(payload);
+        toast.success('Subscription plan created successfully');
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -204,7 +279,7 @@ export default function CreatePlanModal({ open, onClose, onSaved }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Create Subscription Plan" size="lg" footer={
+    <Modal open={open} onClose={onClose} title={plan ? "Edit Subscription Plan" : "Create Subscription Plan"} size="lg" footer={
       <>
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button onClick={handleSubmit} loading={saving}>Save Plan</Button>
@@ -239,8 +314,52 @@ export default function CreatePlanModal({ open, onClose, onSaved }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input label="Max Admins" type="number" min="1" required value={form.limitAdmins} onChange={update('limitAdmins')} />
             <Input label="Max Doctors" type="number" min="1" required value={form.limitDoctors} onChange={update('limitDoctors')} />
+            <Input label="Max Staff" type="number" min="1" required value={form.limitStaff} onChange={update('limitStaff')} />
             <Input label="Max Patients" type="number" min="1" required value={form.limitPatients} onChange={update('limitPatients')} />
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--color-ink)] mb-1 pb-1 border-b border-[var(--color-border)]">Included Modules</h3>
+          <p className="text-xs text-[var(--color-ink-faint)] mb-3">These entitlements are enforced by the API for every tenant on this plan.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {FEATURE_OPTIONS.map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-ink)] cursor-pointer hover:bg-[var(--color-paper)]">
+                <input
+                  type="checkbox"
+                  checked={!!form.features[key]}
+                  onChange={() => toggleFeature(key)}
+                  className="rounded border-[var(--color-border-strong)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className="flex items-end gap-2 mt-4">
+            <Input
+              label="Custom plan inclusion"
+              value={form.customFeatureInput}
+              onChange={update('customFeatureInput')}
+              placeholder="e.g. Dedicated onboarding specialist"
+              className="flex-1"
+            />
+            <Button type="button" variant="secondary" onClick={addCustomFeature}>Add</Button>
+          </div>
+          {form.customFeatures.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {form.customFeatures.map((feature) => (
+                <button
+                  type="button"
+                  key={feature}
+                  onClick={() => removeCustomFeature(feature)}
+                  className="rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary-ink)] px-3 py-1 text-xs hover:opacity-80"
+                  title="Remove custom inclusion"
+                >
+                  {feature} ×
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </form>
     </Modal>

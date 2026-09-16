@@ -5,9 +5,9 @@ import { ROLE_LABELS } from '../../utils/roles.js';
 import classNames from '../../utils/cn.js';
 import { useMemo } from 'react';
 
-export default function Sidebar({ role, hospitalName, open, onClose }) {
+export default function Sidebar({ role, hospitalName, planFeatures, open, onClose }) {
 
-  const navItems = useMemo(() => navForRole(role), [role]);
+  const navItems = useMemo(() => navForRole(role, planFeatures), [role, planFeatures]);
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import Button from '../../../components/ui/Button.jsx';
+import { scrollToSection } from '../../../utils/scrollToSection.js';
 
 function DashboardPreview() {
   const rows = [
@@ -75,14 +76,10 @@ export default function Hero() {
             nothing more.
           </p>
           <div className="flex flex-wrap items-center gap-3 mt-8">
-            <a href="#register">
-              <Button size="lg" icon={ArrowRight} className="flex-row-reverse">
-                Register your hospital
-              </Button>
-            </a>
-            <a href="#features">
-              <Button variant="secondary" size="lg">See what's included</Button>
-            </a>
+            <Button size="lg" icon={ArrowRight} className="flex-row-reverse" onClick={() => scrollToSection('register')}>
+              Register your hospital
+            </Button>
+            <Button variant="secondary" size="lg" onClick={() => scrollToSection('features')}>See what's included</Button>
           </div>
           <p className="text-xs text-[var(--color-ink-faint)] mt-4">
             Already using HMS at your hospital?{' '}

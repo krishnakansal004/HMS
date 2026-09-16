@@ -3,10 +3,12 @@ import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
 import { createSupplierValidator, supplierIdValidator, updateSupplierValidator } from '../validators/supplierValidator.js';
 import { SupplierController } from '../controllers/supplierController.js';
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
 router.use(protect);
 router.use(requireTenant);
+router.use(requirePlanFeature("inventory"));
 
 router.get(
   "/", 

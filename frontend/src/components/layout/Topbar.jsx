@@ -1,17 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, ChevronDown, LogOut, Moon, Sun } from 'lucide-react';
+import { Menu, ChevronDown, LogOut, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
 import { initials } from '../../utils/format.js';
-import { useThemeStore } from '../../store/themeStore.js';
+import ThemeToggle from '../ui/ThemeToggle.jsx';
 
-export default function Topbar({ onMenuClick, title }) {
+export default function Topbar({ onMenuClick, title, onUpgrade }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -40,45 +38,49 @@ export default function Topbar({ onMenuClick, title }) {
         <h1 className="font-display font-semibold text-lg text-[var(--color-ink)] truncate">{title}</h1>
       </div>
 
-      <div className="relative" ref={ref}>
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          className="flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 hover:bg-[var(--color-paper)] transition-colors"
-        >
-          <span className="h-8 w-8 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary-ink)] flex items-center justify-center text-xs font-semibold">
-            {initials(user?.name || user?.email)}
-          </span>
-          <span className="hidden sm:block text-sm font-medium text-[var(--color-ink)] max-w-[140px] truncate">
-            {user?.name || user?.email}
-          </span>
-          <ChevronDown size={15} className="text-[var(--color-ink-faint)]" />
-        </button>
-
-        {menuOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg py-1.5 z-30">
-            <div className="px-3 py-2 border-b border-[var(--color-border)]">
-              <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-[var(--color-ink-soft)] truncate">{user?.email}</p>
-            </div>
-            <button
-              onClick={() => {
-                toggleTheme();
-                setMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-paper)] hover:text-[var(--color-ink)]"
-            >
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-              {theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
-            >
-              <LogOut size={15} />
-              Log out
-            </button>
-          </div>
+      <div className="flex items-center gap-2">
+        {onUpgrade && (
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-primary-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary-ink)] transition-colors hover:bg-[var(--color-primary)] hover:text-white"
+          >
+            <span className="sm:hidden">Upgrade</span>
+            <span className="hidden sm:inline">Upgrade plan</span>
+            <ArrowUpRight size={14} />
+          </button>
         )}
+        <ThemeToggle />
+        <div className="relative" ref={ref}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 hover:bg-[var(--color-paper)] transition-colors"
+          >
+            <span className="h-8 w-8 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary-ink)] flex items-center justify-center text-xs font-semibold">
+              {initials(user?.name || user?.email)}
+            </span>
+            <span className="hidden sm:block text-sm font-medium text-[var(--color-ink)] max-w-[140px] truncate">
+              {user?.name || user?.email}
+            </span>
+            <ChevronDown size={15} className="text-[var(--color-ink-faint)]" />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg py-1.5 z-30">
+              <div className="px-3 py-2 border-b border-[var(--color-border)]">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-[var(--color-ink-soft)] truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+              >
+                <LogOut size={15} />
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

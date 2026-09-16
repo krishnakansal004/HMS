@@ -1,5 +1,6 @@
 import { body, query, param, validationResult } from 'express-validator';
 import { HTTP_STATUS } from '../constants/httpStatus.js';
+import { PLAN_FEATURE_KEYS, PLAN_LIMIT_KEYS } from '../config/planEntitlements.js';
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -20,8 +21,23 @@ export const createPlanValidator = [
   body('accessCode').optional().trim().escape(),
   body('durations').optional().isArray(),
   body('prices').optional().isObject(),
-  body('limits').optional().isObject(),
+  body('limits').isObject().withMessage('Plan limits are required'),
+  ...PLAN_LIMIT_KEYS.map((key) => body(`limits.${key}`).isInt({ min: 1 }).withMessage(`limits.${key} must be a positive integer`)),
+  body('limits.features').isObject().withMessage('Every plan must define its feature entitlements')
+    .custom((features) => {
+      const missing = PLAN_FEATURE_KEYS.filter((key) => typeof features[key] !== 'boolean');
+      if (missing.length) throw new Error(`Missing feature entitlements: ${missing.join(', ')}`);
+      return true;
+    }),
+  body('limits.customFeatures').optional().isArray({ max: 20 }),
+  body('limits.customFeatures.*').optional().isString().trim().isLength({ min: 1, max: 120 }),
   handleValidationErrors
+];
+
+export const updatePlanValidator = [
+  param('id').isUUID().withMessage('Valid Plan ID required'),
+  body('status').optional().isIn(['active', 'inactive', 'archived']).withMessage('Invalid plan status'),
+  ...createPlanValidator,
 ];
 
 export const provisionTenantValidator = [
@@ -48,7 +64,6 @@ export const verifyProvisionPaymentValidator = [
 export const requestPlanValidator = [
   body('planId').isUUID().withMessage('Valid Plan ID is required'),
   body('period').optional().isIn(['monthly', '3months', 'yearly', '5years']),
-  body('requestedAmount').optional().isFloat({ min: 0 }),
   body('accessCode').optional().trim().escape(),
   handleValidationErrors
 ];

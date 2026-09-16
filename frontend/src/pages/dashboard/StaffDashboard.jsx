@@ -16,10 +16,13 @@ export default function StaffDashboard({ user }) {
   // memoized so the many child sections below (each keyed off `visible`)
   // don't all re-run their gating checks on every unrelated re-render of
   // this component (e.g. a sibling section's own state update).
-  const visible = useMemo(() => new Set(navForRole(user?.role).map((i) => i.key)), [user?.role]);
+  const visible = useMemo(
+    () => new Set(navForRole(user?.role, user?.planFeatures).map((i) => i.key)),
+    [user?.role, user?.planFeatures],
+  );
   const quickLinks = useMemo(
-    () => navForRole(user?.role).filter((i) => i.key !== 'dashboard').slice(0, 6),
-    [user?.role],
+    () => navForRole(user?.role, user?.planFeatures).filter((i) => i.key !== 'dashboard').slice(0, 6),
+    [user?.role, user?.planFeatures],
   );
 
   return (
@@ -35,9 +38,9 @@ export default function StaffDashboard({ user }) {
       </div>
 
       <SystemOwnerPlatformSection role={user?.role} />
-      <DirectorInsightsSection role={user?.role} />
+      <DirectorInsightsSection role={user?.role} planFeatures={user?.planFeatures} />
       <ClinicalOverviewSection visible={visible} />
-      <BillingSummarySection role={user?.role} />
+      <BillingSummarySection role={user?.role} planFeatures={user?.planFeatures} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <OperationsAttentionSection visible={visible} />

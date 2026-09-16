@@ -3,8 +3,10 @@ import { PaymentController } from "../controllers/paymentController.js";
 import { initiatePaymentValidator, webhookValidator } from "../validators/paymentValidator.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { requirePlanFeature } from "../utils/saas.js";
 
 const router = express.Router();
+router.use(protect, requireTenant, requirePlanFeature("billing"));
 
 // ------------------------------------------------------------------
 // POST /api/payments/initiate
@@ -13,8 +15,6 @@ const router = express.Router();
 // ------------------------------------------------------------------
 router.post(
   "/initiate",
-  protect,
-  requireTenant,
   requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "CASHIER", "PATIENT"),
   initiatePaymentValidator,
   PaymentController.initiatePayment
@@ -27,8 +27,6 @@ router.post(
 // ------------------------------------------------------------------
 router.post(
   "/webhook/verify",
-  protect,
-  requireTenant,
   requireRoles("HOSPITAL_ADMIN", "RECEPTIONIST", "CASHIER", "PATIENT"),
   webhookValidator,
   PaymentController.handleWebhook

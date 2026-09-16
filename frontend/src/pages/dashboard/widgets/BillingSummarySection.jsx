@@ -12,8 +12,8 @@ const BILLING_ROLES = new Set(['HOSPITAL_ADMIN', 'ACCOUNTANT', 'CASHIER']);
  * already gets from OperationsAttentionSection. Only fires its one
  * aggregate call for the three roles it's actually useful to.
  */
-export default function BillingSummarySection({ role }) {
-  const enabled = BILLING_ROLES.has(role);
+export default function BillingSummarySection({ role, planFeatures }) {
+  const enabled = BILLING_ROLES.has(role) && planFeatures?.billing === true;
 
   const summary = useAsync(
     () => (enabled ? invoicesApi.getSummary() : Promise.resolve(null)),

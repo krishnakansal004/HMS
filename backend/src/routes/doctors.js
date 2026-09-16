@@ -2,6 +2,7 @@ import express from "express";
 import { DoctorController } from "../controllers/doctorController.js";
 import { protect, requireRoles } from "../middlewares/authMiddleware.js";
 import { requireTenant } from "../middlewares/tenantMiddleware.js";
+import { enforcePlanLimit } from "../utils/saas.js";
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.get(
 router.post(
   "/",
   requireRoles("HOSPITAL_ADMIN", "DIRECTOR"),
+  enforcePlanLimit("doctor"),
   DoctorController.create,
 );
 
